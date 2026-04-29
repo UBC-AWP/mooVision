@@ -1,6 +1,6 @@
 from pathlib import Path
 
-root = Path("/Users/skysheng/Library/CloudStorage/OneDrive-UBC/Animal Welfare-mooVision - Documents/cross_sucking_clips")
+root = Path("/Users/raymondwang/Library/CloudStorage/OneDrive-SharedLibraries-UBC/Animal Welfare-mooVision - Documents/cross_sucking_clips")
 
 def print_folder_counts(folder, indent=0):
     mp4_count = sum(1 for f in folder.rglob("*.mp4"))
