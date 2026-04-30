@@ -1,6 +1,7 @@
+import sys
 from pathlib import Path
-
-root = Path("/Users/raymondwang/Library/CloudStorage/OneDrive-SharedLibraries-UBC/Animal Welfare-mooVision - Documents/cross_sucking_clips")
+sys.path.append(str(Path(__file__).parent.parent))  
+from config import ROOT
 
 def print_folder_counts(folder, indent=0):
     mp4_count = sum(1 for f in folder.rglob("*.mp4"))
@@ -12,7 +13,7 @@ def print_folder_counts(folder, indent=0):
 
 print(f"{'Folder':<60} {'MP4s':>6}")
 print("-" * 68)
-for child in sorted(root.iterdir()):
+for child in sorted(ROOT.iterdir()):
     if child.is_dir():
         print_folder_counts(child)
         print()
