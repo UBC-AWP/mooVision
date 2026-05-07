@@ -1,0 +1,93 @@
+---
+title: "MooVision: Porject Proposal"
+author: "Devon Vorster, Ashifa Hassam, Raymond Wang, Cynthia Limantono"
+editor: source
+format: 
+    html:
+        toc: true
+        toc-depth: 2
+    pdf:
+        toc: true
+        toc-depth: 3
+bibliography : references.bib
+execute:
+    echo: false
+    warning: false
+jupyter: python3
+---
+
+# Executive Summary
+
+Dairy calves are generally separated from their mothers shortly after birth. Attempts towards improving calf welfare through social housing are blocked by farmers' fears of economic repercussions due to bodily harm, disease and impact on milk production caused by cross-sucking. Studying this behaviour is challenging as the current process involves manual labelling that is laborious, time-inefficient, and unscalable. This project aims to use a computer-vision-based approach to automatically detect and label cross-sucking behaviour in dairy cows for improved scalability and efficiency.
+
+# Introduction
+
+In modern dairy farms, calves are commonly separated from their mothers within hours after birth (Mahmoud et. al., 2016; Wegner et. al., 2025) and are typically kept in individual pens (Gaillard et al., 2014). While adopting individual housing may be easier to maintain, many studies suggest that social housing is beneficial for the calves’ welfare, including improved social cognition, cognitive ability, learning ability, and lowered weaning distress (Plaugher & Cantor, 2025). Despite these advantages, farmers are hesitant to adopt social housing due to concerns about cross-sucking (Plaugher & Cantor, 2025). 
+
+Cross-sucking occurs when one or more calves are sucking on any body parts of another calf. However, in this project, we consider cross-sucking specifically as the sucking of the udder area. As calves are unable to fulfill their natural desire to suckle due to mother-calf separation, calves often redirect this behaviour to suck (Wegner et. al., 2025). Cross-sucking can potentially lead to physical injuries (i.e. abscess formation), a higher risk of disease transmission, and a negative impact on future milk production  (Mahmoud et. al., 2016). As a result, the behaviour becomes a barrier to the wider adoption of social housing and further research on cross-sucking is needed to provide farmers with reliable evidence, with the hope of reducing their concerns and improving the welfare of calves.
+
+Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive video recordings of calves to study cross-sucking. This approach is time-consuming, laborious, and inconsistent for each annotator, causing difficulty in scaling to larger datasets in commercial farms. Our main objective for this project is to deploy an affordable, automated system that detects and labels cross-sucking behaviour from live video data. This enables a more efficient, consistent, and scalable way of detecting cross-sucking behaviour of dairy calves in social housing. 
+
+# Data & Exploratory Data Analysis (EDA)
+
+## Data Source (from Sarah Keppler’s description of data collection)
+
+Three groups (n=24) of dairy calves were recorded during three observation periods (3x24h per period) to monitor cross-sucking during pre-weaning, weaning, and post-weaning. Observations were made continuously for 3 consecutive days per period, and the behaviour of cross-sucking was recorded.
+
+## Observational Unit
+
+CS events were clipped from video logs into individual MP4 files (n_clips=1,141), and labelled with bounding boxes around localized cross-sucking behaviour using CVAT annotation software (n_clips_labelled=1,141). See Table 1.
+
+DATA TABLE: Use python code to create table? Take from images?
+
+Clips have a mean length of 51s, median length of 23.8s, range from 0.3s to 791.1s, and have a total of ~1.5M frames. [@fig-clip-duration-histogram] shows the distribution of clips lengths. Observational units may consist of frames, sequences of frames, or video clips.
+
+```{python}
+
+#| label: fig-clip-duration-histogram
+#| fig-cap: Histogram of cross-sucking clip length. The heavy right skew indicates most clips are of shorter length with few longer cross-sucking behaviours.
+
+from pathlib import Path
+import pandas as pd
+import altair as alt
+
+# NOTE: Need to fix path, maybe describe in readme exactly where the one drive folder needs to live for this to work.
+one_drive = (
+    "/Users/devon/OneDrive_UBC/Animal Welfare-mooVision - Documents"
+)
+root = Path(one_drive)
+path = root / "data" / "metadata" / "clips_metadata.csv"
+df = pd.read_csv(path)
+
+chart = alt.Chart(df[['duration_sec']]).mark_bar().encode(
+    x=alt.X(
+        title='Duration (s)',
+        field="duration_sec",
+        type='quantitative', 
+        bin=alt.Bin(maxbins=50)
+        ),
+    y=alt.Y(
+        'count()',
+        title='Number of Clips',
+    )
+).properties(
+    height=400,
+    width=700,
+    title='Histogram of Unlabelled Cross-sucking Clip Lengths (s)'
+)
+
+chart.show()
+```
+
+
+## Anticipated Challenges
+
+Occlusions, along with lighting conditions and pattern blending, obscure key discriminative features of CS behaviours. When this happens, the model must rely on incomplete or ambiguous visual cues, potentially leading to misclassifications between similar behaviours, or missed classifications of CS events. Occlusions may also create ambiguity in training data via uncertain or inconsistent labelling. As a result the model may struggle to learn the correct visual cues for classifying CS behaviours. [@fig-anticipated-challenges]
+
+![Anticipated challenges include: labelling inconsistencies, differing cross sucking orientations, multiple events at once, differing lighting conditions, blending patterns, and occlusions.](/img/anticipated_challenges.png){#fig-anticipated-challenges width=75%}
+
+Differing CS orientations have distinct visual cues, requiring the model to learn view-invariant representations of CS events, and concurrent events require the model to distinguish between co-occurring CS behaviours. Challenges here may lead to further missed CS events and missed classifications. Lastly, the model may struggle to track CS behaviours over long periods of time, potentially incorrectly detecting CS event lengths over longer behaviours.
+
+## Limitations
+
+Limited numbers of pen styles, camera angles, and cows mean our model may fail to generalize well to outside environments. Data is also restricted to video labelled with bounding boxes; there may be alternative approaches that provide better solutions (infrared, skeletal structures, etc.).
