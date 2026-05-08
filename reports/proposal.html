@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond Wang">
+
+<title>MooVision: Project Proposal</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="proposal_files/libs/clipboard/clipboard.min.js"></script>
+<script src="proposal_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="proposal_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="proposal_files/libs/quarto-html/popper.min.js"></script>
+<script src="proposal_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="proposal_files/libs/quarto-html/anchor.min.js"></script>
+<link href="proposal_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="proposal_files/libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="proposal_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="proposal_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="proposal_files/libs/bootstrap/bootstrap-81267100e462c21b3d6c0d5bf76a3417.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul class="collapse">
+  <li><a href="#executive-summary" id="toc-executive-summary" class="nav-link active" data-scroll-target="#executive-summary">Executive Summary</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#data-exploratory-data-analysis-eda" id="toc-data-exploratory-data-analysis-eda" class="nav-link" data-scroll-target="#data-exploratory-data-analysis-eda">Data &amp; Exploratory Data Analysis (EDA)</a>
+  <ul class="collapse">
+  <li><a href="#data-source-from-sarah-kepplers-description-of-data-collection" id="toc-data-source-from-sarah-kepplers-description-of-data-collection" class="nav-link" data-scroll-target="#data-source-from-sarah-kepplers-description-of-data-collection">Data Source (from Sarah Keppler’s description of data collection)</a></li>
+  <li><a href="#observational-unit" id="toc-observational-unit" class="nav-link" data-scroll-target="#observational-unit">Observational Unit</a></li>
+  <li><a href="#anticipated-challenges" id="toc-anticipated-challenges" class="nav-link" data-scroll-target="#anticipated-challenges">Anticipated Challenges</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
+  </ul></li>
+  <li><a href="#data-science-approach" id="toc-data-science-approach" class="nav-link" data-scroll-target="#data-science-approach">Data Science Approach</a>
+  <ul class="collapse">
+  <li><a href="#baseline-proximity-based-detection-with-pre-trained-yolo" id="toc-baseline-proximity-based-detection-with-pre-trained-yolo" class="nav-link" data-scroll-target="#baseline-proximity-based-detection-with-pre-trained-yolo">Baseline: Proximity-Based Detection with Pre-Trained YOLO</a></li>
+  <li><a href="#refined-frame-level-detection" id="toc-refined-frame-level-detection" class="nav-link" data-scroll-target="#refined-frame-level-detection">Refined Frame-Level Detection</a></li>
+  <li><a href="#temporal-approaches" id="toc-temporal-approaches" class="nav-link" data-scroll-target="#temporal-approaches">Temporal Approaches</a></li>
+  </ul></li>
+  <li><a href="#evaluation-success-criteria" id="toc-evaluation-success-criteria" class="nav-link" data-scroll-target="#evaluation-success-criteria">Evaluation &amp; Success Criteria</a>
+  <ul class="collapse">
+  <li><a href="#evaluation-metrics" id="toc-evaluation-metrics" class="nav-link" data-scroll-target="#evaluation-metrics">Evaluation Metrics</a></li>
+  <li><a href="#success-criteria" id="toc-success-criteria" class="nav-link" data-scroll-target="#success-criteria">Success Criteria</a></li>
+  <li><a href="#practical-use-stakeholders" id="toc-practical-use-stakeholders" class="nav-link" data-scroll-target="#practical-use-stakeholders">Practical Use &amp; Stakeholders</a></li>
+  </ul></li>
+  <li><a href="#timeline" id="toc-timeline" class="nav-link" data-scroll-target="#timeline">Timeline</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="proposal.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">MooVision: Project Proposal</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond Wang </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="executive-summary" class="level1">
+<h1>Executive Summary</h1>
+<p>Dairy calves are typically separated from their mothers shortly after birth. Efforts to improve calf welfare through social housing are often limited by farmers’ concerns about economic consequences resulting from physical injury, disease, and compromised milk production associated with cross-sucking. Studying this behaviour remains challenging because current methods rely on manual labelling, which is labour-intensive, time-consuming, and difficult to scale. This project aims to apply a computer-vision-based approach to automatically detect and label cross-sucking behaviour in dairy calves, improving scalability and overall efficiency.</p>
+</section>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<p>In modern dairy farms, calves are often separated from their mothers within hours of birth (<span class="citation" data-cites="mahmoud2016impacts">Mahmoud, Mahmoud, and Ahmed (<a href="#ref-mahmoud2016impacts" role="doc-biblioref">2016</a>)</span>; <span class="citation" data-cites="wegner2025suckling">Wegner et al. (<a href="#ref-wegner2025suckling" role="doc-biblioref">2025</a>)</span>) and housed individually (<span class="citation" data-cites="gaillard2014">Gaillard (<a href="#ref-gaillard2014" role="doc-biblioref">2014</a>)</span>). Although individual housing may be easier to manage, social housing has been shown to improve calf welfare, including enhanced social cognition, cognitive development, learning ability, and reduced weaning distress (<span class="citation" data-cites="plaugher2025">Plaugher and Cantor (<a href="#ref-plaugher2025" role="doc-biblioref">2025</a>)</span>). Despite these benefits, many farmers remain reluctant to adopt social housing because of concerns surrounding cross-sucking (<span class="citation" data-cites="plaugher2025">Plaugher and Cantor (<a href="#ref-plaugher2025" role="doc-biblioref">2025</a>)</span>).</p>
+<p>Cross-sucking occurs when one or more calves suck on the body parts of another calf. In this project, however, cross-sucking is defined specifically as sucking directed at the udder area. Because calves are unable to satisfy their natural suckling instinct following mother-calf separation, they often redirect this behaviour toward one another (<span class="citation" data-cites="wegner2025suckling">Wegner et al. (<a href="#ref-wegner2025suckling" role="doc-biblioref">2025</a>)</span>). Cross-sucking can lead to physical injuries, disease transmission, and long-term reductions in future milk production (<span class="citation" data-cites="mahmoud2016impacts">Mahmoud, Mahmoud, and Ahmed (<a href="#ref-mahmoud2016impacts" role="doc-biblioref">2016</a>)</span>). As a result, cross-sucking remains a major barrier to the wider adoption of social housing, emphasizing the need for further research to address farmers’ concerns and improve calf welfare.</p>
+<p>Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive calf video recordings to study cross-sucking behaviour. This process is time-consuming, labour-intensive, and subject to inconsistencies between annotators, making it difficult to scale to larger datasets in commercial farming environments. This project aims to develop an affordable, automated system capable of detecting cross-sucking from live video, enabling more efficient, consistent, and scalable analysis of dairy calf behaviour in social housing systems.</p>
+</section>
+<section id="data-exploratory-data-analysis-eda" class="level1">
+<h1>Data &amp; Exploratory Data Analysis (EDA)</h1>
+<section id="data-source-from-sarah-kepplers-description-of-data-collection" class="level2">
+<h2 class="anchored" data-anchor-id="data-source-from-sarah-kepplers-description-of-data-collection">Data Source (from Sarah Keppler’s description of data collection)</h2>
+<p>Our dataset consists of raw video footage, including twenty-four-hour recordings of dairy calves in their pens, shorter clips capturing cross-sucking behaviour, and labelled versions of these clips. Each pen is recorded from a single camera at an angled overhead view.</p>
+<p>The raw footage was collected from three groups of dairy calves (eight calves per pen) over three consecutive days during each of three observation periods: pre-weaning, weaning, and post-weaning. Throughout these periods, calves were monitored for cross-sucking behaviour.</p>
+<p>The recordings were then reviewed manually by undergraduate students, who examined 27 days of footage (3 pens, 3 periods, 3 days each) to identify cross-sucking events and extract them into shorter clips. These clips were subsequently reviewed again, and the cross-sucking behaviours were manually labelled. As expected, this data collection process required several months to complete, highlighting the need for a more efficient approach.</p>
+</section>
+<section id="observational-unit" class="level2">
+<h2 class="anchored" data-anchor-id="observational-unit">Observational Unit</h2>
+<p>The observational unit was each video clip extracted from continuous recordings, with each clip containing at least one cross-sucking event. <a href="#fig-data-table" class="quarto-xref">Figure&nbsp;1</a> shows a breakdown of these clips.</p>
+<div id="fig-data-table" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-data-table-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="./img/table.png" class="img-fluid figure-img" style="width:75.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-data-table-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Data available on cloud: raw videos of each weaning period for each pen, each period consists of 3 days worth of video broken down into shorter clips; Cross-sucking clips for each period for each pen; labelled cross-sucking clips for each period for each pen.
+</figcaption>
+</figure>
+</div>
+<p><a href="#fig-histogram" class="quarto-xref">Figure&nbsp;2</a> below shows the length of cross-sucking events based on the duration of clipped videos. From this, we can gather that most cross-sucking events are relatively short, 51s on average, or with a median value of 23.8s. The shortest cross-sucking event is 0.3s, and the longest is 791s (~13mins).</p>
+<div id="fig-histogram" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-histogram-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="./img/histogram.png" class="img-fluid figure-img" style="width:75.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-histogram-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Histogram of cross-sucking clip length. Heavily right skew indicates most clips are of shorter length with a few long cross-sucking behaviours.
+</figcaption>
+</figure>
+</div>
+</section>
+<section id="anticipated-challenges" class="level2">
+<h2 class="anchored" data-anchor-id="anticipated-challenges">Anticipated Challenges</h2>
+<p>Based on our dataset, we expect to face several key modelling challenges. Pens are crowded environments, and cross-sucking behaviour frequently occurs in areas where calves or structural beams partially occlude one another, making it difficult to clearly observe key visual features. Additional challenges include varying lighting conditions, labelling inconsistencies, similar coat patterns between calves, multiple cross-sucking events occurring simultaneously, and differing orientations of these behaviours. Together, these conditions make it difficult for the model to accurately detect true cross-sucking events and distinguish them from other interactions.</p>
+<div id="fig-anticipated-challenges" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-anticipated-challenges-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="./img/challenges.png" class="img-fluid figure-img" style="width:75.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-anticipated-challenges-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Anticipated challenges include: labelling inconsistencies, varying cross sucking orientations, multiple events co-occuring simultaneously, varying lighting conditions, blending coat patterns, and occlusions.
+</figcaption>
+</figure>
+</div>
+<p>Temporal modeling introduces an additional layer of complexity due to variations in clip length. Shorter clips may show partial cross-sucking events, providing incomplete behavioural context. Conversely, longer clips require the model to track cross-sucking behaviours over long periods of time, increasing the difficulty of consistent detection. Together these characteristics motivate the need for models able to handle the robust spatial, and temporal challenges present in our data. <a href="#fig-anticipated-challenges" class="quarto-xref">Figure&nbsp;3</a> shows several of these challenges.</p>
+</section>
+<section id="limitations" class="level2">
+<h2 class="anchored" data-anchor-id="limitations">Limitations</h2>
+<p>There is a limited number of pen styles, camera angles, and cows, resulting in the potential of our model failing to generalize well to outside environments. Data is also restricted to video labelled with bounding boxes; there may be alternative approaches that provide better solutions (infrared, skeletal structures, etc.).</p>
+</section>
+</section>
+<section id="data-science-approach" class="level1">
+<h1>Data Science Approach</h1>
+<p>To prevent data leakage and enable generalization to new environments (such as moving to a new farm), we hold out one full pen or Day 1 of each weaning stage as our test set. Our methodology follows a progressive three-phase structure: establish a working baseline, refine frame-level detection, then introduce temporal reasoning.</p>
+<section id="baseline-proximity-based-detection-with-pre-trained-yolo" class="level2">
+<h2 class="anchored" data-anchor-id="baseline-proximity-based-detection-with-pre-trained-yolo">Baseline: Proximity-Based Detection with Pre-Trained YOLO</h2>
+<p>We begin with YOLOv8 pretrained on COCO to detect whole cow bounding boxes, establishing our benchmark detector. We apply a proximity check flagging frames where the bounding box of one calf overlaps with another as a candidate cross-sucking event. To ensure robustness and reduce false positives from transient overlaps, we require that the bounding box overlap must persist across a minimum number of consecutive frames, with threshold set to filter out spurious detections. This temporal persistence constraint effectively filters out spurious detections caused by calves momentarily standing near each other or passing through the same spatial region, while capturing genuine cross-sucking behaviour that occurs over sustained periods.</p>
+<div id="fig-yolov8-detection" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-yolov8-detection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="./img/yolov8_detection.png" class="img-fluid figure-img" style="width:75.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-yolov8-detection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: YOLOv8 Output from Test Run One on the Clip
+</figcaption>
+</figure>
+</div>
+<p>A key limitation is anatomical imprecision; whole-cow boxes and coarse body part proxies may generate false positives, directly motivating our refined detection methods below.</p>
+</section>
+<section id="refined-frame-level-detection" class="level2">
+<h2 class="anchored" data-anchor-id="refined-frame-level-detection">Refined Frame-Level Detection</h2>
+<p>To address the domain gap, we will fine-tune on our own annotated pen footage, introducing dedicated mouth and udder classes to make the proximity check anatomically precise. We evaluate three candidate approaches from simplest to most complex:</p>
+<div id="tbl-methods" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;1: Refined Frame by Frame modelling approaches for cross-sucking detection
+</figcaption>
+<div aria-describedby="tbl-methods-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 24%">
+<col style="width: 48%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Model</th>
+<th>How it works</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Fine-tuned object detection</td>
+<td>YOLOv7X / YOLOv8</td>
+<td>Re-train baseline weights on our annotated barn footage with mouth and udder classes added; proximity check becomes snout-to-udder rather than head proxy-to-body proxy</td>
+</tr>
+<tr class="even">
+<td>Frame-level detection + temporal linking</td>
+<td>YOLOv8 + Seq-NMS</td>
+<td>Detect behaviour bounding boxes per frame independently, then apply a temporal linking algorithm to connect detections across frames into consistent event tubes; maps directly onto our existing annotations</td>
+</tr>
+<tr class="odd">
+<td>Pose estimation + behaviour classification</td>
+<td>ViTPose / DeepLabCut</td>
+<td>Predict anatomical keypoints per calf — snout, neck, withers, udder; cross-sucking flagged when the snout keypoint of one calf falls within the udder keypoint region of another; most robust to partial occlusion</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<p>Anticipated challenges include class imbalance and annotation cost, since fine-tuning requires sufficient labelled positive frames across all three weaning stages.</p>
+</section>
+<section id="temporal-approaches" class="level2">
+<h2 class="anchored" data-anchor-id="temporal-approaches">Temporal Approaches</h2>
+<p>With a reliable per-frame signal established, we layer temporal reasoning on top to distinguish sustained sucking events from brief incidental contact. We evaluate three architectures of increasing complexity:</p>
+<div id="tbl-temporal" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-temporal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;2: Temporal modelling approaches for cross-sucking detection
+</figcaption>
+<div aria-describedby="tbl-temporal-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<table class="caption-top table">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 24%">
+<col style="width: 48%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Model</th>
+<th>How it works</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Sequence classification</td>
+<td>LSTM / Temporal Convolutional Network</td>
+<td>Per-frame bounding box coordinates and proximity scores fed as a time series; model learns which temporal patterns of overlap constitute a real cross-sucking event vs transient noise; most direct extension of the baseline</td>
+</tr>
+<tr class="even">
+<td>Spatiotemporal action detection</td>
+<td>SlowFast / YOWO</td>
+<td>Processes short video clips end-to-end as 3D space-time volumes, learning appearance and motion jointly without requiring explicit flow computation; outputs behaviour bounding boxes localised across the clip</td>
+</tr>
+<tr class="odd">
+<td>Transformer-based tube detection</td>
+<td>Video Swin / TubeR</td>
+<td>Self-attention across spatial and temporal dimensions captures long-range dependencies; outputs spatiotemporal action tubes linked across frames and can reason about occluded regions using surrounding context</td>
+</tr>
+</tbody>
+</table>
+</div>
+</figure>
+</div>
+<p>A key challenge across all temporal approaches is that we may not have enough labelled cross-sucking clips to train these models reliably. Our footage is spread across three weaning stages and seven days, which means each stage has relatively few positive examples to learn from. To compensate, we will use data augmentation techniques, artificially generating new training samples by simulating blocked views, randomly shifting clips in time, and adding motion blur, to give the model more variety without collecting additional footage.</p>
+</section>
+</section>
+<section id="evaluation-success-criteria" class="level1">
+<h1>Evaluation &amp; Success Criteria</h1>
+<section id="evaluation-metrics" class="level2">
+<h2 class="anchored" data-anchor-id="evaluation-metrics">Evaluation Metrics</h2>
+<p>To evaluate our detection system, we will use metrics across two levels. At the event level, bounding box IoU will be used to measure how precisely predicted boxes overlap with ground truth annotations, while precision, recall, F1, and F2 will assess how well the model classifies cross-sucking versus similar behaviours like grooming or head-butting. We will prioritize F2 over F1 as missing a cross-sucking event is more costly than an occasional false positive. At the sequence level, temporal IoU will measure how accurately the model captures the full duration and timing of each detected event against manually labeled time windows.</p>
+</section>
+<section id="success-criteria" class="level2">
+<h2 class="anchored" data-anchor-id="success-criteria">Success Criteria</h2>
+<p>Success for our partner means more than strong metric scores. The system must function as a deployable workflow that accepts continuous raw video and automatically generates labeled clips alongside metadata including confidence scores, pen number, weaning stage, and event duration. This will enable researchers to ask deeper questions such as whether cross-sucking prevalence varies across pens or weaning stages. Success also requires the pipeline to be accessible to non-technical users via Docker, with outputs mirroring the existing CSV annotation structure for immediate integration into current workflows.</p>
+<div id="fig-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="img/pipeline_proposal.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: High level pipeline.
+</figcaption>
+</figure>
+</div>
+<p>See <a href="#fig-pipeline" class="quarto-xref">Figure&nbsp;5</a> for a high level overview of the system pipeline.</p>
+</section>
+<section id="practical-use-stakeholders" class="level2">
+<h2 class="anchored" data-anchor-id="practical-use-stakeholders">Practical Use &amp; Stakeholders</h2>
+<p>In practice, results will be used in two ways. For researchers, the system enables large-scale behavioral monitoring across Canadian dairy farms, supporting the first comprehensive risk factor analysis of cross-sucking prevalence and informing best management practices ahead of the 2032 Canadian regulation requiring social housing of dairy calves. For farmers, it provides a practical tool to evaluate whether management changes such as adjusting feeding methods or milk quantities are reducing cross-sucking.</p>
+<p>The primary stakeholders are UBC Animal Welfare Program researchers, who require a rigorous and reproducible tool, and Canadian dairy farmers, who need something practical and easy to deploy. Secondary stakeholders include the broader animal</p>
+<div style="page-break-after: always;"></div>
+</section>
+</section>
+<section id="timeline" class="level1">
+<h1>Timeline</h1>
+<p>The proposed timeline is shown in <a href="#fig-timeline" class="quarto-xref">Figure&nbsp;6</a>.</p>
+<div id="fig-timeline" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-timeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="img/proposal_timeline.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-timeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Proposed Timeline with key milestones and expected deliverables.
+</figcaption>
+</figure>
+</div>
+<div style="page-break-after: always;"></div>
+</section>
+<section id="references" class="level1 unnumbered">
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-gaillard2014" class="csl-entry" role="listitem">
+Gaillard, Rebecca K. AND von Keyserlingk, Charlotte AND Meagher. 2014. <span>“Social Housing Improves Dairy Calves’ Performance in Two Cognitive Tests.”</span> <em>PLOS ONE</em> 9 (2): 1–6. <a href="https://doi.org/10.1371/journal.pone.0090205">https://doi.org/10.1371/journal.pone.0090205</a>.
+</div>
+<div id="ref-mahmoud2016impacts" class="csl-entry" role="listitem">
+Mahmoud, Motamed Elsayed, Fatma Ali Mahmoud, and Adel Elsayed Ahmed. 2016. <span>“Impacts of Self-and Cross-Sucking on Cattle Health and Performance.”</span> <em>Veterinary World</em> 9 (9): 922.
+</div>
+<div id="ref-plaugher2025" class="csl-entry" role="listitem">
+Plaugher, Gillian D., and Melissa C. Cantor. 2025. <span>“A Scoping Review on Pair Housing Dairy Calves: Health and Performance Outcomes and Tactics to Reduce Cross-Sucking Behavior.”</span> <em>Frontiers in Veterinary Science</em> 12: 1568164. <a href="https://doi.org/10.3389/fvets.2025.1568164">https://doi.org/10.3389/fvets.2025.1568164</a>.
+</div>
+<div id="ref-wegner2025suckling" class="csl-entry" role="listitem">
+Wegner, Claire S, Cady W Chan, Lars Rönnegård, Sigrid Agenäs, Lena Lidfors, and Hanna K Eriksson. 2025. <span>“Suckling and Allosuckling Behavior of Dairy Calves in Indoor Dam-Rearing Systems.”</span> <em>Frontiers in Veterinary Science</em> 12. <a href="https://doi.org/10.3389/fvets.2025.1617158">https://doi.org/10.3389/fvets.2025.1617158</a>.
+</div>
+</div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
