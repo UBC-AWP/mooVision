@@ -16,6 +16,8 @@ execute:
 jupyter: python3
 ---
 
+{{< pagebreak >}}
+
 # Executive Summary
 
 Dairy calves are typically separated from their mothers shortly after birth. Efforts to improve calf welfare through social housing are often limited by farmers’ concerns about economic consequences resulting from physical injury, disease, and compromised milk production associated with cross-sucking. Studying this behaviour remains challenging because current methods rely on manual labelling, which is labour-intensive, time-consuming, and difficult to scale. This project aims to apply a computer-vision-based approach to automatically detect and label cross-sucking behaviour in dairy calves, improving scalability and overall efficiency.
