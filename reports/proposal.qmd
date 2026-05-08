@@ -85,7 +85,7 @@ chart.show()
 
 Occlusions, along with lighting conditions and pattern blending, obscure key discriminative features of CS behaviours. When this happens, the model must rely on incomplete or ambiguous visual cues, potentially leading to misclassifications between similar behaviours, or missed classifications of CS events. Occlusions may also create ambiguity in training data via uncertain or inconsistent labelling. As a result the model may struggle to learn the correct visual cues for classifying CS behaviours. [@fig-anticipated-challenges]
 
-![Anticipated challenges include: labelling inconsistencies, differing cross sucking orientations, multiple events at once, differing lighting conditions, blending patterns, and occlusions.](/img/anticipated_challenges.png){#fig-anticipated-challenges width=75%}
+![Anticipated challenges include: labelling inconsistencies, differing cross sucking orientations, multiple events at once, differing lighting conditions, blending patterns, and occlusions.](img/challenges.png){#fig-anticipated-challenges width=75%}
 
 Differing CS orientations have distinct visual cues, requiring the model to learn view-invariant representations of CS events, and concurrent events require the model to distinguish between co-occurring CS behaviours. Challenges here may lead to further missed CS events and missed classifications. Lastly, the model may struggle to track CS behaviours over long periods of time, potentially incorrectly detecting CS event lengths over longer behaviours.
 
@@ -175,4 +175,8 @@ or milk quantities are reducing cross-sucking.
 The primary stakeholders are UBC Animal Welfare Program researchers, who require 
 a rigorous and reproducible tool, and Canadian dairy farmers, who need something 
 practical and easy to deploy. Secondary stakeholders include the broader animal 
-welfare research community, who will benefit from the open-sourced pipeline.
+
+# Timeline
+![Proposed Timeline with key milestones and expected deliverables.](img/proposal_timeline.png){#fig-timeline fig-align="center" width=85%}
+
+## References
