@@ -32,65 +32,34 @@ Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of ex
 
 ## Data Source (from Sarah Keppler’s description of data collection)
 
-Three groups (n=24) of dairy calves were recorded during three observation periods (3x24h per period) to monitor cross-sucking during pre-weaning, weaning, and post-weaning. Observations were made continuously for 3 consecutive days per period, and the behaviour of cross-sucking was recorded.
+Our dataset consists of raw video footage, including twenty-four-hour recordings of dairy calves in their pens, shorter clips capturing cross-sucking behaviour, and labelled versions of these clips. Each pen is recorded from a single camera at an angled overhead view.
+
+The raw footage was collected from three groups of dairy calves (eight calves per pen) over three consecutive days during each of three observation periods: pre-weaning, weaning, and post-weaning. Throughout these periods, calves were monitored for cross-sucking behaviour.
+
+The recordings were then reviewed manually by undergraduate students, who examined 27 days of footage (3 pens, 3 periods, 3 days each) to identify cross-sucking events and extract them into shorter clips. These clips were subsequently reviewed again, and the cross-sucking behaviours were manually labelled. As expected, this data collection process required several months to complete, highlighting the need for a more efficient approach.
 
 ## Observational Unit
 
-CS events were clipped from video logs into individual MP4 files (n_clips=1,141), and labelled with bounding boxes around localized cross-sucking behaviour using CVAT annotation software (n_clips_labelled=1,141). See Table 1.
+The observational unit was each video clip extracted from continuous recordings, with each clip containing at least one cross-sucking event. @fig-data-table shows a breakdown of these clips.
 
-DATA TABLE: Use python code to create table? Take from images?
+![Data available on cloud: raw videos of each weaning period for each pen, each period consists of 3 days worth of video broken down into shorter clips; Cross-sucking clips for each period for each pen; labelled cross-sucking clips for each period for each pen.](/img/table.png){#fig-data-table width=75%}
 
-Clips have a mean length of 51s, median length of 23.8s, range from 0.3s to 791.1s, and have a total of ~1.5M frames. [@fig-clip-duration-histogram] shows the distribution of clips lengths. Observational units may consist of frames, sequences of frames, or video clips.
+@fig-histogram below shows the length of cross-sucking events based on the duration of clipped videos. From this, we can gather that most cross-sucking events are relatively short, 51s on average, or with a median value of 23.8s. The shortest cross-sucking event is 0.3s, and the longest is 791s (~13mins).
 
-```{python}
-
-#| label: fig-clip-duration-histogram
-#| fig-cap: Histogram of cross-sucking clip length. The heavy right skew indicates most clips are of shorter length with few longer cross-sucking behaviours.
-
-from pathlib import Path
-import pandas as pd
-import altair as alt
-
-# NOTE: Need to fix path, maybe describe in readme exactly where the one drive folder needs to live for this to work.
-one_drive = (
-    "/Users/devon/OneDrive_UBC/Animal Welfare-mooVision - Documents"
-)
-root = Path(one_drive)
-path = root / "data" / "metadata" / "clips_metadata.csv"
-df = pd.read_csv(path)
-
-chart = alt.Chart(df[['duration_sec']]).mark_bar().encode(
-    x=alt.X(
-        title='Duration (s)',
-        field="duration_sec",
-        type='quantitative', 
-        bin=alt.Bin(maxbins=50)
-        ),
-    y=alt.Y(
-        'count()',
-        title='Number of Clips',
-    )
-).properties(
-    height=400,
-    width=700,
-    title='Histogram of Unlabelled Cross-sucking Clip Lengths (s)'
-)
-
-chart.show()
-```
-
+![Histogram of cross-sucking clip length. Heavily right skew indicates most clips are of shorter length with a few long cross-sucking behaviours.](/img/histogram.png){#fig-histogram width=75%}
 
 ## Anticipated Challenges
 
-Occlusions, along with lighting conditions and pattern blending, obscure key discriminative features of CS behaviours. When this happens, the model must rely on incomplete or ambiguous visual cues, potentially leading to misclassifications between similar behaviours, or missed classifications of CS events. Occlusions may also create ambiguity in training data via uncertain or inconsistent labelling. As a result the model may struggle to learn the correct visual cues for classifying CS behaviours. [@fig-anticipated-challenges]
+ Based on our dataset, we expect to face several key modelling challenges. Pens are crowded environments, and cross-sucking behaviour frequently occurs in areas where calves or structural beams partially occlude one another, making it difficult to clearly observe key visual features. Additional challenges include varying lighting conditions, labelling inconsistencies, similar coat patterns between calves, multiple cross-sucking events occurring simultaneously, and differing orientations of these behaviours. Together, these conditions make it difficult for the model to accurately detect true cross-sucking events and distinguish them from other interactions. 
 
-![Anticipated challenges include: labelling inconsistencies, differing cross sucking orientations, multiple events at once, differing lighting conditions, blending patterns, and occlusions.](/img/anticipated_challenges.png){#fig-anticipated-challenges width=75%}
+![Anticipated challenges include: labelling inconsistencies, varying cross sucking orientations, multiple events co-occuring simultaneously, varying lighting conditions, blending coat patterns, and occlusions.](/img/anticipated_challenges.png){#fig-anticipated-challenges width=75%}
 
-Differing CS orientations have distinct visual cues, requiring the model to learn view-invariant representations of CS events, and concurrent events require the model to distinguish between co-occurring CS behaviours. Challenges here may lead to further missed CS events and missed classifications. Lastly, the model may struggle to track CS behaviours over long periods of time, potentially incorrectly detecting CS event lengths over longer behaviours.
+Temporal modeling introduces an additional layer of complexity due to variations in clip length.  Shorter clips may show partial cross-sucking events, providing incomplete behavioural context.. Conversely, longer clips require the model to track cross-sucking behaviours over long periods of time, increasing the difficulty of consistent detection. Together these characteristics motivate the need for models able to handle the robust spatial, and temporal challenges present in our data. [@fig-anticipated-challenges] shows several of these challenges.
+
 
 ## Limitations
 
-Limited numbers of pen styles, camera angles, and cows mean our model may fail to generalize well to outside environments. Data is also restricted to video labelled with bounding boxes; there may be alternative approaches that provide better solutions (infrared, skeletal structures, etc.).
+There is a limited number of pen styles, camera angles, and cows, resulting in the potential of our model failing to generalize well to outside environments. Data is also restricted to video labelled with bounding boxes; there may be alternative approaches that provide better solutions (infrared, skeletal structures, etc.).
 
 # Data Science Approach
 
