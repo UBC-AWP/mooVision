@@ -93,17 +93,13 @@ Differing CS orientations have distinct visual cues, requiring the model to lear
 Limited numbers of pen styles, camera angles, and cows mean our model may fail to generalize well to outside environments. Data is also restricted to video labelled with bounding boxes; there may be alternative approaches that provide better solutions (infrared, skeletal structures, etc.).
 
 # Data Science Approach
-
-To prevent data leakage, we hold out one full pen as our test set, using a provided mapping file to identify all associated clips. This is preferable to a day-level split given that Pen 3 has little to not post-weaning data, making a weaning-stage-stratified split difficult to balance across all pens.
+To prevent data leakage and enable generalization to new environments (such as moving to a new farm), we hold out one full pen or Day 1 of each weaning stage as our test set. 
 Our methodology follows a progressive three-phase structure: establish a working baseline, refine frame-level detection, then introduce temporal reasoning.
-Baseline: Proximity-Based Detection with Pre-Trained YOLO
-We begin with two out-of-the-box detectors to establish a benchmark — YOLOv7X pretrained on a 428-image cattle body part dataset achieving 99.6% mAP (@khalili2023; @wang2023), and YOLOv8 pretrained on COCO which detects whole-cow bounding boxes. We apply a proximity check using sub-regions of each detected box — the top 25% as a head proxy and the bottom 25% as a udder proxy — flagging frames where the head region of one calf overlaps the udder region of another as a candidate cross-sucking event. Overlap must persist across a minimum number of consecutive frames to suppress false positives from calves simply standing near each other.
 
-IMAGE 1
+## Baseline: Proximity-Based Detection with Pre-Trained YOLO
+We begin with YOLOv8 pretrained on COCO to detect whole cow bounding boxes, establishing our benchmark detector. We apply a proximity check flagging frames where the bounding box of one calf overlaps with another as a candidate cross-sucking event. To ensure robustness and reduce false positives from transient overlaps, we require that the bounding box overlap must persist across a minimum number of consecutive frames, with threshold set to filter out spurious detections. This temporal persistence constraint effectively filters out spurious detections caused by calves momentarily standing near each other or passing through the same spatial region, while capturing genuine cross-sucking behaviour that occurs over sustained periods. 106 words
 
-IMAGE 2
-
-IMAGE 3
+![YOLOv8 Output from Test Run One on the Clip](/img/yolov8_detection.png){#fig-yolov8-detection width=75%}
 
 A key limitation is anatomical imprecision — whole-cow boxes and coarse body part proxies may generate false positives, directly motivating our refined detection methods below.
 
@@ -111,7 +107,13 @@ A key limitation is anatomical imprecision — whole-cow boxes and coarse body p
 
 To address the domain gap, we will fine-tune on our own annotated pen footage, introducing dedicated mouth and udder classes to make the proximity check anatomically precise. We evaluate three candidate approaches from simplest to most complex:
 
-TABLE 1
+| Method | Model | How it works |
+|--------|-------|--------------|
+| Fine-tuned object detection | YOLOv7X / YOLOv8 | Re-train baseline weights on our annotated barn footage with mouth and udder classes added; proximity check becomes snout-to-udder rather than head proxy-to-body proxy |
+| Frame-level detection + temporal linking | YOLOv8 + Seq-NMS | Detect behaviour bounding boxes per frame independently, then apply a temporal linking algorithm to connect detections across frames into consistent event tubes; maps directly onto our existing annotations |
+| Pose estimation + behaviour classification | ViTPose / DeepLabCut | Predict anatomical keypoints per calf — snout, neck, withers, udder; cross-sucking flagged when the snout keypoint of one calf falls within the udder keypoint region of another; most robust to partial occlusion |
+
+: Refined Frame by Frame modelling approaches for cross-sucking detection {#tbl-methods}
 
 Anticipated challenges include class imbalance and annotation cost, since fine-tuning requires sufficient labelled positive frames across all three weaning stages.
 
@@ -119,7 +121,13 @@ Anticipated challenges include class imbalance and annotation cost, since fine-t
 
 With a reliable per-frame signal established, we layer temporal reasoning on top to distinguish sustained sucking events from brief incidental contact. We evaluate three architectures of increasing complexity:
 
-TABLE 2
+| Method | Model | How it works |
+|--------|-------|--------------|
+| Sequence classification | LSTM / Temporal Convolutional Network | Per-frame bounding box coordinates and proximity scores fed as a time series; model learns which temporal patterns of overlap constitute a real cross-sucking event vs transient noise; most direct extension of the baseline |
+| Spatiotemporal action detection | SlowFast / YOWO | Processes short video clips end-to-end as 3D space-time volumes, learning appearance and motion jointly without requiring explicit flow computation; outputs behaviour bounding boxes localised across the clip |
+| Transformer-based tube detection | Video Swin / TubeR | Self-attention across spatial and temporal dimensions captures long-range dependencies; outputs spatiotemporal action tubes linked across frames and can reason about occluded regions using surrounding context |
+
+: Temporal modelling approaches for cross-sucking detection {#tbl-temporal}
 
 A key challenge across all temporal approaches is that we may not have enough labelled cross-sucking clips to train these models reliably. Our footage is spread across three weaning stages and seven days, which means each stage has relatively few positive examples to learn from. To compensate, we will use data augmentation techniques — artificially generating new training samples by simulating blocked views, randomly shifting clips in time, and adding motion blur — to give the model more variety without collecting additional footage.
 
