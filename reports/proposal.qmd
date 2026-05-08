@@ -1,5 +1,5 @@
 ---
-title: "MooVision: Porject Proposal"
+title: "MooVision: Project Proposal"
 author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond Wang"
 editor: source
 format: 
@@ -18,7 +18,7 @@ jupyter: python3
 
 # Executive Summary
 
-Dairy calves are generally separated from their mothers shortly after birth. Attempts towards improving calf welfare through social housing are blocked by farmers' fears of economic repercussions due to bodily harm, disease and impact on milk production caused by cross-sucking. Studying this behaviour is challenging as the current process involves manual labelling that is laborious, time-inefficient, and unscalable. This project aims to use a computer-vision-based approach to automatically detect and label cross-sucking behaviour in dairy cows for improved scalability and efficiency.
+Dairy calves are typically separated from their mothers shortly after birth. Efforts to improve calf welfare through social housing are often limited by farmers’ concerns about economic consequences resulting from physical injury, disease, and compromised milk production associated with cross-sucking. Studying this behaviour remains challenging because current methods rely on manual labelling, which is labour-intensive, time-consuming, and difficult to scale. This project aims to apply a computer-vision-based approach to automatically detect and label cross-sucking behaviour in dairy calves, improving scalability and overall efficiency.
 
 # Introduction
 
@@ -55,7 +55,7 @@ The observational unit was each video clip extracted from continuous recordings,
 
 ![Anticipated challenges include: labelling inconsistencies, varying cross sucking orientations, multiple events co-occuring simultaneously, varying lighting conditions, blending coat patterns, and occlusions.](/img/challenges.png){#fig-anticipated-challenges width=75%}
 
-Temporal modeling introduces an additional layer of complexity due to variations in clip length.  Shorter clips may show partial cross-sucking events, providing incomplete behavioural context.. Conversely, longer clips require the model to track cross-sucking behaviours over long periods of time, increasing the difficulty of consistent detection. Together these characteristics motivate the need for models able to handle the robust spatial, and temporal challenges present in our data. [@fig-anticipated-challenges] shows several of these challenges.
+Temporal modeling introduces an additional layer of complexity due to variations in clip length.  Shorter clips may show partial cross-sucking events, providing incomplete behavioural context. Conversely, longer clips require the model to track cross-sucking behaviours over long periods of time, increasing the difficulty of consistent detection. Together these characteristics motivate the need for models able to handle the robust spatial, and temporal challenges present in our data. [@fig-anticipated-challenges] shows several of these challenges.
 
 
 ## Limitations
@@ -67,7 +67,7 @@ To prevent data leakage and enable generalization to new environments (such as m
 Our methodology follows a progressive three-phase structure: establish a working baseline, refine frame-level detection, then introduce temporal reasoning.
 
 ## Baseline: Proximity-Based Detection with Pre-Trained YOLO
-We begin with YOLOv8 pretrained on COCO to detect whole cow bounding boxes, establishing our benchmark detector. We apply a proximity check flagging frames where the bounding box of one calf overlaps with another as a candidate cross-sucking event. To ensure robustness and reduce false positives from transient overlaps, we require that the bounding box overlap must persist across a minimum number of consecutive frames, with threshold set to filter out spurious detections. This temporal persistence constraint effectively filters out spurious detections caused by calves momentarily standing near each other or passing through the same spatial region, while capturing genuine cross-sucking behaviour that occurs over sustained periods. 106 words
+We begin with YOLOv8 pretrained on COCO to detect whole cow bounding boxes, establishing our benchmark detector. We apply a proximity check flagging frames where the bounding box of one calf overlaps with another as a candidate cross-sucking event. To ensure robustness and reduce false positives from transient overlaps, we require that the bounding box overlap must persist across a minimum number of consecutive frames, with threshold set to filter out spurious detections. This temporal persistence constraint effectively filters out spurious detections caused by calves momentarily standing near each other or passing through the same spatial region, while capturing genuine cross-sucking behaviour that occurs over sustained periods.
 
 ![YOLOv8 Output from Test Run One on the Clip](/img/yolov8_detection.png){#fig-yolov8-detection width=75%}
 
@@ -145,7 +145,14 @@ The primary stakeholders are UBC Animal Welfare Program researchers, who require
 a rigorous and reproducible tool, and Canadian dairy farmers, who need something 
 practical and easy to deploy. Secondary stakeholders include the broader animal 
 
+{{< pagebreak >}}
+
 # Timeline
+
+The proposed timeline is shown in @fig-timeline.
+
 ![Proposed Timeline with key milestones and expected deliverables.](img/proposal_timeline.png){#fig-timeline fig-align="center" width=85%}
 
-## References
+{{< pagebreak >}}
+
+# References
