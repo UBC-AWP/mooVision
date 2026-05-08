@@ -91,3 +91,47 @@ Differing CS orientations have distinct visual cues, requiring the model to lear
 ## Limitations
 
 Limited numbers of pen styles, camera angles, and cows mean our model may fail to generalize well to outside environments. Data is also restricted to video labelled with bounding boxes; there may be alternative approaches that provide better solutions (infrared, skeletal structures, etc.).
+
+# Evaluation & Success Criteria
+
+## Evaluation Metrics
+
+To evaluate our detection system, we will use metrics across two levels. 
+At the event level, bounding box IoU will be used to measure how precisely 
+predicted boxes overlap with ground truth annotations, while precision, 
+recall, F1, and F2 will assess how well the model classifies cross-sucking 
+versus similar behaviours like grooming or head-butting. We will prioritize 
+F2 over F1 as missing a cross-sucking event is more costly than an occasional 
+false positive. At the sequence level, temporal IoU will measure how accurately 
+the model captures the full duration and timing of each detected event against 
+manually labeled time windows.
+
+## Success Criteria
+
+Success for our partner means more than strong metric scores. The system must 
+function as a deployable workflow that accepts continuous raw video and 
+automatically generates labeled clips alongside metadata including confidence 
+scores, pen number, weaning stage, and event duration. This will enable 
+researchers to ask deeper questions such as whether cross-sucking prevalence 
+varies across pens or developmental stages. Success also requires the pipeline 
+to be accessible to non-technical users via Docker, with outputs mirroring the 
+existing CSV annotation structure for immediate integration into current workflows.
+
+![High level pipeline.](img/pipeline_diagram.png){#fig-pipeline fig-align="center" width=85%}
+
+See @fig-pipeline for a high level overview of the system pipeline.
+
+## Practical Use & Stakeholders
+
+In practice, results will be used in two ways. For researchers, the system 
+enables large-scale behavioral monitoring across Canadian dairy farms, supporting 
+the first comprehensive risk factor analysis of cross-sucking prevalence and 
+informing best management practices ahead of the 2032 Canadian regulation 
+requiring social housing of dairy calves. For farmers, it provides a practical 
+tool to evaluate whether management changes such as adjusting feeding methods 
+or milk quantities are reducing cross-sucking.
+
+The primary stakeholders are UBC Animal Welfare Program researchers, who require 
+a rigorous and reproducible tool, and Canadian dairy farmers, who need something 
+practical and easy to deploy. Secondary stakeholders include the broader animal 
+welfare research community, who will benefit from the open-sourced pipeline.
