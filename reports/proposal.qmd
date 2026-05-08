@@ -9,7 +9,7 @@ format:
     pdf:
         toc: true
         toc-depth: 3
-bibliography : references.bib
+bibliography: references.bib
 execute:
     echo: false
     warning: false
@@ -22,11 +22,11 @@ Dairy calves are generally separated from their mothers shortly after birth. Att
 
 # Introduction
 
-In modern dairy farms, calves are commonly separated from their mothers within hours after birth (Mahmoud et. al., 2016; Wegner et. al., 2025) and are typically kept in individual pens (Gaillard et al., 2014). While adopting individual housing may be easier to maintain, many studies suggest that social housing is beneficial for the calves’ welfare, including improved social cognition, cognitive ability, learning ability, and lowered weaning distress (Plaugher & Cantor, 2025). Despite these advantages, farmers are hesitant to adopt social housing due to concerns about cross-sucking (Plaugher & Cantor, 2025). 
+In modern dairy farms, calves are commonly separated from their mothers within hours after birth (@mahmoud2016impacts; @wegner2025suckling) and kept in individual pens (@gaillard2014). While individual housing may be easier to manage, social housing has been shown to improve calves’ welfare, including improved social cognition, cognitive ability, learning ability, and lowered weaning distress (@plaugher2025). Despite these advantages, farmers are hesitant to adopt social housing due to concerns about cross-sucking (@plaugher2025).
 
-Cross-sucking occurs when one or more calves are sucking on any body parts of another calf. However, in this project, we consider cross-sucking specifically as the sucking of the udder area. As calves are unable to fulfill their natural desire to suckle due to mother-calf separation, calves often redirect this behaviour to suck (Wegner et. al., 2025). Cross-sucking can potentially lead to physical injuries (i.e. abscess formation), a higher risk of disease transmission, and a negative impact on future milk production  (Mahmoud et. al., 2016). As a result, the behaviour becomes a barrier to the wider adoption of social housing and further research on cross-sucking is needed to provide farmers with reliable evidence, with the hope of reducing their concerns and improving the welfare of calves.
+Cross-sucking occurs when one or more calves are sucking on any body parts of another calf. However, in this project, cross-sucking is considered specifically as the sucking of the udder area. As calves are unable to fulfill their natural desire to suckle due to mother-calf separation, calves often redirect this behaviour to suck (@wegner2025suckling). Cross-sucking can potentially cause physical injuries, disease transmission, and long-term impacts on future milk production  (@mahmoud2016impacts). Therefore, cross-sucking becomes a barrier to wider social housing adoption, highlighting the need for further research to address farmers’ concerns and improve calf welfare.
 
-Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive video recordings of calves to study cross-sucking. This approach is time-consuming, laborious, and inconsistent for each annotator, causing difficulty in scaling to larger datasets in commercial farms. Our main objective for this project is to deploy an affordable, automated system that detects and labels cross-sucking behaviour from live video data. This enables a more efficient, consistent, and scalable way of detecting cross-sucking behaviour of dairy calves in social housing. 
+Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive video recordings of calves to study cross-sucking. This approach is time-consuming, laborious, and inconsistent for each annotator, causing difficulty in scaling to larger datasets in commercial farms. This project aims to deploy an affordable, automated system that detects cross-sucking from live video, enabling a more efficient, consistent, and scalable analysis of dairy calves’ behaviour in social housing.
 
 # Data & Exploratory Data Analysis (EDA)
 
@@ -97,7 +97,7 @@ Limited numbers of pen styles, camera angles, and cows mean our model may fail t
 To prevent data leakage, we hold out one full pen as our test set, using a provided mapping file to identify all associated clips. This is preferable to a day-level split given that Pen 3 has little to not post-weaning data, making a weaning-stage-stratified split difficult to balance across all pens.
 Our methodology follows a progressive three-phase structure: establish a working baseline, refine frame-level detection, then introduce temporal reasoning.
 Baseline: Proximity-Based Detection with Pre-Trained YOLO
-We begin with two out-of-the-box detectors to establish a benchmark — YOLOv7X pretrained on a 428-image cattle body part dataset achieving 99.6% mAP (Khalili, 2023; Wang et al., 2023), and YOLOv8 pretrained on COCO which detects whole-cow bounding boxes. We apply a proximity check using sub-regions of each detected box — the top 25% as a head proxy and the bottom 25% as a udder proxy — flagging frames where the head region of one calf overlaps the udder region of another as a candidate cross-sucking event. Overlap must persist across a minimum number of consecutive frames to suppress false positives from calves simply standing near each other.
+We begin with two out-of-the-box detectors to establish a benchmark — YOLOv7X pretrained on a 428-image cattle body part dataset achieving 99.6% mAP (@khalili2023; @wang2023), and YOLOv8 pretrained on COCO which detects whole-cow bounding boxes. We apply a proximity check using sub-regions of each detected box — the top 25% as a head proxy and the bottom 25% as a udder proxy — flagging frames where the head region of one calf overlaps the udder region of another as a candidate cross-sucking event. Overlap must persist across a minimum number of consecutive frames to suppress false positives from calves simply standing near each other.
 
 IMAGE 1
 
