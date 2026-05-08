@@ -1,6 +1,6 @@
 ---
 title: "MooVision: Porject Proposal"
-author: "Devon Vorster, Ashifa Hassam, Raymond Wang, Cynthia Limantono"
+author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond Wang"
 editor: source
 format: 
     html:
@@ -22,11 +22,12 @@ Dairy calves are generally separated from their mothers shortly after birth. Att
 
 # Introduction
 
-In modern dairy farms, calves are commonly separated from their mothers within hours after birth (@mahmoud2016impacts; @wegner2025suckling) and kept in individual pens (@gaillard2014). While individual housing may be easier to manage, social housing has been shown to improve calves’ welfare, including improved social cognition, cognitive ability, learning ability, and lowered weaning distress (@plaugher2025). Despite these advantages, farmers are hesitant to adopt social housing due to concerns about cross-sucking (@plaugher2025).
+In modern dairy farms, calves are often separated from their mothers within hours of birth (@mahmoud2016impacts; @wegner2025suckling) and housed individually (@gaillard2014). Although individual housing may be easier to manage, social housing has been shown to improve calf welfare, including enhanced social cognition, cognitive development, learning ability, and reduced weaning distress (@plaugher2025). Despite these benefits, many farmers remain reluctant to adopt social housing because of concerns surrounding cross-sucking (@plaugher2025).
 
-Cross-sucking occurs when one or more calves are sucking on any body parts of another calf. However, in this project, cross-sucking is considered specifically as the sucking of the udder area. As calves are unable to fulfill their natural desire to suckle due to mother-calf separation, calves often redirect this behaviour to suck (@wegner2025suckling). Cross-sucking can potentially cause physical injuries, disease transmission, and long-term impacts on future milk production  (@mahmoud2016impacts). Therefore, cross-sucking becomes a barrier to wider social housing adoption, highlighting the need for further research to address farmers’ concerns and improve calf welfare.
+Cross-sucking occurs when one or more calves suck on the body parts of another calf. In this project, however, cross-sucking is defined specifically as sucking directed at the udder area. Because calves are unable to satisfy their natural suckling instinct following mother-calf separation, they often redirect this behaviour toward one another (@wegner2025suckling). Cross-sucking can lead to physical injuries, disease transmission, and long-term reductions in future milk production (@mahmoud2016impacts). As a result, cross-sucking remains a major barrier to the wider adoption of social housing, emphasizing the need for further research to address farmers’ concerns and improve calf welfare.
 
-Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive video recordings of calves to study cross-sucking. This approach is time-consuming, laborious, and inconsistent for each annotator, causing difficulty in scaling to larger datasets in commercial farms. This project aims to deploy an affordable, automated system that detects cross-sucking from live video, enabling a more efficient, consistent, and scalable analysis of dairy calves’ behaviour in social housing.
+Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive calf video recordings to study cross-sucking behaviour. This process is time-consuming, labour-intensive, and subject to inconsistencies between annotators, making it difficult to scale to larger datasets in commercial farming environments. This project aims to develop an affordable, automated system capable of detecting cross-sucking from live video, enabling more efficient, consistent, and scalable analysis of dairy calf behaviour in social housing systems.
+
 
 # Data & Exploratory Data Analysis (EDA)
 
