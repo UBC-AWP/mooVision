@@ -102,7 +102,7 @@ We begin with YOLOv8 pretrained on COCO to detect whole cow bounding boxes, esta
 
 ![YOLOv8 Output from Test Run One on the Clip](/img/yolov8_detection.png){#fig-yolov8-detection width=75%}
 
-A key limitation is anatomical imprecision — whole-cow boxes and coarse body part proxies may generate false positives, directly motivating our refined detection methods below.
+A key limitation is anatomical imprecision; whole-cow boxes and coarse body part proxies may generate false positives, directly motivating our refined detection methods below.
 
 ## Refined Frame-Level Detection
 
@@ -130,7 +130,7 @@ With a reliable per-frame signal established, we layer temporal reasoning on top
 
 : Temporal modelling approaches for cross-sucking detection {#tbl-temporal}
 
-A key challenge across all temporal approaches is that we may not have enough labelled cross-sucking clips to train these models reliably. Our footage is spread across three weaning stages and seven days, which means each stage has relatively few positive examples to learn from. To compensate, we will use data augmentation techniques — artificially generating new training samples by simulating blocked views, randomly shifting clips in time, and adding motion blur — to give the model more variety without collecting additional footage.
+A key challenge across all temporal approaches is that we may not have enough labelled cross-sucking clips to train these models reliably. Our footage is spread across three weaning stages and seven days, which means each stage has relatively few positive examples to learn from. To compensate, we will use data augmentation techniques, artificially generating new training samples by simulating blocked views, randomly shifting clips in time, and adding motion blur, to give the model more variety without collecting additional footage.
 
 
 # Evaluation & Success Criteria
