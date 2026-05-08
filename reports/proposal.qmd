@@ -153,11 +153,11 @@ function as a deployable workflow that accepts continuous raw video and
 automatically generates labeled clips alongside metadata including confidence 
 scores, pen number, weaning stage, and event duration. This will enable 
 researchers to ask deeper questions such as whether cross-sucking prevalence 
-varies across pens or developmental stages. Success also requires the pipeline 
+varies across pens or weaning stages. Success also requires the pipeline 
 to be accessible to non-technical users via Docker, with outputs mirroring the 
 existing CSV annotation structure for immediate integration into current workflows.
 
-![High level pipeline.](img/pipeline_diagram.png){#fig-pipeline fig-align="center" width=85%}
+![High level pipeline.](img/pipeline_proposal.png){#fig-pipeline fig-align="center" width=85%}
 
 See @fig-pipeline for a high level overview of the system pipeline.
 
