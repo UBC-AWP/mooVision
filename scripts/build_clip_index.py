@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))  
 from config import ROOT, METADATA_DIR
-from utils.video import collect_all_metadata
+from utils.get_video import collect_all_metadata
 
 output_path = METADATA_DIR / "clips_metadata.csv"
 total_start = time.time()
