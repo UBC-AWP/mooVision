@@ -4,6 +4,11 @@ from pathlib import Path
 import pandas as pd
 
 def get_video_info(video_path: Path, max_retries: int = 3, wait_sec: int = 1) -> dict | None:
+    """Return basic video stats (fps, frame_count, duration) plus path-derived fields.
+
+    Retries a few times because OpenCV can intermittently fail to read some files.
+    Expects path layout: .../<pen>/<weaning_stage>/<day>/<file>.mp4
+    """
     for attempt in range(1, max_retries + 1):
         cap = cv2.VideoCapture(str(video_path))
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -30,6 +35,7 @@ def get_video_info(video_path: Path, max_retries: int = 3, wait_sec: int = 1) ->
     return None
 
 def collect_all_metadata(root: Path) -> tuple[pd.DataFrame, list[Path]]:
+    """Scan `root` for Pen-related .mp4 files and return (metadata_df, failed_paths)."""
     records = []
     failed = []
     # all files in the directory and subdirectories with .mp4 extension
