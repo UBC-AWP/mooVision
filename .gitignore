@@ -13,4 +13,7 @@ __pycache__/
 .DS_Store
 
 # --- R (if any EDA uses R) ---
-.Rhistory
+.Rhistorysite/
+
+# --- Site ---
+site/
