@@ -1,5 +1,19 @@
-# .gitignore
+# --- Python / virtual env ---
 .venv/
 __pycache__/
 *.pyc
+
+# --- Tooling / version managers ---
 .python-version
+
+# --- Environment / secrets (do not commit) ---
+.env
+
+# --- OS / editor junk ---
+.DS_Store
+
+# --- R (if any EDA uses R) ---
+.Rhistorysite/
+
+# --- Site ---
+site/
