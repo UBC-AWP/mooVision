@@ -55,6 +55,17 @@ def frame_has_overlap(boxes, iou_threshold):
     Returns:
         (bool, float): (overlap_detected, max_iou_found)
     """
+    max_iou = 0.0
+    n = len(boxes)
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            iou = compute_iou(boxes[i], boxes[j])
+            if iou > max_iou:
+                max_iou = iou
+
+    return (max_iou >= iou_threshold), max_iou
+
 
 def extract_events(frame_flags, fps, min_duration, confidences):
     """
@@ -69,6 +80,49 @@ def extract_events(frame_flags, fps, min_duration, confidences):
     Returns:
         List of dicts: [{start_sec, end_sec, avg_confidence}, ...]
     """
+    events = []
+    in_event = False
+    start_frame = 0
+    event_confs = []
+
+    for idx, flagged in enumerate(frame_flags):
+        if flagged and not in_event:
+            # Event starts
+            in_event = True
+            start_frame = idx
+            event_confs = [confidences[idx]]
+
+        elif flagged and in_event:
+            # Event continues
+            event_confs.append(confidences[idx])
+
+        elif not flagged and in_event:
+            # Event just ended — evaluate it
+            end_frame = idx - 1
+            duration = (end_frame - start_frame) / fps
+            if duration >= min_duration:
+                events.append({
+                    "start_sec":        round(start_frame / fps, 2),
+                    "end_sec":          round(end_frame / fps, 2),
+                    "duration_sec":     round(duration, 2),
+                    "avg_confidence":   round(float(np.mean(event_confs)), 3),
+                })
+            in_event = False
+            event_confs = []
+
+    # Handle event that runs to the very last frame
+    if in_event:
+        end_frame = len(frame_flags) - 1
+        duration = (end_frame - start_frame) / fps
+        if duration >= min_duration:
+            events.append({
+                "start_sec":      round(start_frame / fps, 2),
+                "end_sec":        round(end_frame / fps, 2),
+                "duration_sec":   round(duration, 2),
+                "avg_confidence": round(float(np.mean(event_confs)), 3),
+            })
+
+    return events
 
 
 def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_duration):
@@ -190,3 +244,4 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
     print("═" * 50 + "\n")
  
     return metadata
+
