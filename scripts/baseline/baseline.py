@@ -245,3 +245,37 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
  
     return metadata
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Baseline cross-sucking detector using YOLOv8 bounding box overlap."
+    )
+    parser.add_argument("--video",
+                        required=True, 
+                        help="Path to input video file")
+    parser.add_argument("--model", 
+                        default=DEFAULT_MODEL, 
+                        help=f"YOLOv8 weights file (default: {DEFAULT_MODEL})")
+    parser.add_argument("--iou_threshold", 
+                        type=float, 
+                        default=DEFAULT_IOU_THRESHOLD,  
+                        help=f"IoU overlap threshold (default: {DEFAULT_IOU_THRESHOLD})")
+    parser.add_argument("--conf_threshold",
+                        type=float, default=DEFAULT_CONF_THRESHOLD, 
+                        help=f"YOLO detection confidence threshold (default: {DEFAULT_CONF_THRESHOLD})")
+    parser.add_argument("--min_duration",  
+                        type=float, 
+                        default=DEFAULT_MIN_DURATION, 
+                        help=f"Minimum event duration in seconds (default: {DEFAULT_MIN_DURATION})")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    run_detection(
+        video_path    = args.video,
+        model_path    = args.model,
+        iou_threshold = args.iou_threshold,
+        conf_threshold= args.conf_threshold,
+        min_duration  = args.min_duration,
+    )
