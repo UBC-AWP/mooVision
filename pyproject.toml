@@ -12,6 +12,7 @@ dependencies = [
     "opencv-python>=4.13.0.92",
     "pandas>=3.0.2",
     "python-dotenv>=1.2.2",
+    "ultralytics>=8.4.50",
 ]
 
 [dependency-groups]
