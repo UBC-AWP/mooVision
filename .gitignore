@@ -17,3 +17,6 @@ __pycache__/
 
 # --- Site ---
 site/
+
+# --- Models ---
+*.pt
