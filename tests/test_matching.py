@@ -255,17 +255,17 @@ class TestEdgeCases:
 class TestNumericIDExtraction:
     """Test numeric ID extraction logic."""
 
-    def test_extract_numeric_id_cs_format(self, matcher):
+    def test_extract_numeric_id_cs_format(self):
         """Test extraction of ID from CS_XXXX format."""
         test_id = extract_numeric_id("CS_0317_WEAN_d2_p2_cow6.mp4.zip")
         assert test_id == "317"  # Leading zeros removed
 
-    def test_extract_simple_numeric_id(self, matcher):
+    def test_extract_simple_numeric_id(self):
         """Test extraction of simple numeric ID."""
         test_id = extract_numeric_id("1015_part01.zip")
         assert test_id == "1015"
 
-    def test_extract_id_with_leading_zeros(self, matcher):
+    def test_extract_id_with_leading_zeros(self):
         """Test that leading zeros are removed."""
         test_id = extract_numeric_id("CS_0001_test.zip")
         assert test_id == "1"
@@ -273,7 +273,7 @@ class TestNumericIDExtraction:
         test_id2 = extract_numeric_id("0123_test.zip")
         assert test_id2 == "123"
 
-    def test_extract_id_with_short_input(self, matcher):
+    def test_extract_id_with_short_input(self):
         """Test that leading zeros are removed."""
         test_id = extract_numeric_id("CS_445_test.zip")
         assert test_id == "445"
@@ -281,30 +281,28 @@ class TestNumericIDExtraction:
         test_id2 = extract_numeric_id("3_test.zip")
         assert test_id2 == "3"
 
-    def test_no_numeric_id(self, matcher):
-        """Test when no numeric ID can be extracted."""
-        test_id = extract_numeric_id("ABCD_test.zip")
-        assert test_id is None
-
-        # Raise ERROR (?)
+    def test_no_numeric_id(self):
+        """Test error is raised when no numeric ID can be extracted."""
+        with pytest.raises(ValueError):
+            extract_numeric_id("ABCD_test.zip")
 
 
 class TestParsing:
     """Test filename parsing functions."""
 
-    def test_parse_unlabelled_with_part(self, matcher):
+    def test_parse_unlabelled_with_part(self):
         """Test parsing unlabelled name with part number."""
-        base, part = parse_unlabelled_name("CS_0319_WEAN_test_part01.mp4")
-        assert base == "CS_0319_WEAN_test"
+        numeric_id, part = parse_unlabelled_name("CS_0319_WEAN_test_part01.mp4")
+        assert numeric_id == "319"
         assert part == 1
 
-    def test_parse_unlabelled_without_part(self, matcher):
+    def test_parse_unlabelled_without_part(self):
         """Test parsing unlabelled name without part number."""
         numeric_id, part = parse_unlabelled_name("CS_0317_WEAN_test.mp4")
         assert numeric_id == "317"
         assert part is None
 
-    def test_parse_labelled_various_formats(self, matcher):
+    def test_parse_labelled_various_formats(self):
         """Test parsing various labelled formats."""
         # Format: _part01
         numeric_id, part = parse_labelled_name("0045_part01.zip")
@@ -335,7 +333,13 @@ class TestParsing:
         assert numeric_id == "6789"
         assert part == 2
 
-    def test_parse_labelled_no_part(self, matcher):
+    def test_parse_labelled_no_part(self):
+        """Test parsing labelled name without part number."""
+        numeric_id, part = parse_labelled_name("1234.zip")
+        assert numeric_id == "1234"
+        assert part is None
+
+    def test_parse_labelled_does_not_match_patterns(self):  ### RAISE ERROR
         """Test parsing labelled name without part number."""
         numeric_id, part = parse_labelled_name("1234.zip")
         assert numeric_id == "1234"
