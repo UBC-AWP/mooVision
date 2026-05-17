@@ -34,17 +34,22 @@ def get_video_info(video_path: Path, max_retries: int = 3, wait_sec: int = 1) ->
     print(f"gave up after {max_retries} attempts: {video_path.name}")
     return None
 
-def collect_all_metadata(root: Path) -> tuple[pd.DataFrame, list[Path]]:
+def collect_all_metadata(root: Path,method: str = 'Pen') -> tuple[pd.DataFrame, list[Path]]:
     """Scan `root` for Pen-related .mp4 files and return (metadata_df, failed_paths)."""
-    records = []
-    failed = []
+    method = method.strip().lower()
+    allowed = {"pen": "Pen", "test": "Test"}
+    if method not in allowed:
+        raise ValueError(f"method must be one of {list(allowed.keys())}, got {method!r}")
+
+    token = allowed[method]  # token is a string: "Pen" or "Test"
     # all files in the directory and subdirectories with .mp4 extension
-    # all_files = sorted(root.rglob("*.mp4"))
-    
     all_files = sorted(
     f for f in root.rglob("*.mp4")
-    if any("Pen" in part for part in f.parts)
+    if any(token in part for part in f.parts)
     )
+    
+    records = []
+    failed = []
     total = len(all_files)
 
     for i, f in enumerate(all_files, 1):
