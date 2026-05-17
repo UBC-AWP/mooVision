@@ -47,7 +47,21 @@ def parse_unlabelled_name(unlabelled_name: str) -> Tuple[str, Optional[int]]:
     # Search for different part formats
     # Extract correct part location
     # Return Tuple
-    pass
+
+    # Remove video file extensions
+    name = re.sub(r"\.(mp4|avi|mov|mkv|MP4|AVI|MOV|MKV)$", "", unlabelled_name)
+
+    # Extract part number if present
+    part_match = re.search(r"_part(\d+)$", name, re.IGNORECASE)
+
+    if part_match:
+        part_num = int(part_match.group(1))
+        numeric_id = extract_numeric_id(name)
+    else:
+        part_num = None
+        numeric_id = extract_numeric_id(name)
+
+    return numeric_id, part_num
 
 
 def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
@@ -90,11 +104,48 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
     >>> parse_unlabelled_name("0004_part02zip.zip")
     >>> ("4", 2)
     """
-    # Extract Numeric ID
-    # Search for different part formats
-    # Extract correct part location
-    # Return Tuple
-    pass
+    # Remove archive extensions
+    name = re.sub(r"\.(zip|rar|7z|ZIP|RAR|7Z)$", "", labelled_name)
+    # Also remove .mp4 if present before .zip
+    name = re.sub(r"\.(mp4|MP4)$", "", name)
+
+    # Try various part number patterns (in order of specificity)
+    part_patterns = [
+        r"(^\d+$)",  # Basic pattern with no parts: 0001
+        r"_part(\d+)zip$",  # Typo: _part02zip
+        r"_part(\d+)$",  # _part01, _part02, _part1, _part2
+        r"_p(\d+)$",  # _p01, _p02, _p1, _p2
+        r"-p(\d+)$",  # -p1, -p2
+        r"\s+-\s+p(\d+)$",  # - p1, - p2 (with spaces)
+    ]
+
+    part_num = None
+
+    for pattern in part_patterns:
+        match = re.search(pattern, name, re.IGNORECASE)
+        if match:
+            # Parse Part
+            if pattern == r"(^\d+$)":  # Basic format: 0001
+                part_num = None
+                base_name = name
+            else:
+                part_num = int(match.group(1))
+                base_name = name[: match.start()]
+
+            # Extract Numeric Id
+            try:
+                numeric_id = extract_numeric_id(base_name)
+                print(numeric_id)
+
+                # Retrun Numeric ID and Tuple
+                return numeric_id, part_num
+            except Exception as e:
+                e
+
+    # Raise Error no patterns match
+    raise ValueError(
+        f"{labelled_name} does not match known naming patterns. See documentation for more infor on known naming conventions."
+    )
 
 
 def extract_numeric_id(name: str) -> str:
@@ -111,6 +162,8 @@ def extract_numeric_id(name: str) -> str:
     -------
     str
         The four digit numeric ID representing the video number
+    None
+        If no numeric ID is found
 
     Raises
     ------
@@ -118,8 +171,6 @@ def extract_numeric_id(name: str) -> str:
         If name is an empty string
     TypeError
         If name is not a string
-    ValueError
-        If no Numeric ID was found, or ID was not in a known format.
 
 
     Exampes
@@ -129,12 +180,26 @@ def extract_numeric_id(name: str) -> str:
     >>> extract_numeric_id("011.zip") >>> "11"
     >>> extract_numeric_id("01133333.zip") >>> 1133333
     """
-    # Check type, non-empty
-    # Check against different formats
-    # Pull correct location from correct format
-    # Return Numeric ID.
 
-    pass
+    # Check string type
+    if not isinstance(name, str):
+        raise TypeError(f"Expected a string, but received {type(name).__name__}")
+
+    # Check non-empty
+    if not name.strip():
+        raise ValueError("Filename cannot be an empty string or whitespace only.")
+
+    # Try CS_XXXX pattern
+    cs_match = re.match(r"CS_(\d+)", name, re.IGNORECASE)
+    if cs_match:
+        return str(int(cs_match.group(1)))  # Remove leading zeros
+
+    # Try leading number
+    num_match = re.match(r"^(\d+)", name)
+    if num_match:
+        return str(int(num_match.group(1)))  # Remove leading zeros
+
+    raise ValueError(f"Could not extract numeric id from {name}")
 
 
 def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
