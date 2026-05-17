@@ -13,6 +13,8 @@ nav:
   - Home: index.md
   - Research Questions:
     - Data Spliting: Research Questions/data_splitting.md
+  - Utils:
+    - Utils: utils/get_video.md
   - About:
     - About: about/about.md
     - License: about/license.md
