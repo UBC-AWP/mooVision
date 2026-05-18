@@ -43,10 +43,10 @@ def parse_unlabelled_name(unlabelled_name: str) -> Tuple[str, Optional[int]]:
     >>> parse_unlabelled_name("CS_0006_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577_part02.mp4")
     >>> ("6", 2)
     """
-    # Extract Numeric ID
-    # Search for different part formats
-    # Extract correct part location
-    # Return Tuple
+    if not isinstance(unlabelled_name, str):
+        raise TypeError(f"Expected string, got {type(unlabelled_name).__name__}")
+    if not unlabelled_name.strip():
+        raise ValueError("Filename cannot be empty or whitespace only")
 
     # Remove video file extensions
     name = re.sub(r"\.(mp4|avi|mov|mkv|MP4|AVI|MOV|MKV)$", "", unlabelled_name)
@@ -84,30 +84,30 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
         If labelled_name is an empty string.
     TypeError
         If labelled_name is not a string.
-    FormatError
-        If string is not of one of the known types.
+    ValueError
+        If labelled name is not  of the known types.
 
     Notes
     -----
 
      Examples
     --------
-    >>> parse_unlabelled_name("0001.zip")
+    >>> parse_labelled_name("0001.zip")
     >>> ("1", None)
 
-    >>> parse_unlabelled_name("0002_part01.mp4")
+    >>> parse_labelled_name("0002_part01.mp4")
     >>> ("2", 1)
 
-    >>> parse_unlabelled_name("0003 - p2.zip")
+    >>> parse_labelled_name("0003 - p2.zip")
     >>> ("3", 2)
 
-    >>> parse_unlabelled_name("0004_part02zip.zip")
+    >>> parse_labelled_name("0004_part02zip.zip")
     >>> ("4", 2)
     """
     # Remove archive extensions
     name = re.sub(r"\.(zip|rar|7z|ZIP|RAR|7Z)$", "", labelled_name)
     # Also remove .mp4 if present before .zip
-    name = re.sub(r"\.(mp4|MP4)$", "", name)
+    name = re.sub(r"\.(mp4|avi|mov|mkv|MP4|AVI|MOV|MKV)$", "", name)
 
     # Try various part number patterns (in order of specificity)
     part_patterns = [
@@ -141,8 +141,9 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
 
                 # Retrun Numeric ID and Tuple
                 return numeric_id, part_num
-            except Exception as e:
-                e
+            # Try next pattern
+            except ValueError:
+                continue
 
     # Raise Error no patterns match
     raise ValueError(
@@ -170,7 +171,7 @@ def extract_numeric_id(name: str) -> str:
     Raises
     ------
     ValueError
-        If name is an empty string
+        If name is an empty string or if a numeric ID could not be found.
     TypeError
         If name is not a string
 
@@ -226,19 +227,20 @@ def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
     Returns
     -------
     str
-        The name of a single labelled cross sucking clip.
+        The name of a single labelled cross sucking clip matching the unlabelled_name input.
     None
-        If no labelled clip corresponding to the input is found
+        If no labelled cross sucking clip corresponding to the unlabelled_name input is found
 
     Raises
     ------
-    FileNotFoundError
-        If the path to the unlabelled video clip does not exist.?
     ValueError
-        If there is an unaccounted for version in the labelled clip names?
+        If inputs are empty strings or empty lists.
+    TypeError
+        If the inputs are not a string and a list of strings.
 
     Notes
     -----
+    Right now, this is configured for .mp4, .avi, .mov, .mkv video extensions and .zip labelled data extensions.
 
     Examples
     --------
@@ -254,18 +256,48 @@ def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
     >>> find_match(unlabelled_name_3, labelled_names) >>> "0101_part01zip.zip"
     >>> find_match(unlabelled_name_4, labelled_names) >>> None
     """
+    # Check string type
+    if not isinstance(unlabelled_name, str):
+        raise TypeError(
+            f"Expected a string, but received {type(unlabelled_name).__name__}"
+        )
+
+    # Check list type
+    if not isinstance(labelled_names, list):
+        raise TypeError(
+            f"Expected a list, but received {type(labelled_names).__name__}"
+        )
+
+    # Check list is not empty
+    if not labelled_names:
+        raise ValueError("labelled_names cannot be an empty list")
+
+    # Check list of strings
+    if not all(isinstance(name, str) for name in labelled_names):
+        raise TypeError("Expected a list of strings")
+
+    # Check non-empty str
+    if not unlabelled_name.strip():
+        raise ValueError("Filename cannot be an empty string or whitespace only.")
 
     # Parse unlabeled name
-    parsed_ul = parse_unlabelled_name(unlabelled_name)
+    try:
+        parsed_ul = parse_unlabelled_name(unlabelled_name)
+    except ValueError as e:
+        raise ValueError(f"Failed to parse unlabelled name '{unlabelled_name}': {e}")
+    except Exception as e:
+        raise  # Re-raise unexpected exceptions
 
     matches = []
     for name in labelled_names:
 
         # Parse Labelled name
-        parsed_l = parse_labelled_name(name)
-
-        if parsed_ul == parsed_l:
-            matches.append(name)
+        try:
+            parsed_l = parse_labelled_name(name)
+            if parsed_ul == parsed_l:
+                matches.append(name)
+        except Exception as e:
+            raise
 
     # There should be exactly one or zero matches
     if len(matches) > 1:

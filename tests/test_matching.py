@@ -258,26 +258,51 @@ class TestFindMatchEdgeCases:
             "0011_part02zip.zip",
             "0012 - p1.zip",
             "0012 - p2.zip",
-            "0012 - p2.zip",
+            "0012_p2.zip",
         ]
 
-    def test_bad_input(self):
+    def test_bad_input_unlabelled_names(self, labelled_clips):
         """Check non-string inputs raises error"""
-        assert False
+        with pytest.raises(TypeError):
+            find_match(100, labelled_clips)
 
-    def test_empty_unlabelled_name(self):
+    def test_bad_input_labelled_names(self, labelled_clips):
+        """Check non-string inputs raises error"""
+        with pytest.raises(TypeError):
+            find_match(
+                "CS_0012_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577.mp4.zip",
+                100,
+            )
+
+    def test_empty_unlabelled_name(self, labelled_clips):
         """Check empty unlabelled_name input raises error"""
-        assert False
+        with pytest.raises(ValueError):
+            find_match(" ", labelled_clips)
+        with pytest.raises(ValueError):
+            find_match("", labelled_clips)
 
     def test_empty_labelled_names(self):
         """An empty input list of labelled_names should raise an error"""
-        assert False
+        with pytest.raises(ValueError):
+            find_match(
+                "CS_0012_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577.mp4.zip",
+                [],
+            )
 
-    def test_multiple_matches_raises_error(self):
+    def test_labelled_names_list_incorrect_types(self):
+        """Check a list of incorrect types raises an error"""
+        with pytest.raises(TypeError):
+            find_match(
+                "CS_0012_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577_part02.mp4.zip",
+                [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            )
+
+    def test_multiple_matches_raises_error(self, labelled_clips):
         """Check multiple matches returns an error"""
         with pytest.raises(ValueError):
             find_match(
-                "CS_0012_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577.mp4.zip"
+                "CS_0012_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577_part02.mp4",
+                labelled_clips,
             )
 
 
@@ -318,6 +343,22 @@ class TestNumericIDExtraction:
 
 class TestParsing:
     """Test filename parsing functions."""
+
+    def test_parse_unlabelled_invalid_input(self):
+        """Test parse_unlabelled_name handles bad inputs."""
+        with pytest.raises(TypeError):
+            parse_unlabelled_name(4123324)
+
+        with pytest.raises(ValueError):
+            parse_unlabelled_name("")
+
+    def test_parse_labelled_invalid_input(self):
+        """Test that parse_labelled_name handles bad input."""
+        with pytest.raises(TypeError):
+            parse_labelled_name(123)
+
+        with pytest.raises(ValueError):
+            parse_labelled_name("")
 
     def test_parse_unlabelled_with_part(self):
         """Test parsing unlabelled name with part number."""
@@ -378,8 +419,10 @@ class TestParsing:
         assert numeric_id == "1234"
         assert part is None
 
-    def test_parse_labelled_does_not_match_patterns(self):  ### RAISE ERROR
-        """Test parsing labelled name without part number."""
-        numeric_id, part = parse_labelled_name("1234.zip")
-        assert numeric_id == "1234"
-        assert part is None
+    def test_parse_labelled_does_not_match_patterns(self):
+        """Test that invalid labelled names raise ValueError."""
+        with pytest.raises(ValueError):
+            parse_labelled_name("invalid_name_no_numbers.zip")
+
+        with pytest.raises(ValueError):
+            parse_labelled_name("ABCD.zip")
