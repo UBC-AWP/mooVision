@@ -117,6 +117,7 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
         r"_p(\d+)$",  # _p01, _p02, _p1, _p2
         r"-p(\d+)$",  # -p1, -p2
         r"\s+-\s+p(\d+)$",  # - p1, - p2 (with spaces)
+        r"^CS_(\d+)",  # CC_XXXX pattern with no parts
     ]
 
     part_num = None
@@ -125,7 +126,9 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
         match = re.search(pattern, name, re.IGNORECASE)
         if match:
             # Parse Part
-            if pattern == r"(^\d+$)":  # Basic format: 0001
+            if (pattern == r"(^\d+$)") or (
+                pattern == r"^CS_(\d+)"
+            ):  # Basic format: 0001
                 part_num = None
                 base_name = name
             else:
@@ -135,7 +138,6 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
             # Extract Numeric Id
             try:
                 numeric_id = extract_numeric_id(base_name)
-                print(numeric_id)
 
                 # Retrun Numeric ID and Tuple
                 return numeric_id, part_num
@@ -253,8 +255,24 @@ def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
     >>> find_match(unlabelled_name_4, labelled_names) >>> None
     """
 
-    ### extract numeric id and part number from unlabelled and labelled names
-    ### Check for matches
-    ### Return match if exists, else return None
+    # Parse unlabeled name
+    parsed_ul = parse_unlabelled_name(unlabelled_name)
 
-    return ""
+    matches = []
+    for name in labelled_names:
+
+        # Parse Labelled name
+        parsed_l = parse_labelled_name(name)
+
+        if parsed_ul == parsed_l:
+            matches.append(name)
+
+    # There should be exactly one or zero matches
+    if len(matches) > 1:
+        raise ValueError(
+            f"{unlabelled_name} matched to multiple labelled names: {matches}"
+        )
+    elif len(matches) == 1:
+        return matches[0]
+    else:
+        return None

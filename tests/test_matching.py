@@ -21,13 +21,8 @@ from scripts.matching import (
 )
 
 
-class TestClipMatcherBasicMatching:
+class TestFindMatchBasicMatching:
     """Test basic matching functionality."""
-
-    # @pytest.fixture
-    # def matcher(self):
-    #     """Create a ClipMatcher instance for tests."""
-    #     return ClipMatcher()
 
     @pytest.fixture
     def labelled_clips(self):
@@ -55,13 +50,6 @@ class TestClipMatcherBasicMatching:
         ]
 
     # Basic Matching Functionality:
-    def test_check_bad_input(self, labelled_clips):
-        """Check matches normal result: 0001.zip"""
-        unlabelled_name = 4
-        expected = "0001.zip"
-        result = find_match(unlabelled_name, labelled_clips)
-        assert result == expected
-
     def test_check_basic_match(self, labelled_clips):
         """Check matches normal result: 0001.zip"""
         unlabelled_name = (
@@ -245,11 +233,52 @@ class TestClipMatcherBasicMatching:
         assert result == expected
 
 
-class TestEdgeCases:
+class TestFindMatchEdgeCases:
 
-    def test_bad_input():
-        """Test Bad inputs to find match"""
+    @pytest.fixture
+    def labelled_clips(self):
+        """Standard set of labelled clips for testing."""
+        return [
+            "0001.zip",
+            "0002_part02.zip",
+            "0002_part01.zip",
+            "0003_part1.zip",
+            "0003_part2.zip",
+            "0004_p01.zip",
+            "0004_p02.zip",
+            "CS_0005_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577.mp4.zip",
+            "CS_0006_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577_part01.mp4.zip",
+            "CS_0006_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577_part02.mp4.zip",
+            "0007_p1.zip",
+            "0007_p2.zip",
+            "0008-p1.zip",
+            "0008-p2.zip",
+            "010.zip",
+            "0011_part01zip.zip",
+            "0011_part02zip.zip",
+            "0012 - p1.zip",
+            "0012 - p2.zip",
+            "0012 - p2.zip",
+        ]
+
+    def test_bad_input(self):
+        """Check non-string inputs raises error"""
         assert False
+
+    def test_empty_unlabelled_name(self):
+        """Check empty unlabelled_name input raises error"""
+        assert False
+
+    def test_empty_labelled_names(self):
+        """An empty input list of labelled_names should raise an error"""
+        assert False
+
+    def test_multiple_matches_raises_error(self):
+        """Check multiple matches returns an error"""
+        with pytest.raises(ValueError):
+            find_match(
+                "CS_0012_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577.mp4.zip"
+            )
 
 
 class TestNumericIDExtraction:
@@ -307,6 +336,16 @@ class TestParsing:
         # Format: _part01
         numeric_id, part = parse_labelled_name("0045_part01.zip")
         assert numeric_id == "45"
+        assert part == 1
+
+        # Format: CS_XXXX_..._.mp4.zip
+        numeric_id, part = parse_labelled_name("CS_0317_WEAN_test.mp4.zip")
+        assert numeric_id == "317"
+        assert part is None
+
+        # Format: CS_XXX_..._part01.mp4.zip
+        numeric_id, part = parse_labelled_name("CS_0319_WEAN_test_part01.mp4.zip")
+        assert numeric_id == "319"
         assert part == 1
 
         numeric_id, part = parse_labelled_name("0009_part1.zip")
