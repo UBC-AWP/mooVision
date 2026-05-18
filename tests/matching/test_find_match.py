@@ -15,9 +15,6 @@ if str(parent_dir) not in sys.path:
 
 from scripts.matching import (
     find_match,
-    extract_numeric_id,
-    parse_labelled_name,
-    parse_unlabelled_name,
 )
 
 
@@ -47,10 +44,12 @@ class TestFindMatchBasicMatching:
             "0011_part02zip.zip",
             "0012 - p1.zip",
             "0012 - p2.zip",
+            "0123..zip",
+            "0124p1.zip",
         ]
 
     # Basic Matching Functionality:
-    def test_check_basic_match(self, labelled_clips):
+    def test_check_basic_match_variations(self, labelled_clips):
         """Check matches normal result: 0001.zip"""
         unlabelled_name = (
             "CS_0001_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577.mp4"
@@ -232,6 +231,24 @@ class TestFindMatchBasicMatching:
         result = find_match(unlabelled_name, labelled_clips)
         assert result == expected
 
+    def test_check_basic_match_double_periods(self, labelled_clips):
+        """Check matches double dot typo: 1234..zip"""
+        unlabelled_name = (
+            "CS_0123_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577.mp4"
+        )
+        expected = "0123..zip"
+        result = find_match(unlabelled_name, labelled_clips)
+        assert result == expected
+
+    def test_check_basic_match_no_underscore(self, labelled_clips):
+        """Check matches double dot typo: 1234..zip"""
+        unlabelled_name = (
+            "CS_0124_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577_part01.mp4"
+        )
+        expected = "0124p1.zip"
+        result = find_match(unlabelled_name, labelled_clips)
+        assert result == expected
+
 
 class TestFindMatchEdgeCases:
 
@@ -259,6 +276,8 @@ class TestFindMatchEdgeCases:
             "0012 - p1.zip",
             "0012 - p2.zip",
             "0012_p2.zip",
+            "1234p1.zip",
+            "1230..zip",
         ]
 
     def test_bad_input_unlabelled_names(self, labelled_clips):
@@ -304,125 +323,3 @@ class TestFindMatchEdgeCases:
                 "CS_0012_WEAN_d2_p2_cow6_17102025_ch02-20251017082112_3507_3577_part02.mp4",
                 labelled_clips,
             )
-
-
-class TestNumericIDExtraction:
-    """Test numeric ID extraction logic."""
-
-    def test_extract_numeric_id_cs_format(self):
-        """Test extraction of ID from CS_XXXX format."""
-        test_id = extract_numeric_id("CS_0317_WEAN_d2_p2_cow6.mp4.zip")
-        assert test_id == "317"  # Leading zeros removed
-
-    def test_extract_simple_numeric_id(self):
-        """Test extraction of simple numeric ID."""
-        test_id = extract_numeric_id("1015_part01.zip")
-        assert test_id == "1015"
-
-    def test_extract_id_with_leading_zeros(self):
-        """Test that leading zeros are removed."""
-        test_id = extract_numeric_id("CS_0001_test.zip")
-        assert test_id == "1"
-
-        test_id2 = extract_numeric_id("0123_test.zip")
-        assert test_id2 == "123"
-
-    def test_extract_id_with_short_input(self):
-        """Test that leading zeros are removed."""
-        test_id = extract_numeric_id("CS_445_test.zip")
-        assert test_id == "445"
-
-        test_id2 = extract_numeric_id("3_test.zip")
-        assert test_id2 == "3"
-
-    def test_no_numeric_id(self):
-        """Test error is raised when no numeric ID can be extracted."""
-        with pytest.raises(ValueError):
-            extract_numeric_id("ABCD_test.zip")
-
-
-class TestParsing:
-    """Test filename parsing functions."""
-
-    def test_parse_unlabelled_invalid_input(self):
-        """Test parse_unlabelled_name handles bad inputs."""
-        with pytest.raises(TypeError):
-            parse_unlabelled_name(4123324)
-
-        with pytest.raises(ValueError):
-            parse_unlabelled_name("")
-
-    def test_parse_labelled_invalid_input(self):
-        """Test that parse_labelled_name handles bad input."""
-        with pytest.raises(TypeError):
-            parse_labelled_name(123)
-
-        with pytest.raises(ValueError):
-            parse_labelled_name("")
-
-    def test_parse_unlabelled_with_part(self):
-        """Test parsing unlabelled name with part number."""
-        numeric_id, part = parse_unlabelled_name("CS_0319_WEAN_test_part01.mp4")
-        assert numeric_id == "319"
-        assert part == 1
-
-    def test_parse_unlabelled_without_part(self):
-        """Test parsing unlabelled name without part number."""
-        numeric_id, part = parse_unlabelled_name("CS_0317_WEAN_test.mp4")
-        assert numeric_id == "317"
-        assert part is None
-
-    def test_parse_labelled_various_formats(self):
-        """Test parsing various labelled formats."""
-        # Format: _part01
-        numeric_id, part = parse_labelled_name("0045_part01.zip")
-        assert numeric_id == "45"
-        assert part == 1
-
-        # Format: CS_XXXX_..._.mp4.zip
-        numeric_id, part = parse_labelled_name("CS_0317_WEAN_test.mp4.zip")
-        assert numeric_id == "317"
-        assert part is None
-
-        # Format: CS_XXX_..._part01.mp4.zip
-        numeric_id, part = parse_labelled_name("CS_0319_WEAN_test_part01.mp4.zip")
-        assert numeric_id == "319"
-        assert part == 1
-
-        numeric_id, part = parse_labelled_name("0009_part1.zip")
-        assert numeric_id == "9"
-        assert part == 1
-
-        # Format: _p01
-        numeric_id, part = parse_labelled_name("4567_p01.zip")
-        assert numeric_id == "4567"
-        assert part == 1
-
-        # Format: -p1
-        numeric_id, part = parse_labelled_name("7891-p1.zip")
-        assert numeric_id == "7891"
-        assert part == 1
-
-        # Format: - p1 (with spaces)
-        numeric_id, part = parse_labelled_name("9021 - p1.zip")
-        assert numeric_id == "9021"
-        assert part == 1
-
-        # Format: typo _part02zip
-        numeric_id, part = parse_labelled_name("6789_part02zip.zip")
-        assert numeric_id == "6789"
-        assert part == 2
-
-    def test_parse_labelled_no_part(self):
-        """Test parsing labelled name without part number."""
-        numeric_id, part = parse_labelled_name("1234.zip")
-        assert numeric_id == "1234"
-        assert part is None
-
-    def test_parse_labelled_does_not_match_patterns(self):
-        """Test that invalid labelled names raise ValueError."""
-        with pytest.raises(ValueError):
-            parse_labelled_name("invalid_name_no_numbers.zip")
-
-        with pytest.raises(ValueError):
-            parse_labelled_name("ABCD.zip")

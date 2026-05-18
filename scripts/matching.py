@@ -1,11 +1,12 @@
 """
 
-A module for matching structureed unlabelled cross sucking clip names to unstructured labelled cross sucking clip names (CVAT outputs).
+A module for matching structured unlabelled cross sucking clip names to
+unstructured labelled cross sucking clip names (CVAT outputs).
 
 """
 
 import re
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional
 
 
 def parse_unlabelled_name(unlabelled_name: str) -> Tuple[str, Optional[int]]:
@@ -106,6 +107,10 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
     """
     # Remove archive extensions
     name = re.sub(r"\.(zip|rar|7z|ZIP|RAR|7Z)$", "", labelled_name)
+
+    # Remove any remaining periods: 1234..zip
+    name = re.sub(r"\.+$", "", name)
+
     # Also remove .mp4 if present before .zip
     name = re.sub(r"\.(mp4|avi|mov|mkv|MP4|AVI|MOV|MKV)$", "", name)
 
@@ -117,6 +122,7 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
         r"_p(\d+)$",  # _p01, _p02, _p1, _p2
         r"-p(\d+)$",  # -p1, -p2
         r"\s+-\s+p(\d+)$",  # - p1, - p2 (with spaces)
+        r"(?<!_)p(\d+)",  # 1234p1 (not hyphen or underscore)
         r"^CS_(\d+)",  # CC_XXXX pattern with no parts
     ]
 
@@ -247,7 +253,7 @@ def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
     unlabelled_name = CS_0001_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702.mp4
     unlabelled_name_2 = CS_0009_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_part02.mp4
     unlabelled_name_3 = CS_0101_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_part01.mp4
-    unlabelled_name_34 = CS_9999_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_part01.mp4
+    unlabelled_name_4 = CS_9999_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_part01.mp4
 
     labelled_names = ["0001.zip", "0002.zip", ..., "0009_part01.zip", "0009_part02.zip", "0101_part01zip.zip"]
 
@@ -286,7 +292,7 @@ def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
     except ValueError as e:
         raise ValueError(f"Failed to parse unlabelled name '{unlabelled_name}': {e}")
     except Exception as e:
-        raise  # Re-raise unexpected exceptions
+        raise e  # Re-raise unexpected exceptions
 
     matches = []
     for name in labelled_names:
@@ -297,7 +303,7 @@ def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
             if parsed_ul == parsed_l:
                 matches.append(name)
         except Exception as e:
-            raise
+            raise e
 
     # There should be exactly one or zero matches
     if len(matches) > 1:
@@ -308,3 +314,86 @@ def find_match(unlabelled_name: str, labelled_names: List[str]) -> str | None:
         return matches[0]
     else:
         return None
+
+
+def is_match(unlabelled_name: str, labelled_name: str) -> bool:
+    """
+    Returns True if the unlabelled and labelled names match on numeric ID and part number
+
+    Supports:
+    - Full structured name matching (CS_XXX_... format)
+        - Numeric ID extractuion and matching.
+        - Flexible part matching between structured unlabelled clip names and unstructured
+        labelled clip names (_part01, _part1, _p01, _p1, -p1, etc.).
+        - Typo tolerance and format variations
+
+
+    Parameters
+    ----------
+    unlabelled_name : str
+        The name of a single unlabelled cross sucking clip.
+    labelled_names : str
+        The name of a single labelled cross sucking clip.
+
+    Returns
+    -------
+    bool
+        Return true if names match, false otherwise.
+
+    Raises
+    ------
+    ValueError
+        If inputs are empty.
+    TypeError
+        If the inputs are not strings.
+
+    Notes
+    -----
+    Right now, this is configured for .mp4, .avi, .mov, .mkv video extensions and .zip labelled data extensions.
+
+    Examples
+    --------
+    unlabelled_name = CS_0001_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702.mp4
+    unlabelled_name_2 = CS_0009_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_part02.mp4
+    unlabelled_name_3 = CS_0101_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_part01.mp4
+    unlabelled_name_4 = CS_9999_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_part01.mp4
+
+    >>> is_match(unlabelled_name, "0001.zip") >>> True
+    >>> is_match(unlabelled_name_2, "0009_part01.zip") >>> True
+    >>> is_match(unlabelled_name_3, "0101_part01zip.zip") >>> True
+    >>> is_match(unlabelled_name_4, "0001.zip") >>> False
+    """
+    # Check string type
+    if not isinstance(unlabelled_name, str):
+        raise TypeError(
+            f"Expected a string, but received {type(unlabelled_name).__name__}"
+        )
+
+    # Check list type
+    if not isinstance(labelled_name, str):
+        raise TypeError(
+            f"Expected a string, but received {type(labelled_name).__name__}"
+        )
+
+    # Check non-empty str
+    if not (unlabelled_name.strip() or labelled_name.strip()):
+        raise ValueError("Filenames cannot be an empty string or whitespace only.")
+
+    # Try Parse unlabeled name
+    try:
+        parsed_ul = parse_unlabelled_name(unlabelled_name)
+    except ValueError as e:
+        raise ValueError(f"Failed to parse unlabelled name '{unlabelled_name}': {e}")
+    except Exception as e:
+        raise e  # Re-raise unexpected exceptions
+
+    # Try Parse Labelled name
+    try:
+        parsed_l = parse_labelled_name(labelled_name)
+    except ValueError as e:
+        raise ValueError(f"Failed to parse unlabelled name '{labelled_name}': {e}")
+    except Exception as e:
+        raise e  # Re-raise unexpected exceptions
+
+    # Returns True if the numeric id and part match for both names
+    return parsed_ul == parsed_l
