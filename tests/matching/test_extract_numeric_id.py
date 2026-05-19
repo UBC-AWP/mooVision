@@ -9,9 +9,9 @@ from pathlib import Path
 # Load in root directory
 current_file_path = Path(__file__).resolve()
 current_dir = current_file_path.parent
-parent_dir = current_file_path.parent.parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
+root_dir = current_file_path.parent.parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
 
 from scripts.matching import (
     extract_numeric_id,

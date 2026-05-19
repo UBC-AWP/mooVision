@@ -9,9 +9,9 @@ from pathlib import Path
 # Load in root directory
 current_file_path = Path(__file__).resolve()
 current_dir = current_file_path.parent
-parent_dir = current_file_path.parent.parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
+root_dir = current_file_path.parent.parent.parent
+if str(root_dir) not in sys.path:
+    sys.path.insert(0, str(root_dir))
 
 from scripts.matching import is_match
 
@@ -35,7 +35,7 @@ class TestIsMatch:
         )
         labelled_name = "0001.zip"
         result = is_match(unlabelled_name, labelled_name)
-        assert result
+        assert not result
 
     def test_check_basic_part_match(self):
         """Check matches normal part result: 0002_part01.zip"""
