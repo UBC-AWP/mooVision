@@ -141,7 +141,7 @@ def main():
     #     raise FileNotFoundError(f"{PROCESSED_INDEX} does not exist.")
     # Add technical execuation logic
     print("Running data splitting...")
-    print("Creating JSON files...")
+    print("Creating CSV files...")
     print(PROCESSED_INDEX)
     random_shuffle_split(
         input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "random", force=False
