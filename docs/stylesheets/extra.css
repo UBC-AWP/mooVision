@@ -1,0 +1,4 @@
+/* ReadTheDocs theme: let content span full available width */
+.wy-nav-content {
+  max-width: none;
+}

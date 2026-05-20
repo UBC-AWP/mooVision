@@ -57,7 +57,7 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
         start_sec = float(row["clip_start_in_source_sec"])
         end_sec = float(row["clip_end_in_source_sec"])
 
-        print(f"[{row['clip_name']}]  {start_sec:.1f}s → {end_sec:.1f}s")
+        print(f"{row['clip_name']}  {start_sec:.1f}s -> {end_sec:.1f}s")
         print(f"from: {raw_path}")
         if reproduce_clip(raw_path, start_sec, end_sec, save_path):
                 print(f"saved to {save_path.name}")
@@ -108,11 +108,11 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
             start_sec = float(ev["start_sec"])
             end_sec = float(ev["end_sec"])
 
-            base_name = f"{Path(identifier).stem}__event{i:03d}_{start_sec:.1f}-{end_sec:.1f}"
+            base_name = f"{Path(identifier).stem}_event{i:03d}_{start_sec:.1f}-{end_sec:.1f}"
             out_path = out_folder / f"{base_name}.mp4"
 
-            print(f"[{out_path.name}] {start_sec:.1f}s → {end_sec:.1f}s")
-            print(f"from: {video_path}")
+            print(f"{out_path.name} {start_sec:.1f}s -> {end_sec:.1f}s")
+            print(f"from: {video_path.name}")
 
             if not reproduce_clip(video_path, start_sec, end_sec, out_path):
                 continue
@@ -130,7 +130,7 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
                         continue
                     clip_boxes.append({**b, "frame": f})
 
-                boxed_path = out_folder / f"{base_name}__boxed.mp4"
+                boxed_path = out_folder / f"{base_name}_boxed.mp4"
                 if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
                     print(f"saved boxed to {boxed_path.name}")
 
