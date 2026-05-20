@@ -39,9 +39,37 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
    ```
 2. Edit `.env` and set your local data path, for example:
    ```bash
-   MOOVISION_DATA_ROOT=/Users/<you>/path/to/data_root
+   ROOT_DIR=/path/to/your/root/directory
+   LOCAL_DIR=/path/to/your/local/directory
    ```
 3. `.env` is ignored by git (do not commit). If you need to change what variables exist, update `.env.example` instead.
+
+## Running the clipping script (reproduce event clips)
+
+Use this script to reproduce short clip videos from baseline JSON event metadata.
+
+### Prerequisites
+
+- Make sure your `.env` is set correctly (see above).
+- Make sure baseline metadata exists locally at:
+
+  `mooVision/results/metadata/baseline`
+
+  This path is derived from `LOCAL_DIR` in `.env`:
+
+  `BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"`
+
+### Run
+
+From the repo root:
+
+```bash
+uv run python scripts/clipping.py
+```
+
+Outputs are written to the directory configured in `config.py`:
+
+- `REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"`
 
 ## Outputs (baseline)
 
