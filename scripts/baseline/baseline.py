@@ -6,11 +6,12 @@ import numpy as np
 from ultralytics import YOLO
 
 
-DEFAULT_MODEL = "yolo26m.pt"    
+DEFAULT_MODEL = "yolo26x.pt"    
 DEFAULT_IOU_THRESHOLD = 0.1     # Minimum IoU to consider two boxes "overlapping"
 DEFAULT_MIN_DURATION = 1       # Minimum seconds of continuous overlap to flag an event
 DEFAULT_CONF_THRESHOLD = 0.5       # Minimum YOLO detection confidence to keep a box
 TARGET_CLASS_NAME = "cow"
+DEFAULT_FRAME_SKIP = 1
 
 
 def compute_iou(box_a, box_b):
@@ -97,7 +98,7 @@ def frame_has_overlap(boxes, iou_threshold):
     return (max_iou >= iou_threshold), best_inter_box
 
 
-def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes):
+def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes, frame_indices):
     """
     Flagging frames into events with start/end timestamps and collect the 
     intersection box coordinates for every flagged frame within each event.
@@ -127,27 +128,31 @@ def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes):
     start_frame = 0
     event_confs = []
     event_interbox = []
+    min_frames = max(1, round(min_duration * fps / DEFAULT_FRAME_SKIP))
 
     for idx, flagged in enumerate(frame_flags):
+        actual_frame = frame_indices[idx]
+
         if flagged and not in_event:
             # Event starts
             in_event = True
-            start_frame = idx
+            start_frame = actual_frame
             event_confs = [confidences[idx]]
-            event_interbox.append({"frame": idx, "x1": frame_boxes[idx][0], "y1": frame_boxes[idx][1],
+            event_interbox.append({"frame": actual_frame, "x1": frame_boxes[idx][0], "y1": frame_boxes[idx][1],
                                     "x2": frame_boxes[idx][2], "y2": frame_boxes[idx][3]})
 
         elif flagged and in_event:
             # Event continues
             event_confs.append(confidences[idx])
-            event_interbox.append({"frame": idx, "x1": frame_boxes[idx][0], "y1": frame_boxes[idx][1],
+            event_interbox.append({"frame": actual_frame, "x1": frame_boxes[idx][0], "y1": frame_boxes[idx][1],
                                     "x2": frame_boxes[idx][2], "y2": frame_boxes[idx][3]})
 
         elif not flagged and in_event:
             # Event just ended — evaluate it
-            end_frame = idx - 1
+            end_frame = actual_frame
             duration = (end_frame - start_frame) / fps
-            if duration >= min_duration:
+            
+            if len(event_confs) >= min_frames:
                 events.append({
                     "start_sec":        round(start_frame / fps, 2),
                     "end_sec":          round(end_frame / fps, 2),
@@ -161,9 +166,9 @@ def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes):
 
     # Handle event that runs to the very last frame
     if in_event:
-        end_frame = len(frame_flags) - 1
+        end_frame = frame_indices[-1]
         duration = (end_frame - start_frame) / fps
-        if duration >= min_duration:
+        if len(event_confs) >= min_frames:
             events.append({
                 "start_sec":      round(start_frame / fps, 2),
                 "end_sec":        round(end_frame / fps, 2),
@@ -175,7 +180,7 @@ def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes):
     return events
 
 
-def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_duration):
+def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_duration, frame_skip):
     """
     Full detection pipeline:
         load model → open video → detect calves per frame →
@@ -224,12 +229,18 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
     frame_confs    = []   # Max detection confidence in that frame
     frame_idx      = 0
     frame_interbox = []
+    frame_indices = []
 
     print("[INFO] Processing frames...")
     while True:
         ret, frame = cap.read() # reads the next frame
         if not ret:
             break  # End of video
+
+        # Skip frames — only process every Nth frame
+        if frame_idx % frame_skip != 0:
+            frame_idx += 1
+            continue
 
         # Run YOLO inference on the frame
         results = model(frame, conf=conf_threshold, verbose=False)[0]
@@ -254,8 +265,9 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
  
         frame_flags.append(overlap_detected)
         frame_confs.append(max(confs) if confs else 0.0)
-        frame_idx += 1
+        frame_indices.append(frame_idx)
         frame_interbox.append(intersection_box if overlap_detected else None)
+        frame_idx += 1
  
         if frame_idx % 100 == 0:
             print(f"  ...frame {frame_idx}/{total_frames}")
@@ -263,7 +275,7 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
     cap.release()
  
     # Group flagged frames into events
-    events = extract_events(frame_flags, fps, min_duration, frame_confs, frame_interbox)
+    events = extract_events(frame_flags, fps, min_duration, frame_confs, frame_interbox, frame_indices)
  
     # Build metadata
     video_name = os.path.splitext(os.path.basename(video_path))[0]
@@ -325,6 +337,10 @@ def parse_args():
                         type=float, 
                         default=DEFAULT_MIN_DURATION, 
                         help=f"Minimum event duration in seconds (default: {DEFAULT_MIN_DURATION})")
+    parser.add_argument("--frame_skip",  
+                        type=int, 
+                        default=DEFAULT_FRAME_SKIP, 
+                        help=f"Process every Nth frame (default: {DEFAULT_FRAME_SKIP})")
     return parser.parse_args()
 
 
@@ -336,4 +352,5 @@ if __name__ == "__main__":
         iou_threshold = args.iou_threshold,
         conf_threshold= args.conf_threshold,
         min_duration  = args.min_duration,
+        frame_skip    = args.frame_skip,
     )
