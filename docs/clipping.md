@@ -103,9 +103,9 @@ Importantly: **there is no extra per-video folder**; all clips for all source vi
 
 ---
 
-# Function reference
+## Function reference
 
-## reproduce_clip
+### reproduce_clip
 
 ```python
 reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool
@@ -113,7 +113,7 @@ reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_pa
 
 Extract a clip from `raw_video_path` between `start_sec` and `end_sec` (seconds) and save it to `output_path`.
 
-### Parameters
+#### Parameters
 
 **raw_video_path** : pathlib.Path  
 Path to the source `.mp4` video.
@@ -127,18 +127,18 @@ End time in seconds.
 **output_path** : pathlib.Path  
 Output `.mp4` file path.
 
-### Returns
+#### Returns
 
 **success** : bool  
 `True` if written successfully, else `False`.
 
-### Notes
+#### Notes
 
 - Uses OpenCV video I/O (`cv2.VideoCapture`, `cv2.VideoWriter`), codec `"mp4v"`.
 - Frame boundaries are computed from the source FPS.
 - Caller should ensure `output_path.parent` exists.
 
-### Examples
+#### Examples
 
 ```python
 from pathlib import Path
@@ -154,7 +154,7 @@ print(ok)
 
 ---
 
-## split_by_index
+### split_by_index
 
 ```python
 split_by_index(index_path: Path, output_path: Path) -> None
@@ -162,7 +162,7 @@ split_by_index(index_path: Path, output_path: Path) -> None
 
 Reproduce clips based on a CSV index file.
 
-### Parameters
+#### Parameters
 
 **index_path** : pathlib.Path  
 Path to index CSV (typically `CLIPS_INDEX_DIR` from `config.py`).
@@ -170,17 +170,17 @@ Path to index CSV (typically `CLIPS_INDEX_DIR` from `config.py`).
 **output_path** : pathlib.Path  
 Output directory (typically `REPRODUCED_CLIPS_DIR` from `config.py`).
 
-### Returns
+#### Returns
 
 None
 
-### Notes
+#### Notes
 
 - Reads the CSV with `pandas.read_csv`.
 - Scans `RAW_DIR` recursively for `.mp4` files and matches rows by `source_video_basename`.
 - Current code processes only the first matched row (`matched[:1]`). Remove `[:1]` to process all rows.
 
-### Expected CSV columns
+#### Expected CSV columns
 
 At minimum:
 
@@ -190,7 +190,7 @@ At minimum:
 - `clip_start_in_source_sec`
 - `clip_end_in_source_sec`
 
-### Examples
+#### Examples
 
 ```python
 from config import CLIPS_INDEX_DIR, REPRODUCED_CLIPS_DIR
@@ -199,7 +199,7 @@ split_by_index(CLIPS_INDEX_DIR, REPRODUCED_CLIPS_DIR)
 
 ---
 
-## split_by_json_events
+### split_by_json_events
 
 ```python
 split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = True) -> int
@@ -207,7 +207,7 @@ split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = True) -
 
 Reproduce clips based on event metadata in JSON files and optionally annotate the output with bounding boxes.
 
-### Parameters
+#### Parameters
 
 **json_path** : pathlib.Path  
 Either:
@@ -222,12 +222,12 @@ Output root (typically `REPRODUCED_CLIPS_DIR` from `config.py`).
 **annotate** : bool, default=True  
 Whether to also write `__boxed.mp4` annotated outputs.
 
-### Returns
+#### Returns
 
 **total_success** : int  
 Total number of successfully reproduced (unboxed) clips across all processed JSON files.
 
-### JSON schema
+#### JSON schema
 
 Required keys:
 
@@ -252,7 +252,7 @@ Optional per-event:
   - `frame` (in **source-video** frame coordinates)
   - `x1`, `y1`, `x2`, `y2`
 
-### Output naming
+#### Output naming
 
 For event `i`:
 
@@ -260,7 +260,7 @@ For event `i`:
 - If `annotate=True`:
   `<identifier_stem>__event{i:03d}_{start_sec:.1f}-{end_sec:.1f}__boxed.mp4`
 
-### Examples
+#### Examples
 
 ```python
 from config import BASELINE_METADATA_DIR, REPRODUCED_CLIPS_DIR
@@ -271,7 +271,7 @@ print(n)
 
 ---
 
-## annotate_clip_with_boxes
+### annotate_clip_with_boxes
 
 ```python
 annotate_clip_with_boxes(
@@ -285,7 +285,7 @@ annotate_clip_with_boxes(
 
 Annotate a clip with bounding boxes and write an annotated clip.
 
-### Parameters
+#### Parameters
 
 **input_clip** : pathlib.Path  
 Input clip path.
@@ -304,17 +304,17 @@ Rectangle color in BGR.
 **thickness** : int, default=2  
 Rectangle thickness in pixels.
 
-### Returns
+#### Returns
 
 **success** : bool  
 `True` if successful, else `False`.
 
-### Notes
+#### Notes
 
 - Creates `output_clip.parent` if needed.
 - Multiple boxes per frame are supported.
 
-### Examples
+#### Examples
 
 ```python
 from pathlib import Path
@@ -326,7 +326,7 @@ print(ok)
 
 ---
 
-# Troubleshooting
+## Troubleshooting
 
 ### Missing env vars / invalid paths
 If you see errors like:
