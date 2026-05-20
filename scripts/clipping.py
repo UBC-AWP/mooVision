@@ -90,14 +90,26 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
         if not events:
             print(f"No events found in {jf.name}")
             continue
+        # extract the relative path after "cross_sucking_clips/" to find the raw video in RAW_DIR
+        m = re.search(r"cross_sucking_clips[\\/](.*)$", str(video_path))
+        if m:
+            rel = Path(m.group(1))  # Pen 2 - Group 2/POSTWEANING/Day 1/<file>.mp4
+            rel_parent = rel.parent  # Pen 2 - Group 2/POSTWEANING/Day 1
+        else:
+            # fallback if pattern not found
+            rel_parent = Path()
 
+        # Create a per-video folder using the video stem
+        out_folder = output_dir / rel_parent
+        out_folder.mkdir(parents=True, exist_ok=True)
+        
         success = 0
         for i, ev in enumerate(events, start=1):
             start_sec = float(ev["start_sec"])
             end_sec = float(ev["end_sec"])
 
             base_name = f"{Path(identifier).stem}__event{i:03d}_{start_sec:.1f}-{end_sec:.1f}"
-            out_path = output_dir / f"{base_name}.mp4"
+            out_path = out_folder / f"{base_name}.mp4"
 
             print(f"[{out_path.name}] {start_sec:.1f}s → {end_sec:.1f}s")
             print(f"from: {video_path}")
@@ -118,7 +130,7 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
                         continue
                     clip_boxes.append({**b, "frame": f})
 
-                boxed_path = output_dir / f"{base_name}__boxed.mp4"
+                boxed_path = out_folder / f"{base_name}__boxed.mp4"
                 if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
                     print(f"saved boxed to {boxed_path.name}")
 
