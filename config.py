@@ -38,4 +38,4 @@ REPRODUCED_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
 # Path on GitHub
 LOCAL_DIR = require_dir("LOCAL_DIR")
 # Path to baseline metadata output
-BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline" / "CS_0001_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702_results.json"
+BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"

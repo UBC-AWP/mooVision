@@ -68,55 +68,66 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
 def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = True) -> int:
     """Reproduce clips based on events specified in a JSON file, and optionally annotate them."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    if json_path.is_dir():
+        json_files = sorted(json_path.glob("*.json"))  # non-recursive: only this folder
+        if not json_files:
+            print(f"No .json files found in {json_path}")
+            return 0
+    else:
+        json_files = [json_path]
 
-    data = json.loads(json_path.read_text())
-    video_path = Path(data["video_path"])
-    identifier = data.get("identifier", video_path.name)
-    events = data.get("events", [])
-    fps = float(data.get("fps", 30.0))  # use metadata fps
+    total_success = 0
 
-    if not video_path.exists():
-        raise FileNotFoundError(f"video_path does not exist: {video_path}")
-    if not events:
-        print(f"No events found in {json_path.name}")
-        return 0
+    for jf in json_files:
+        data = json.loads(jf.read_text(encoding="utf-8"))
+        video_path = Path(data["video_path"])
+        identifier = data.get("identifier", video_path.name)
+        events = data.get("events", [])
+        fps = float(data.get("fps", 30.0))
 
-    success = 0
-    for i, ev in enumerate(events, start=1):
-        start_sec = float(ev["start_sec"])
-        end_sec = float(ev["end_sec"])
-
-        base_name = f"{Path(identifier).stem}__event{i:03d}_{start_sec:.1f}-{end_sec:.1f}"
-        out_path = output_dir / f"{base_name}.mp4"
-
-        print(f"[{out_path.name}] {start_sec:.1f}s → {end_sec:.1f}s")
-        print(f"from: {video_path}")
-
-        if not reproduce_clip(video_path, start_sec, end_sec, out_path):
+        if not video_path.exists():
+            raise FileNotFoundError(f"video_path does not exist: {video_path} (from {jf})")
+        if not events:
+            print(f"No events found in {jf.name}")
             continue
 
-        # annotate (optional)
-        if annotate:
-            event_start_frame = int(start_sec * fps)
-            boxes = ev.get("intersection_box", [])
+        success = 0
+        for i, ev in enumerate(events, start=1):
+            start_sec = float(ev["start_sec"])
+            end_sec = float(ev["end_sec"])
 
-            # convert source-video frames -> clip frames
-            clip_boxes = []
-            for b in boxes:
-                f = int(b["frame"]) - event_start_frame
-                if f < 0:
-                    continue
-                clip_boxes.append({**b, "frame": f})
+            base_name = f"{Path(identifier).stem}__event{i:03d}_{start_sec:.1f}-{end_sec:.1f}"
+            out_path = output_dir / f"{base_name}.mp4"
 
-            boxed_path = output_dir / f"{base_name}__boxed.mp4"
-            if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
-                print(f"saved boxed to {boxed_path.name}")
+            print(f"[{out_path.name}] {start_sec:.1f}s → {end_sec:.1f}s")
+            print(f"from: {video_path}")
 
-        print(f"saved to {out_path.name}")
-        success += 1
+            if not reproduce_clip(video_path, start_sec, end_sec, out_path):
+                continue
 
-    print(f"\nDone — {success} reproduced from {json_path.name}")
-    return success
+            # annotate (optional)
+            if annotate:
+                event_start_frame = int(start_sec * fps)
+                boxes = ev.get("intersection_box", [])
+
+                # convert source-video frames -> clip frames
+                clip_boxes = []
+                for b in boxes:
+                    f = int(b["frame"]) - event_start_frame
+                    if f < 0:
+                        continue
+                    clip_boxes.append({**b, "frame": f})
+
+                boxed_path = output_dir / f"{base_name}__boxed.mp4"
+                if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
+                    print(f"saved boxed to {boxed_path.name}")
+
+            print(f"saved to {out_path.name}")
+            success += 1
+            total_success += 1
+
+        print(f"\nDone — {success} reproduced from {jf.name}")
+    return total_success
 
 def annotate_clip_with_boxes(input_clip: Path,output_clip: Path,boxes: list[dict],color=(0, 255, 0),thickness: int = 2,) -> bool:
     """ Annotate input_clip with bounding boxes and save as output_clip."""
