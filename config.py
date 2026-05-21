@@ -14,4 +14,6 @@ UNLABELLED_CLIPS_DIR = ROOT / "cross_sucking_clips"
 LABELLED_CLIPS_DIR = ROOT / "cross_sucking_labelled"
 SOURCE_VIDEOS_DIR = ROOT / "raw_cross_sucking_datalog" / "videos"
 
+INDEX_PATH = UNLABELLED_CLIPS_DIR / "all_clips_index.csv"
+
 METADATA_DIR.mkdir(parents=True, exist_ok=True)
