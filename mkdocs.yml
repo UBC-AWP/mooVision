@@ -5,6 +5,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths: [.]
           options:
             show_source: true
             docstring_style: numpy

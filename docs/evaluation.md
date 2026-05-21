@@ -14,4 +14,4 @@ python src/evaluation.py \
 
 ## Functions
 
-::: src.evaluation
+::: scripts.evaluation
