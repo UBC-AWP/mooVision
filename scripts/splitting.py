@@ -3,12 +3,14 @@ Split data into train/test splits according to research questions defined in doc
 """
 
 from pathlib import Path
+import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-current_dir = Path.cwd()
-PROCESSED_INDEX = current_dir / "data" / "raw" / "all_clips_index_raw.csv"
-OUTPUT_DIR = current_dir / "data" / "processed"
+sys.path.append(str(Path(__file__).parent.parent))
+
+PROCESSED_INDEX = Path("data/processed/processed_clips_index.csv").absolute()
+OUTPUT_DIR = Path("data/processed").absolute()
 
 
 def train_test_to_csv(
@@ -144,16 +146,16 @@ def main():
     print("Creating CSV files...")
     print(PROCESSED_INDEX)
     random_shuffle_split(
-        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "random", force=False
+        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "random", force=True
     )
     day_based_split(
-        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "day_based", force=False
+        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "day_based", force=True
     )
     pen_based_split(
-        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "pen_based", force=False
+        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "pen_based", force=True
     )
     period_based_split(
-        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "period_based", force=False
+        input_path=PROCESSED_INDEX, output_dir=OUTPUT_DIR / "period_based", force=True
     )
     print("Checking files created...")
     print("All files created.")
