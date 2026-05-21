@@ -8,3 +8,8 @@ plugins:
           options:
             show_source: true
             docstring_style: numpy
+
+nav:
+  - Home: index.md
+  - Get Video: get_video.md
+  - Evaluation: evaluation.md
