@@ -1,5 +1,15 @@
 site_name: MooVision
 
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - yaml
+    - rust
+    
+extra_css:
+  - stylesheets/extra.css
+
 plugins:
   - search
   - mkdocstrings:
@@ -14,6 +24,9 @@ nav:
   - Home: index.md
   - Research Questions:
     - Data Spliting: Research Questions/data_splitting.md
+    # - Baseline: docs/data_splitting.md
+    - Model Evaluation: evaluation.md
+    - Clipping: clipping.md
   - Utils:
     - Utils: utils/get_video.md
   - About:

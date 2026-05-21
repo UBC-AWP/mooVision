@@ -42,7 +42,8 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 2. Edit `.env` and set your local data path, for example:
 
    ```bash
-   MOOVISION_DATA_ROOT=/Users/<you>/path/to/data_root
+   ROOT_DIR=/path/to/your/root/directory
+   LOCAL_DIR=/path/to/your/local/directory
    ```
 
 3. `.env` is ignored by git (do not commit). If you need to change what variables exist, update `.env.example` instead.
