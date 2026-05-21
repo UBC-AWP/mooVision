@@ -6,7 +6,7 @@ import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import RAW_DIR,CLIPS_INDEX_DIR,REPRODUCED_CLIPS_DIR,BASELINE_METADATA_DIR
+from config import SOURCE_VIDEOS_DIR,INDEX_PATH,REPRODUCED_CLIPS_DIR,BASELINE_METADATA_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """ Extract a clip from raw_video_path between start_sec and end_sec, and save it to output_path."""
@@ -41,7 +41,7 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
     """ Reproduce clips based on the index CSV and save them to output_path."""
     index_df = pd.read_csv(index_path)
     # get all raw videos in RAW_DIR
-    raw_videos = {f.name: f for f in RAW_DIR.rglob("*.mp4")}
+    raw_videos = {f.name: f for f in SOURCE_VIDEOS_DIR.rglob("*.mp4")}
 
     matched = index_df[index_df["source_video_basename"].isin(raw_videos.keys())]
     print(f"Found {len(matched)} clips to reproduce from {matched['source_video_basename'].nunique()} raw videos\n")
@@ -52,7 +52,7 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
         source_relative_path = re.search(r"Pen.*", source_video_path).group(0)
         # normalize Windows separators -> POSIX
         source_relative_path = source_relative_path.replace("\\", "/")
-        raw_path = RAW_DIR / "videos" / source_relative_path
+        raw_path = SOURCE_VIDEOS_DIR / "videos" / source_relative_path
         save_path = output_path / row["clip_name"]
         start_sec = float(row["clip_start_in_source_sec"])
         end_sec = float(row["clip_end_in_source_sec"])
@@ -181,7 +181,7 @@ def annotate_clip_with_boxes(input_clip: Path,output_clip: Path,boxes: list[dict
 
 def run_splitting(func) -> None:
     if func == split_by_index:
-        split_by_index(CLIPS_INDEX_DIR, REPRODUCED_CLIPS_DIR)
+        split_by_index(INDEX_PATH, REPRODUCED_CLIPS_DIR)
     elif func == split_by_json_events:
         split_by_json_events(BASELINE_METADATA_DIR, REPRODUCED_CLIPS_DIR)
     else:
