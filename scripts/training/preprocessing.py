@@ -22,7 +22,6 @@ from scripts.matching import parse_labelled_name, parse_unlabelled_name
 from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR
 
 train_path = Path("data/processed/pipeline_testing/train.csv").absolute()
-test_path = Path("data/processed/pipeline_testing/test.csv").absolute()
 
 OUTPUT_DIR = Path("data/processed/pipeline_testing/yolo_format").absolute()
 
