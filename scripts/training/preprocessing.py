@@ -10,6 +10,7 @@ import zipfile
 import shutil
 from typing import List
 import cv2
+import yaml
 
 # import argparse
 from sklearn.model_selection import train_test_split
@@ -172,7 +173,24 @@ def extract_frames(
 
             # release video
             cap.release()
-            print(f"{video_file.name} frames saved to {output_dir}")
+            print(f"Frames saved to {output_dir}")
+
+
+def create_yaml():
+    # Quick YAML creation
+    with open("data/processed/pipeline_testing/yolo_format/data.yaml", "w") as f:
+        yaml.dump(
+            {
+                "path": "data/processed/pipeline_testing/yolo_format",
+                "train": "images/train",
+                "val": "images/val",
+                "nc": 1,
+                "names": {0: "cross-sucking"},
+            },
+            f,
+        )
+
+    print("Created data.yaml")
 
 
 # UPDATE TO CLEAN AND TAKE IN ARGUMENTS
@@ -219,6 +237,8 @@ def main():
         split="val",
         FORCE=True,
     )
+
+    create_yaml()
 
 
 if __name__ == "__main__":
