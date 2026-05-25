@@ -196,3 +196,30 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
         ```bash
         uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch04_20250828075551_15s.mp4"
         ```
+
+## Running the clipping script (reproduce event clips)
+
+Use this script to reproduce short clip videos from baseline JSON event metadata.
+
+### Prerequisites
+
+- Make sure your `.env` is set correctly (see above).
+- Make sure baseline metadata exists locally at:
+`mooVision/results/metadata/baseline`
+
+This path is derived from `LOCAL_DIR` in `.env`:
+
+`BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"`
+
+### Run
+From the repo root:
+
+```bash
+
+uv run python scripts/clipping.py
+
+```
+
+Outputs are written to the directory configured in `config.py`:
+
+- `REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"`
