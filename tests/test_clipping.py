@@ -1,0 +1,51 @@
+import json
+import pytest
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent)) 
+from scripts.clipping import split_by_json_events
+
+
+def test_split_by_json_events_no_events(tmp_path: Path):
+    """
+    Basic functionality:
+    - output_dir is created
+    - if JSON has no events, it should return 0 and produce no clips
+    """
+    # Create a dummy video file (the function only checks existence for this test)
+    video_path = tmp_path / "dummy.mp4"
+    video_path.write_bytes(b"not a real mp4")
+
+    data = {
+        "video_path": str(video_path),
+        "identifier": "dummy.mp4",
+        "events": [],
+        "fps": 30.0,
+    }
+    json_path = tmp_path / "events.json"
+    json_path.write_text(json.dumps(data), encoding="utf-8")
+
+    out_dir = tmp_path / "out"
+    result = split_by_json_events(json_path, out_dir, annotate=False)
+
+    assert result == 0
+    assert out_dir.exists()
+    assert list(out_dir.rglob("*.mp4")) == []
+
+
+def test_split_by_json_events_missing_video_raises(tmp_path: Path):
+    """Basic error handling: missing video_path should raise FileNotFoundError."""
+    missing_video = tmp_path / "missing.mp4"
+
+    data = {
+        "video_path": str(missing_video),
+        "events": [{"start_sec": 0, "end_sec": 1}],
+        "fps": 30.0,
+    }
+    json_path = tmp_path / "events.json"
+    json_path.write_text(json.dumps(data), encoding="utf-8")
+
+    out_dir = tmp_path / "out"
+
+    with pytest.raises(FileNotFoundError):
+        split_by_json_events(json_path, out_dir, annotate=False)
