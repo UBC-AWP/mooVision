@@ -20,12 +20,12 @@ source `.mp4` files using one of two input formats:
 Input/Output
 ------------
 Inputs
-  - Source videos (`*.mp4`) located under :data:`config.SOURCE_VIDEOS_DIR`.
-  - A CSV index at :data:`config.INDEX_PATH` (index mode), or JSON metadata files
-    under :data:`config.BASELINE_METADATA_DIR` (JSON events mode).
+  - Source videos (`*.mp4`) located under :root:`config.SOURCE_VIDEOS_DIR`.
+  - A CSV index at :root:`config.INDEX_PATH` (index mode), or JSON metadata files
+    under :root:`config.BASELINE_METADATA_DIR` (JSON events mode).
 
 Outputs
-  - Reproduced clips written to :data:`config.REPRODUCED_CLIPS_DIR`.
+  - Reproduced clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
 
 Notes
 -----
@@ -127,14 +127,14 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
     Overview
     --------
     Reads a CSV index into a pandas DataFrame, matches rows against `.mp4` source
-    videos found under :data:`config.SOURCE_VIDEOS_DIR`, and writes the resulting
+    videos found under :root:`config.SOURCE_VIDEOS_DIR`, and writes the resulting
     clips to `output_path`.
 
     Input/Output
     ------------
     Input
       - `index_path`: CSV file describing clips.
-      - Source videos discovered recursively under :data:`config.SOURCE_VIDEOS_DIR`.
+      - Source videos discovered recursively under :root:`config.SOURCE_VIDEOS_DIR`.
 
     Output
       - `.mp4` clips written under `output_path` (file name taken from the CSV).
