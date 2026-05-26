@@ -14,6 +14,10 @@ __pycache__/
 
 # --- R (if any EDA uses R) ---
 .Rhistorysite/
+.Rhistory
 
 # --- Site ---
 site/
+
+# --- Models ---
+*.pt

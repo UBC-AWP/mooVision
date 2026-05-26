@@ -1,62 +1,11 @@
-# MooVision
 
-MooVision is a computer-vision pipeline for detecting **cross-sucking behaviour** in socially housed dairy calves from angled overhead pen video. The goal is to reduce the time and effort required for manual review/labeling by automatically producing candidate events, clipped video segments, and structured metadata for downstream analysis.
-
-## Project Overview
-
-Cross-sucking (here: sucking directed at various body parts of other calves) is a welfare concern in group-housed calves and is currently studied via manual labeling of long video recordings. This project builds a scalable workflow that:
-
-- takes raw pen video as input
-- runs a baseline detector (pretrained YOLOv8) with simple logic on top (e.g., proximity/overlap + temporal persistence)
-- outputs predicted event windows and metadata (start/end time, confidence, pen, weaning stage, day)
-- optionally generates clipped videos for review and evaluation
-
-## Repository Structure (high level)
-
-- `src/`: library code (config, preprocessing, baseline inference, evaluation)
-- `scripts/`: runnable entry points (run baseline, build clip index, etc.)
-- `eda/`: EDA notebooks
-- `tests/`: unit tests
-- `docs/` : project documentation
-- `report/`: report assets
-
-## Environment Setup
-
-This project uses `uv` for package management.
-
-1. Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2. Clone the repo and cd into it
-3. Run `uv sync` to install all dependencies
-4. Run scripts with `uv run python <script.py>`
-
-## Local `.env` configuration (required)
-
-We use a local `.env` file (stored at the **repo root**) to configure machine-specific paths (e.g., where the video clips live). This avoids hardcoding absolute paths in code.
-
-1. Create a `.env` file at the repo root:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env` and set your local data path, for example:
-
-   ```bash
-   ROOT_DIR=/path/to/your/root/directory
-   LOCAL_DIR=/path/to/your/local/directory
-   ```
-
-3. `.env` is ignored by git (do not commit). If you need to change what variables exist, update `.env.example` instead.
-
----
-
-## Baseline Cross-Sucking Detector
+# Baseline Cross-Sucking Detector
 
 A baseline script for detecting cross-sucking behaviour in calves using YOLO bounding box overlap. For each input video, the script produces a JSON metadata file containing the time windows where cross-sucking may have occurred, along with the per-frame intersection box coordinates of the overlapping region.
 
 ---
 
-### How It Works
+## How It Works
 
 1. Loads a pretrained YOLO26 model by default (the model works on COCO dataset which detects `cow` class as a proxy for calves)
 2. Loads one video at a time (this setting might be changed in the future)
@@ -71,14 +20,14 @@ A baseline script for detecting cross-sucking behaviour in calves using YOLO bou
 2. The model, IoU threshold, confidence threshold, and number of skipped frames can be changed into other baseline models using arguments which will be described below
 3. The argument `skip_frame` allows to skip N number of frames at a time (e.g. `skip_frame = 5` means instead of )
 
-### Input (baseline)
+## Input (baseline)
 
 | Property | Details |
 |---|---|
 | Format | `.mp4`, `.avi`, or any format supported by OpenCV |
 | Content | Single video clip of calves in a pen |
 
-### Output (baseline)
+## Output (baseline)
 
 Results are saved to `results/metadata/baseline/` automatically.
 
@@ -126,7 +75,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 | `avg_confidence` | Average YOLO detection confidence across all frames in the event |
 | `intersection_boxes` | Per-frame pixel coordinates of the overlapping region for downstream annotation |
 
-### How to run the baseline
+## How to run the baseline
 
 1. Using the default parameters:
 
@@ -165,7 +114,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 - **`--min_duration`** — raise if brief accidental box overlaps are being flagged. A value of `1.0–2.0` seconds works well as a starting point
 - **`--frame_skip`** — raise for faster processing on long videos (5–15 is a good range). Keep at `1` if you need precise event boundaries or are looking for very short events
 
-#### Demo Examples
+### Demo Examples
 
 For demonstration purposes, we provide 2 clip samples each for cross-sucking and non-cross-sucking examples (each video ~15-17s).
 
