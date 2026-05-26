@@ -1,16 +1,14 @@
 
-# Baseline Cross-Sucking Detector
+## Baseline Cross-Sucking Detector
 
 A baseline script for detecting cross-sucking behaviour in calves using YOLO bounding box overlap. For each input video, the script produces a JSON metadata file containing the time windows where cross-sucking may have occurred, along with the per-frame intersection box coordinates of the overlapping region.
 
----
-
-## How It Works
+### How It Works
 
 1. Loads a pretrained YOLO26 model by default (the model works on COCO dataset which detects `cow` class as a proxy for calves)
 2. Loads one video at a time (this setting might be changed in the future)
 3. Reads every Nth frame as set by `--frame_skip` (default: 1 = every frame). This will be seen while running `baseline.py`
-4. For each processed frame, detects all calves and checks if any two bounding boxes overlap beyond a configurable IoU threshold
+4. For each frame, detects all calves and identifies the pair with the highest overlap (IoU). If IoU ≥ threshold, flags the frame and records that pair's intersection box.
 5. Groups consecutive flagged frames into events and filters out events shorter than a minimum duration
 6. Saves a JSON metadata file with the flagged events and their intersection box coordinates
 
@@ -18,16 +16,16 @@ A baseline script for detecting cross-sucking behaviour in calves using YOLO bou
 
 1. The COCO-pretrained model was trained on adult cattle outdoors. Detection accuracy will improve significantly once fine-tuned on your own labelled calf footage
 2. The model, IoU threshold, confidence threshold, and number of skipped frames can be changed into other baseline models using arguments which will be described below
-3. The argument `skip_frame` allows to skip N number of frames at a time (e.g. `skip_frame = 5` means instead of )
+3. The argument `skip_frame` allows to skip N number of frames at a time (e.g. `skip_frame = 5` means processing every 5 frames instead of just 1 frame each)
 
-## Input (baseline)
+### Input (baseline)
 
 | Property | Details |
 |---|---|
 | Format | `.mp4`, `.avi`, or any format supported by OpenCV |
 | Content | Single video clip of calves in a pen |
 
-## Output (baseline)
+### Output (baseline)
 
 Results are saved to `results/metadata/baseline/` automatically.
 
@@ -46,6 +44,7 @@ Results are saved to `results/metadata/baseline/` automatically.
   "fps": 25.0,
   "total_frames": 7500,
   "total_duration_sec": 300.0,
+  "frame_skip": 1,
   "cross_sucking_detected": true,
   "num_events": 2,
   "events": [
@@ -54,7 +53,7 @@ Results are saved to `results/metadata/baseline/` automatically.
       "end_sec": 19.1,
       "duration_sec": 6.7,
       "avg_confidence": 0.71,
-      "intersection_boxes": [
+      "intersection_box": [
         { "frame": 310, "x1": 290, "y1": 95, "x2": 340, "y2": 280 },
         { "frame": 311, "x1": 291, "y1": 96, "x2": 341, "y2": 281 }
       ]
@@ -68,14 +67,21 @@ Results are saved to `results/metadata/baseline/` automatically.
 | Field | Description |
 |---|---|
 | `identifier` | Video filename — used as the unique ID for this clip |
+| `model` | YOLO model name used for detection |
+| `iou_threshold` | IoU threshold used to flag overlapping boxes |
+| `conf_threshold` | YOLO detection confidence threshold |
+| `min_duration_sec` | Minimum event duration in seconds (shorter events are filtered out) |
+| `fps` | Frames per second of the video |
+| `total_frames` | Total number of frames in the video |
+| `frame_skip` | Frame skip value (1 = every frame, 2 = every 2nd frame, etc.) |
 | `cross_sucking_detected` | `true` if at least one event was flagged |
 | `num_events` | Total number of flagged events |
 | `start_sec` / `end_sec` | Start and end time of the event in seconds |
 | `duration_sec` | Length of the event in seconds |
 | `avg_confidence` | Average YOLO detection confidence across all frames in the event |
-| `intersection_boxes` | Per-frame pixel coordinates of the overlapping region for downstream annotation |
+| `intersection_box` | Per-frame pixel coordinates of the overlapping region for downstream annotation |
 
-## How to run the baseline
+### How to run the baseline
 
 1. Using the default parameters:
 
@@ -101,7 +107,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 | Argument | Type | Default | Description |
 |---|---|---|---|
 | `--video` | str | - | Path to input video file (required) |
-| `--model` | str | `yolo26m.pt` | YOLO model weights filename e.g. `yolo26n.pt`, `yolo26m.pt`, `yolo26l.pt` |
+| `--model` | str | `yolo26x.pt` | YOLO model weights filename e.g. `yolo26n.pt`, `yolo26m.pt`, `yolo26l.pt` |
 | `--iou_threshold` | float | `0.1` | Minimum IoU overlap to flag a frame. Must be between `0.0` and `1.0` |
 | `--conf_threshold` | float | `0.5` | Minimum YOLO detection confidence to keep a box. Must be between `0.0` and `1.0` |
 | `--min_duration` | float | `1.0` | Minimum duration in seconds a continuous overlap must last to be flagged as an event |
@@ -114,7 +120,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 - **`--min_duration`** — raise if brief accidental box overlaps are being flagged. A value of `1.0–2.0` seconds works well as a starting point
 - **`--frame_skip`** — raise for faster processing on long videos (5–15 is a good range). Keep at `1` if you need precise event boundaries or are looking for very short events
 
-### Demo Examples
+#### Demo Examples
 
 For demonstration purposes, we provide 2 clip samples each for cross-sucking and non-cross-sucking examples (each video ~15-17s).
 
@@ -145,3 +151,40 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
         ```bash
         uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch04_20250828075551_15s.mp4"
         ```
+
+## Limitation
+
+- **Single highest overlap per frame:** Only the pair with the best overlap is recorded per frame. If multiple calves are simultaneously cross-sucking, only the largest IoU is captured
+
+- **YOLO detection instability and flickering:** The detector relies on YOLO correctly identifying all calves. Missed or misidentified calves will cause missed or false overlaps. The instability of YOLO detection would also result in "flickering" in the intersection box coordinates even for the same interaction and can falsely split a single cross-sucking event into multiple short events
+
+- **Camera perspective and distance:** IoU is sensitive to bounding box size and camera angle. Calves cross-sucking at the back of the pen (far from camera) produce small bounding boxes with low IoU values, causing missed detections. The metric underestimates true overlap when viewed from an angle
+
+- **Sensitive to threshold tuning:**
+  - **IoU threshold (`--iou_threshold`):**
+    - Too high: Misses true overlaps, especially distant or angled interactions
+    - Too low: False positives from calves simply standing close together
+  - **Confidence threshold (`--conf_threshold`):**
+    - Too high: YOLO misses weakly-detected calves, reducing overlap detection
+    - Too low: Increases false detections of non-calf objects, creating spurious overlaps
+  - **Minimum duration (`--min_duration`):**
+    - Too high: Misses shorter but real cross-sucking events
+    - Too low: Reports accidental brief touches or flickering frames as events
+  - **Frame skip (`--frame_skip`):**
+    - Too high: Misses short events entirely, event boundaries become imprecise
+    - Too low: Increases processing time
+  - No universal defaults exist, tuning is dataset, model, and camera-dependent
+
+- **Model limitation:** The COCO-pretrained model were trained on outdoor cattle, not calves. Hence, the accuracy performance to detect calves can be limited. Accuracy would improves significantly after fine-tuning on your own labeled calf footage, especially in varied lighting or pen angles
+
+## Future Improvements
+
+- Consider using proportion-based overlap (% of bounding box covered) as a better alternative or an addition to using overlapping area which is sensitive to camera angle and distance.
+
+- Use a "grace period" for handling the brief detection gaps (0.5–1.0 seconds) due to YOLO's missed break event continuity, splitting a single cross-sucking into multiple fragmented events. This will allow events separated by brief gaps to be treated as a single continuous interaction
+
+- Output all detected bounding boxes, IoU values for all pairs, and confidence scores per frame (not just the highest pair). This enables offline algorithm refinement and re-analysis without re-running YOLO inference
+
+- Apply smoothing filters (e.g. Kalman filter, moving average) to bounding box trajectories to reduce flickering. Implement frame correlation analysis to determine the minimum number of consecutive frames required to accept a detection, reducing false events from transient YOLO errors
+
+- Implement intelligent frame skipping to downscale processing as data volume increases. For instance, process frames densely in regions of detected overlap, sparsely elsewhere. This will reduce storage and computation while maintaining event precision
