@@ -2,6 +2,22 @@
 Preprocessing functions for model training.
 
 Frame-by-frame: Extract every frames and bounding box annotations
+
+NOTES: WHAT HAPPENS IF THE FRAME RATE ANNOTAIONS (BOUNDING BOX LABELS) DO NOT MATCH THE FRAME_IDX COMING FROM THE LEABELLING OF FRAMES FROM VIDEOS.
+HOW TO HANDLE THIS?
+
+OPTIONS FOR INCLUDING SKIP IN EXTRACT LABELS ---
+--- 1) read frame number from name, keep only those with frane_num % skip == 0. (Seems like better option because it will let us read in fewer files.)
+--- 2) Run a frame_idx moving through to read only the frames with frame_idx == 0
+--- 3) X frames per second
+------ detect fps? move so sample at different frame rates?
+------ fps = cap.get(cv2.CAP_PROP_FPS)
+       frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+NOTE 2:
+Skippiong frames will lead to loss of info: Lose positions of cows heads etc. not neccessarily linked to the autocorrelation of the bounding boxes (although it should be).
+
+NOTE 3: Add argument parser, and a funciton to read in df, perform train/val split, then pass neccesary portions to extract_labels and extract_frames
 """
 
 from pathlib import Path
@@ -10,6 +26,7 @@ import zipfile
 import shutil
 from typing import List
 import cv2
+import re
 
 # import argparse
 from sklearn.model_selection import train_test_split
@@ -29,45 +46,167 @@ OUTPUT_DIR = Path("data/processed/pipeline_testing/yolo_format").absolute()
 
 
 def extract_labels(
-    input_paths: List[Path],
-    output_dir,
+    labels_path: List[Path],
+    output_dir: Path,
     labels_root: Path,
+    target_folder: str,
     split: str,
+    skip: int,
     FORCE: bool = False,
 ):
-    """Extract bounding box labels from .zip files (CVAT Output)"""
+    """
+    Extract labels from annotated data.
+
+    Extracts bounding box labels from .zip files (corresponding to CVAT Output
+    folders), and saves files to either a train, or val (split) folder in the
+    specified output directory. If FORCE = True, and the output directory
+    structure already exists, this will delete the existing folders and rebuild
+    the data from scratch.
+
+    `extract_labels` outputs data into a labels/ folder within the output directory.
+    This is meant to mimic the data format required for fine-tuning YOLO models.
+
+    This function assumes that bounding box labels are saved as `.txt` files in
+    `obj_train_data` folders within .zip files, and that `labels_path` lists
+    relative paths to these .zip files within the `labels_root` directory.
+
+
+    Parameters
+    ----------
+    labels_path : List[Path]
+        List of relative paths to label outputs of cross-sucking events.
+    output_dir : Path
+        Path to output directory.
+    labels_root : Path
+        Path to root directory of label outputs of cross-sucking events.
+    target_folder : str
+        The target folder to extract frames from in the .zip files conataining
+        the annotated data. For CVAT outputs this should be `obj_train_data`.
+    split : str
+        One of `train`, `val`. Dictates which split folder, train/ or val/, the
+        labels should be extracted to.
+    skip : int
+        Number of frames to skip.
+    FORCE : bool
+        If True, overwritres the existing data. Defaults to False.
+
+
+    Returns
+    -------
+    None :
+        This function reads to disk and does not return anything.
+
+
+    Raises
+    ------
+    ValueError
+        If inputs are empty, or if labels_path is an empty list.
+        If split is not one of `train` or `val`.
+    TypeError
+        If inputs to not match the specififed types.
+    FileNotFoundError
+        If any relative paths do not lead to files for labelled data.
+        If `labels_root` does not exist.
+        If the target folder does not exist within the .zip files.
+        If there are no `.txt` files found in the target folder.
+
+
+    Notes
+    -----
+    `extract_labels` is meant to be used in conjunction with `extract_frames`
+    to build datasets for training YOLO models. YOLO requires datasets in the
+    format listed below where frames and labels are split into train/val sets
+    and each frame has a corresponding label with the same name and a .txt
+    extension. This implies that there needs to be equal numbers of frames
+    and labels, and that frames and labels need to match.
+
+    YOLO format:
+
+    dataset/
+    |- data.yaml
+    |- images/
+    |    |- train/
+    |    |    |- frame_000000.jpg
+    |    |- val/
+    |    |    |- frame_999999.jpg
+    |- labels/
+    |    |- train/
+    |    |    |- frame_000000.txt
+    |    |- val/
+    |    |    |- frame_999999.txt
+
+    Examples
+    --------
+
+    from config import LABELLED_CLIPS_DIR
+    OUTPUT_DIR = Path("data/processed/pipeline_testing/yolo_format").absolute()
+    train_path = Path("data/processed/pipeline_testing/train.csv").absolute()
+
+    train_df = pd.read_csv(train_path, index_col=0)
+    train, val = train_test_split(
+        train_df, test_size=0.4, train_size=0.6, random_state=1234
+    )
+
+    skip = 5  # Read every 5th frame
+
+    extract_labels(
+        input_paths=train["labelled_clip_relative_path"],
+        labels_root=LABELLED_CLIPS_DIR,
+        output_dir=OUTPUT_DIR,
+        split="train",
+        skip=skip,
+        FORCE=True,
+    )
+    """
 
     # Add subdirectories to output directory
     output_dir = Path(output_dir) / "labels" / split
 
     # Do nothing if files already exist
     if Path(output_dir).exists() and not FORCE:
-        print(
-            f"Files already extracted at {Path(__file__) / Path(output_dir)}"
-        )  # change to Path(__file__)
+        print(f"Files already extracted at {Path(__file__) / Path(output_dir)}")
     else:
         # Delete path and files if they already exist
         if output_dir.exists() and output_dir.is_dir():
             # Recursively deletes the directory and all contents
             shutil.rmtree(output_dir)
 
+        #### ---- CHECK INPUT LIST IS NOT EMPTY ---- ####
+        #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####
+
         # Loop over zip file paths (CVAT Outputs)
-        for input_path in input_paths:
+        for input_path in labels_path:
+
+            ### THIS SHOULD BE EARLIER MAYBE? = yes, else we might
+            # # run through severral iterations of this list until we get to somethig that is not a string
+
+            if not isinstance(input_path, str):
+                raise TypeError(
+                    f"{input_path} is not a string. labels_path should be a list of strings."
+                )
 
             # Standardie Path to Posix Standard
             input_path = labels_root / input_path.replace("\\", "/")
 
+            if not labels_path.exists():
+                raise FileNotFoundError(f"{input_path} not found.")
+
             # Get numeric id and part id of labelled output
             numeric_id, part_id = parse_labelled_name(str(input_path.name))
+
+            ### DO I NEED TO TEST THE OUTPUTS OF THIS??
+            # --- NO? Already confirmed from other function inputs?
 
             if part_id:
                 # Format nicely
                 part_id = f"part0{part_id}"
 
             # Target folder in zip file
-            target_folder = "obj_train_data/"
+            target_folder = target_folder
 
             ## WHAT HAPPENS IF THIS THROWS AN ERROR!
+            if not target_folder.exists() or not target_folder.is_dir():
+                raise FileNotFoundError(f"{target_folder} not found at {input_path}")
 
             # Look in zip folder
             with zipfile.ZipFile(input_path, "r") as zip_ref:
@@ -80,9 +219,17 @@ def extract_labels(
                     [
                         f
                         for f in all_files
-                        if f.startswith(target_folder) and ".txt" in f
+                        if f.startswith(
+                            target_folder
+                        )  # assumes files names: target_folder/frame_000000.txt
+                        and ".txt" in f
+                        and (
+                            int(re.search(r"(\d+)", f).group(1)) % skip == 0
+                        )  # Take every `skip` frame
                     ]
                 )
+
+                ### TEST LENGTH OF LIST HERE FOR .TXT FILES --- Return could not find labels at input_path/target_folder
 
                 for file in files_to_extract:
                     # Extract individual files explicitly to target destination
@@ -109,19 +256,113 @@ def extract_labels(
                 target_folder.rmdir()
                 print(f"Files saved to {output_dir}")
             else:
-                print(f"{target_folder} structure not found or already processed.")
+                raise FileNotFoundError(
+                    f"{target_folder} structure not found or already processed."
+                )
 
 
 def extract_frames(
-    videos: List[str], videos_root: Path, output_dir, split: str, FORCE: bool = False
+    videos: List[str],
+    videos_root: Path,
+    output_dir,
+    split: str,
+    skip: int,
+    FORCE: bool = False,
 ):
-    """Extract frames from all videos
+    """
+    Extract frames from all videos in list.
 
-    Input: list of realtive paths to unlabelled videos
-    output: extract all frames from unlabelled videos into train or validation set
+    Takes in a list of realtive paths to video files inside the videos_root directory
+    and extracts the frames from each video as .jpg files into train or val folders in
+    output_dir. Split is one of train or val and dictates which folder the images are
+    saved under. Skip dictates how many frames to skip (i.e. skip = 5 would mean
+    extract every fifth frame).
 
-    should probably take in the root directory as well!
-    requires parse functionality so needst to call in parsing functions
+    `extract_frames` outputs frames to an images/train/ or images/val/ folder within
+    the output directory depending on the split argument.
+
+    Parameters
+    ----------
+    videos : List[str]
+        A list of relative paths to video files inside the videos_root directory.
+    videos_root : Path
+        Path to root directory containing videos.
+    output_dir : Path
+        Path to output directory to save extracted frames to.
+    split : str
+        One of `train`, `val`. Dictates which split folder, train/ or val/, the
+        labels should be extracted to.
+    skip : int
+        Number of frames to skip.
+    FORCE : bool
+        If True, overwritres the existing data. Defaults to False.
+
+
+    Returns
+    -------
+    None :
+        This function reads to disk and does not return anything.
+
+
+    Raises
+    ------
+    ValueError
+        If inputs are empty, or if videos is an empty list.
+        If split is not one of `train` or `val`.
+        If a video cannot be read, or is corrupted.
+        If skip is greater than the number of frames
+    TypeError
+        If inputs to not match the specififed types.
+    FileNotFoundError
+        If any relative paths in videos do not lead to files for labelled data.
+        If `videos_root` does not exist.
+
+    Notes
+    -----
+    `extract_frames` is meant to be used in conjunction with `extract_labels`
+    to build datasets for training YOLO models. YOLO requires datasets in the
+    format listed below. Frames and labels are split into train/val sets,
+    and each frame has a corresponding label with the same name and .txt
+    extension. This implies that there needs to be equal numbers of frames
+    and labels, and that labels need to match to correct frames.
+
+    YOLO format:
+
+    dataset/
+    |- data.yaml
+    |- images/
+    |    |- train/
+    |    |    |- frame_000000.jpg
+    |    |- val/
+    |    |    |- frame_999999.jpg
+    |- labels/
+    |    |- train/
+    |    |    |- frame_000000.txt
+    |    |- val/
+    |    |    |- frame_999999.txt
+
+    Examples
+    --------
+
+    from config import LABELLED_CLIPS_DIR
+    OUTPUT_DIR = Path("data/processed/pipeline_testing/yolo_format").absolute()
+    train_path = Path("data/processed/pipeline_testing/train.csv").absolute()
+
+    train_df = pd.read_csv(train_path, index_col=0)
+    train, val = train_test_split(
+        train_df, test_size=0.4, train_size=0.6, random_state=1234
+    )
+
+    skip = 5  # Read every 5th frame
+
+    extract_frames(
+        input_paths=train["clip_relative_path"],
+        labels_root=LABELLED_CLIPS_DIR,
+        output_dir=OUTPUT_DIR,
+        split="train",
+        skip=skip,
+        FORCE=True,
+    )
     """
 
     # Output dir
@@ -155,19 +396,25 @@ def extract_frames(
             frame_idx = 0
 
             while cap.isOpened():
-                # Read frame
-                ret, frame = cap.read()
-                if not ret:
-                    break
+                # Read frames at every `skip`` position, ignore the rest
+                if frame_idx % skip == 0:
+                    # Decode frame
+                    ret, frame = cap.read()
+                    if not ret:  # Break if decoding fails
+                        break
+                    # Create Output Path
+                    frame_path = (
+                        output_dir
+                        / f"{int(numeric_id):04}_{part_id}_frame_{frame_idx:06d}.jpg"
+                    )
 
-                # Output path
-                frame_path = (
-                    output_dir
-                    / f"{int(numeric_id):04}_{part_id}_frame_{frame_idx:06d}.jpg"
-                )
+                    # Write frame to output dir
+                    cv2.imwrite(str(frame_path), frame)
+                else:
+                    ret = cap.grab()  # advances position, does not decode frame.
+                    if not ret:  # Skip efficiently
+                        break
 
-                # Write frame to output dir
-                cv2.imwrite(str(frame_path), frame)
                 frame_idx += 1
 
             # release video
@@ -183,15 +430,16 @@ def main():
         train_df, test_size=0.4, train_size=0.6, random_state=1234
     )
 
-    # Take the first data frame and ....
-    # Extract frames to obj_img_data/train
-    # Extract .txt files to obj_train_data/train
+    # Extract the frames and bounding box labels for the train set
+
+    skip = 5  # Read every 5th frame
 
     extract_labels(
         input_paths=train["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
         output_dir=OUTPUT_DIR,
         split="train",
+        skip=skip,
         FORCE=True,
     )
     extract_frames(
@@ -199,17 +447,18 @@ def main():
         videos_root=UNLABELLED_CLIPS_DIR,
         output_dir=OUTPUT_DIR,
         split="train",
+        skip=skip,
         FORCE=True,
     )
 
-    # # tTake the second data frame and ...
-    #     # Extract frames to obj_img_data/val
-    #     # Extract .txt files to obj_train_data/val
+    # Extract the frames and bounding box labels for the test set
+
     extract_labels(
         input_paths=val["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
         output_dir=OUTPUT_DIR,
         split="val",
+        skip=skip,
         FORCE=True,
     )
     extract_frames(
@@ -217,6 +466,7 @@ def main():
         videos_root=UNLABELLED_CLIPS_DIR,
         output_dir=OUTPUT_DIR,
         split="val",
+        skip=skip,
         FORCE=True,
     )
 
