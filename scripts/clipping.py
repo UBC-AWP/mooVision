@@ -412,7 +412,7 @@ def run_splitting(func) -> None:
       - `func`: A function object indicating which strategy to run.
 
     Output
-      - Reproduced clips written to :data:`config.REPRODUCED_CLIPS_DIR`.
+      - Reproduced clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
 
     Parameters
     ----------
@@ -446,10 +446,10 @@ def main():
     Input/Output
     ------------
     Input
-      - JSON metadata from :data:`config.BASELINE_METADATA_DIR`.
+      - JSON metadata from :root:`config.BASELINE_METADATA_DIR`.
 
     Output
-      - Clips written to :data:`config.REPRODUCED_CLIPS_DIR`.
+      - Clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
 
     Returns
     -------
