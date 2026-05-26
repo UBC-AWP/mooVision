@@ -122,6 +122,7 @@ def extract_labels(
 
     YOLO format:
 
+    ```{markdown}
     dataset/
     |- data.yaml
     |- images/
@@ -134,29 +135,52 @@ def extract_labels(
     |    |    |- frame_000000.txt
     |    |- val/
     |    |    |- frame_999999.txt
+    ```
 
     Examples
     --------
+    .. code-block:: python
 
-    from config import LABELLED_CLIPS_DIR
-    OUTPUT_DIR = Path("data/processed/pipeline_testing/yolo_format").absolute()
-    train_path = Path("data/processed/pipeline_testing/train.csv").absolute()
+        import shutil
+        import zipfile
+        from pathlib import Path
+        from my_project.preprocessing import extract_labels
 
-    train_df = pd.read_csv(train_path, index_col=0)
-    train, val = train_test_split(
-        train_df, test_size=0.4, train_size=0.6, random_state=1234
-    )
+        # 1. Setup temporary directories mimicking a real project workspace
+        labels_root = Path("temp_labels_source")
+        output_dir = Path("temp_yolo_output")
+        labels_root.mkdir(parents=True, exist_ok=True)
 
-    skip = 5  # Read every 5th frame
+        # Your function parses the zip name using 'parse_labelled_name'.
+        # Ensure the mock filename aligns with your expected identifier conventions.
+        mock_zip_name = "0042_annotations.zip"
+        zip_path = labels_root / mock_zip_name
 
-    extract_labels(
-        input_paths=train["labelled_clip_relative_path"],
-        labels_root=LABELLED_CLIPS_DIR,
-        output_dir=OUTPUT_DIR,
-        split="train",
-        skip=skip,
-        FORCE=True,
-    )
+        # 2. Build a mock CVAT export zip file on the fly
+        # Creates files inside 'obj_train_data/' to replicate CVAT structure
+        with zipfile.ZipFile(zip_path, "w") as archive:
+            for frame_idx in range(10):
+                # Simulated YOLO format line: <class_id> <x> <y> <w> <h>
+                mock_annotation = f"0 0.50 0.50 0.22 0.34\n"
+                archive.writestr(
+                    f"obj_train_data/frame_{frame_idx:06d}.txt",
+                    mock_annotation
+                )
+
+        # 3. Execute the label extraction (skipping every 2nd frame)
+        extract_labels(
+            labels_path=[mock_zip_name],
+            labels_root=labels_root,
+            output_dir=output_dir,
+            target_folder="obj_train_data",
+            split="train",
+            skip=2,
+            FORCE=True,
+        )
+
+        # 4. Clean up mock files after ensuring execution succeeded
+        shutil.rmtree(labels_root)
+        shutil.rmtree(output_dir)
     """
 
     # Add subdirectories to output directory
@@ -328,6 +352,7 @@ def extract_frames(
 
     YOLO format:
 
+    ```{bash}
     dataset/
     |- data.yaml
     |- images/
@@ -340,29 +365,37 @@ def extract_frames(
     |    |    |- frame_000000.txt
     |    |- val/
     |    |    |- frame_999999.txt
+    ```
 
     Examples
     --------
+    .. code-block:: python
 
-    from config import LABELLED_CLIPS_DIR
-    OUTPUT_DIR = Path("data/processed/pipeline_testing/yolo_format").absolute()
-    train_path = Path("data/processed/pipeline_testing/train.csv").absolute()
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from my_project.preprocessing import extract_frames
 
-    train_df = pd.read_csv(train_path, index_col=0)
-    train, val = train_test_split(
-        train_df, test_size=0.4, train_size=0.6, random_state=1234
-    )
+        # Create dummy directories
+        video_root = Path("temp_videos")
+        output_dir = Path("temp_output")
+        video_root.mkdir(parents=True, exist_ok=True)
+        (video_root / "CS_0042_clip.mp4").touch() # Just an empty file shell
 
-    skip = 5  # Read every 5th frame
+        # Mock OpenCV so it simulates reading 10 successful frames
+        with patch('cv2.VideoCapture') as mock_caps:
+            instance = mock_caps.return_value
+            instance.isOpened.side_effect = [True] * 10 + [False]
+            instance.read.return_value = (True, "mock_frame_data")
+            instance.grab.return_value = True
 
-    extract_frames(
-        input_paths=train["clip_relative_path"],
-        labels_root=LABELLED_CLIPS_DIR,
-        output_dir=OUTPUT_DIR,
-        split="train",
-        skip=skip,
-        FORCE=True,
-    )
+            # Run the extraction function safely without a real video file
+            extract_frames(
+                videos=["CS_0042_clip.mp4"],
+                videos_root=video_root,
+                output_dir=output_dir,
+                split="train",
+                skip=2
+            )
     """
 
     # Output dir

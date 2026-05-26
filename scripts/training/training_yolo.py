@@ -148,7 +148,7 @@ def main():
         project="runs/detect",
         model=26,
         model_size="n",  # Nano model
-        device="mps",  # Mac GPU
+        device="mps",  # Mac GPU --- change to detect correct output here!
         epochs=3,
         batch=8,
         imgsz=640,  # adjusted image size from 1920x1800
