@@ -1,3 +1,39 @@
+"""
+scripts.clipping
+================
+
+Reproduce short video clips from longer source videos.
+
+Overview
+--------
+This module provides a small pipeline for reproducing clip video segments from
+source `.mp4` files using one of two input formats:
+
+1. CSV index mode (`split_by_index`):
+   Reads a CSV index describing clip start/end times in the source video.
+
+2. JSON events mode (`split_by_json_events`):
+   Reads one JSON file (or a directory of JSON files) describing events to clip,
+   optionally producing an additional annotated version of each clip with
+   bounding boxes.
+
+Input/Output
+------------
+Inputs
+  - Source videos (`*.mp4`) located under :data:`config.SOURCE_VIDEOS_DIR`.
+  - A CSV index at :data:`config.INDEX_PATH` (index mode), or JSON metadata files
+    under :data:`config.BASELINE_METADATA_DIR` (JSON events mode).
+
+Outputs
+  - Reproduced clips written to :data:`config.REPRODUCED_CLIPS_DIR`.
+
+Notes
+-----
+The module relies on OpenCV for video I/O. Configuration is centralized in
+`config.py` and typically driven by environment variables in a `.env` file.
+
+"""
+
 import sys
 import cv2
 import time
@@ -9,7 +45,54 @@ sys.path.append(str(Path(__file__).parent.parent))
 from config import SOURCE_VIDEOS_DIR,INDEX_PATH,REPRODUCED_CLIPS_DIR,BASELINE_METADATA_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
-    """ Extract a clip from raw_video_path between start_sec and end_sec, and save it to output_path."""
+    """
+    Reproduce a clip from a source video between two timestamps.
+
+    Overview
+    --------
+    Opens a source `.mp4` video with OpenCV, seeks to `start_sec`, and writes
+    frames until `end_sec` into a new `.mp4` file at `output_path`.
+
+    Input/Output
+    ------------
+    Input
+      - `raw_video_path`: Source video file.
+      - `start_sec`, `end_sec`: Start/end times in seconds (float).
+
+    Output
+      - `output_path`: Written `.mp4` clip.
+
+    Parameters
+    ----------
+    raw_video_path : pathlib.Path
+        Path to the source `.mp4` file.
+    start_sec : float
+        Start time (seconds) in the source video.
+    end_sec : float
+        End time (seconds) in the source video.
+    output_path : pathlib.Path
+        Destination path for the reproduced clip.
+
+    Returns
+    -------
+    bool
+        `True` if the clip was written successfully; `False` if the source video
+        could not be opened or frames could not be read.
+
+    Notes
+    -----
+    - Uses codec `"mp4v"` via OpenCV.
+    - The output frame size and FPS are taken from the source video.
+    - This function does not create `output_path.parent`; callers should ensure
+      the directory exists if needed.
+
+    Examples
+    --------
+    >>> from pathlib import Path
+    >>> ok = reproduce_clip(Path("in.mp4"), 10.0, 12.5, Path("out.mp4"))
+    >>> print(ok)
+    True
+    """
     cap = cv2.VideoCapture(str(raw_video_path))
     if not cap.isOpened():
         print(f"Could not open: {raw_video_path.name}")
@@ -38,7 +121,50 @@ def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, outpu
     return True
 
 def split_by_index(index_path: Path, output_path: Path) -> None:
-    """ Reproduce clips based on the index CSV and save them to output_path."""
+    """
+    Reproduce clips defined by a CSV index file.
+
+    Overview
+    --------
+    Reads a CSV index into a pandas DataFrame, matches rows against `.mp4` source
+    videos found under :data:`config.SOURCE_VIDEOS_DIR`, and writes the resulting
+    clips to `output_path`.
+
+    Input/Output
+    ------------
+    Input
+      - `index_path`: CSV file describing clips.
+      - Source videos discovered recursively under :data:`config.SOURCE_VIDEOS_DIR`.
+
+    Output
+      - `.mp4` clips written under `output_path` (file name taken from the CSV).
+
+    Parameters
+    ----------
+    index_path : pathlib.Path
+        Path to the index CSV.
+    output_path : pathlib.Path
+        Directory to write reproduced clips to.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    - The CSV is expected to include at least the columns:
+      `source_video_basename`, `source_video_path`, `clip_name`,
+      `clip_start_in_source_sec`, `clip_end_in_source_sec`.
+    - **Current behavior**: only the first matched row is processed due to
+      `matched[:1]`. Remove that slice to reproduce all matching clips.
+
+    Raises
+    ------
+    FileNotFoundError
+        If `index_path` does not exist (raised by pandas).
+    KeyError
+        If required columns are missing from the CSV.
+    """
     index_df = pd.read_csv(index_path)
     # get all raw videos in RAW_DIR
     raw_videos = {f.name: f for f in SOURCE_VIDEOS_DIR.rglob("*.mp4")}
@@ -66,7 +192,59 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
         print(f"\nDone — {success} reproduced")
         
 def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = True) -> int:
-    """Reproduce clips based on events specified in a JSON file, and optionally annotate them."""
+    """
+    Reproduce clips defined by JSON event metadata, optionally with annotations.
+
+    Overview
+    --------
+    Loads one JSON metadata file or processes all `*.json` files in a directory.
+    For each event (`start_sec`, `end_sec`), a clip is reproduced. If
+    `annotate=True`, an additional `*_boxed.mp4` is written with bounding boxes
+    overlaid.
+
+    Input/Output
+    ------------
+    Input
+      - `json_path`: A JSON file or a directory of JSON files.
+      - Each JSON must specify `video_path` and `events`.
+
+    Output
+      - Clips written under `output_dir`.
+      - If `annotate=True`, additional annotated clips are written beside the
+        unboxed clips.
+
+    Parameters
+    ----------
+    json_path : pathlib.Path
+        A single JSON file, or a directory containing JSON files (non-recursive).
+    output_dir : pathlib.Path
+        Output root directory where clips will be created.
+    annotate : bool, default=True
+        Whether to also produce annotated clips with bounding boxes.
+
+    Returns
+    -------
+    int
+        Total number of successfully reproduced (unboxed) clips across all
+        processed JSON files.
+
+    Raises
+    ------
+    FileNotFoundError
+        If a JSON references a `video_path` that does not exist.
+
+    Notes
+    -----
+    Expected JSON schema (minimum):
+      - `video_path` : str
+      - `events` : list[dict] with keys `start_sec`, `end_sec`
+
+    Optional keys:
+      - `identifier` : str
+      - `fps` : float (used for annotation alignment)
+      - `events[*].intersection_box` : list[dict] with keys `frame`, `x1`, `y1`,
+        `x2`, `y2` (frames are in source-video coordinates)
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     if json_path.is_dir():
         json_files = sorted(json_path.glob("*.json"))  # non-recursive: only this folder
@@ -142,7 +320,47 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
     return total_success
 
 def annotate_clip_with_boxes(input_clip: Path,output_clip: Path,boxes: list[dict],color=(0, 255, 0),thickness: int = 2,) -> bool:
-    """ Annotate input_clip with bounding boxes and save as output_clip."""
+    """
+    Annotate a clip with per-frame bounding boxes and write a new video.
+
+    Overview
+    --------
+    Reads `input_clip` frame-by-frame, draws any boxes associated with the current
+    frame index, and writes the resulting frames to `output_clip`.
+
+    Input/Output
+    ------------
+    Input
+      - `input_clip`: Existing clip to annotate.
+      - `boxes`: Clip-relative frame boxes (frame 0 is the first frame of the clip).
+
+    Output
+      - `output_clip`: Annotated clip written to disk.
+
+    Parameters
+    ----------
+    input_clip : pathlib.Path
+        Path to the input clip (`.mp4`).
+    output_clip : pathlib.Path
+        Path where the annotated clip will be written.
+    boxes : list[dict]
+        List of bounding boxes in clip-relative frame coordinates. Each dict must
+        include: `frame`, `x1`, `y1`, `x2`, `y2`.
+    color : tuple[int, int, int], default=(0, 255, 0)
+        Rectangle color in BGR.
+    thickness : int, default=2
+        Rectangle thickness (pixels).
+
+    Returns
+    -------
+    bool
+        `True` if annotation succeeded, else `False`.
+
+    Notes
+    -----
+    - Creates `output_clip.parent` if it does not exist.
+    - Supports multiple boxes per frame.
+    """
     cap = cv2.VideoCapture(str(input_clip))
     if not cap.isOpened():
         print(f"Could not open clip: {input_clip}")
@@ -180,6 +398,36 @@ def annotate_clip_with_boxes(input_clip: Path,output_clip: Path,boxes: list[dict
     return True
 
 def run_splitting(func) -> None:
+    """
+    Dispatch to a chosen splitting strategy.
+
+    Overview
+    --------
+    Calls either :func:`split_by_index` or :func:`split_by_json_events` using
+    project-configured input/output paths from `config.py`.
+
+    Input/Output
+    ------------
+    Input
+      - `func`: A function object indicating which strategy to run.
+
+    Output
+      - Reproduced clips written to :data:`config.REPRODUCED_CLIPS_DIR`.
+
+    Parameters
+    ----------
+    func : callable
+        Either :func:`split_by_index` or :func:`split_by_json_events`.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If `func` is not a supported splitting function.
+    """
     if func == split_by_index:
         split_by_index(INDEX_PATH, REPRODUCED_CLIPS_DIR)
     elif func == split_by_json_events:
@@ -188,6 +436,25 @@ def run_splitting(func) -> None:
         raise ValueError(f"Unknown splitting function: {func}")
     
 def main():
+    """
+    Run the default clipping workflow.
+
+    Overview
+    --------
+    By default, runs JSON-events mode via :func:`run_splitting`.
+
+    Input/Output
+    ------------
+    Input
+      - JSON metadata from :data:`config.BASELINE_METADATA_DIR`.
+
+    Output
+      - Clips written to :data:`config.REPRODUCED_CLIPS_DIR`.
+
+    Returns
+    -------
+    None
+    """
     run_splitting(split_by_json_events)
 
 if __name__ == "__main__":
