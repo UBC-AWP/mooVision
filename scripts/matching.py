@@ -123,6 +123,7 @@ def parse_labelled_name(labelled_name: str) -> Tuple[str, Optional[int]]:
         r"-p(\d+)$",  # -p1, -p2
         r"\s+-\s+p(\d+)$",  # - p1, - p2 (with spaces)
         r"(?<!_)p(\d+)",  # 1234p1 (not hyphen or underscore)
+        r"\((\d+)\)",  # 0567 (1).zip
         r"^CS_(\d+)",  # CC_XXXX pattern with no parts
     ]
 
