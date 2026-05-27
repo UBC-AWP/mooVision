@@ -23,6 +23,7 @@ plugins:
 nav:
   - Home: index.md
   - Model Pipeline:
+    - Reading In Data: read_all_clips_index.md
     - Splitting Data: Training/data_splitting.md
     - Preprocessing: Training/preprocessing.md
     - Training:
