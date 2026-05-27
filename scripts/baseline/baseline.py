@@ -111,6 +111,7 @@ def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes, fra
         confidences (list[float]): Per-frame max YOLO detection confidence
         frame_boxes (list): Per-frame intersection box [x1, y1, x2, y2],
                             or None if that frame was not flagged
+        frame_indices (list): Actual frame indices in the video (accounting for frame skip)
 
     Returns:
         list[dict]: Each dict represents one flagged event:
@@ -196,11 +197,23 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
                                 Detections below this are ignored before IoU check.
         min_duration (float): Minimum event duration in seconds. Events shorter
                               than this are discarded as noise.
+        frame_skip (int): Process every Nth frame
 
     Returns:
         dict: Full metadata dict 
             also written to JSON at results/metadata/baseline/<video_name>_results.json
+
+    Raises:
+        FileNotFoundError: If video or model file cannot be found
+        ValueError: If target class is not in model
     """
+    # Validate inputs
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+    
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
 
@@ -259,9 +272,7 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
                 confs.append(float(box.conf[0].item()))
  
         # Check for overlapping pairs
-        overlap_detected = False
-        if len(boxes) >= 2:
-            overlap_detected, intersection_box  = frame_has_overlap(boxes, iou_threshold)
+        overlap_detected, intersection_box  = frame_has_overlap(boxes, iou_threshold)
  
         frame_flags.append(overlap_detected)
         frame_confs.append(max(confs) if confs else 0.0)
@@ -292,6 +303,7 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
         "fps":                    fps,
         "total_frames":           total_frames,
         "total_duration_sec":     round(total_frames / fps, 2),
+        "frame_skip":             frame_skip,
         "cross_sucking_detected": len(events) > 0,
         "num_events":             len(events),
         "events":                 events,
