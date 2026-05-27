@@ -54,14 +54,12 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 
 A baseline script for detecting cross-sucking behaviour in calves using YOLO bounding box overlap. For each input video, the script produces a JSON metadata file containing the time windows where cross-sucking may have occurred, along with the per-frame intersection box coordinates of the overlapping region.
 
----
-
 ### How It Works
 
 1. Loads a pretrained YOLO26 model by default (the model works on COCO dataset which detects `cow` class as a proxy for calves)
 2. Loads one video at a time (this setting might be changed in the future)
 3. Reads every Nth frame as set by `--frame_skip` (default: 1 = every frame). This will be seen while running `baseline.py`
-4. For each processed frame, detects all calves and checks if any two bounding boxes overlap beyond a configurable IoU threshold
+4. For each frame, detects all calves and identifies the pair with the highest overlap (IoU). If IoU ≥ threshold, flags the frame and records that pair's intersection box.
 5. Groups consecutive flagged frames into events and filters out events shorter than a minimum duration
 6. Saves a JSON metadata file with the flagged events and their intersection box coordinates
 
@@ -69,7 +67,7 @@ A baseline script for detecting cross-sucking behaviour in calves using YOLO bou
 
 1. The COCO-pretrained model was trained on adult cattle outdoors. Detection accuracy will improve significantly once fine-tuned on your own labelled calf footage
 2. The model, IoU threshold, confidence threshold, and number of skipped frames can be changed into other baseline models using arguments which will be described below
-3. The argument `skip_frame` allows to skip N number of frames at a time (e.g. `skip_frame = 5` means instead of )
+3. The argument `skip_frame` allows to skip N number of frames at a time (e.g. `skip_frame = 5` means processing every 5 frames instead of just 1 frame each)
 
 ### Input (baseline)
 
@@ -97,6 +95,7 @@ Results are saved to `results/metadata/baseline/` automatically.
   "fps": 25.0,
   "total_frames": 7500,
   "total_duration_sec": 300.0,
+  "frame_skip": 1,
   "cross_sucking_detected": true,
   "num_events": 2,
   "events": [
@@ -105,7 +104,7 @@ Results are saved to `results/metadata/baseline/` automatically.
       "end_sec": 19.1,
       "duration_sec": 6.7,
       "avg_confidence": 0.71,
-      "intersection_boxes": [
+      "intersection_box": [
         { "frame": 310, "x1": 290, "y1": 95, "x2": 340, "y2": 280 },
         { "frame": 311, "x1": 291, "y1": 96, "x2": 341, "y2": 281 }
       ]
@@ -119,12 +118,19 @@ Results are saved to `results/metadata/baseline/` automatically.
 | Field | Description |
 |---|---|
 | `identifier` | Video filename — used as the unique ID for this clip |
+| `model` | YOLO model name used for detection |
+| `iou_threshold` | IoU threshold used to flag overlapping boxes |
+| `conf_threshold` | YOLO detection confidence threshold |
+| `min_duration_sec` | Minimum event duration in seconds (shorter events are filtered out) |
+| `fps` | Frames per second of the video |
+| `total_frames` | Total number of frames in the video |
+| `frame_skip` | Frame skip value (1 = every frame, 2 = every 2nd frame, etc.) |
 | `cross_sucking_detected` | `true` if at least one event was flagged |
 | `num_events` | Total number of flagged events |
 | `start_sec` / `end_sec` | Start and end time of the event in seconds |
 | `duration_sec` | Length of the event in seconds |
 | `avg_confidence` | Average YOLO detection confidence across all frames in the event |
-| `intersection_boxes` | Per-frame pixel coordinates of the overlapping region for downstream annotation |
+| `intersection_box` | Per-frame pixel coordinates of the overlapping region for downstream annotation |
 
 ### How to run the baseline
 
@@ -152,7 +158,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 | Argument | Type | Default | Description |
 |---|---|---|---|
 | `--video` | str | - | Path to input video file (required) |
-| `--model` | str | `yolo26m.pt` | YOLO model weights filename e.g. `yolo26n.pt`, `yolo26m.pt`, `yolo26l.pt` |
+| `--model` | str | `yolo26x.pt` | YOLO model weights filename e.g. `yolo26n.pt`, `yolo26m.pt`, `yolo26l.pt` |
 | `--iou_threshold` | float | `0.1` | Minimum IoU overlap to flag a frame. Must be between `0.0` and `1.0` |
 | `--conf_threshold` | float | `0.5` | Minimum YOLO detection confidence to keep a box. Must be between `0.0` and `1.0` |
 | `--min_duration` | float | `1.0` | Minimum duration in seconds a continuous overlap must last to be flagged as an event |
@@ -196,37 +202,82 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
         ```bash
         uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch04_20250828075551_15s.mp4"
         ```
+---
 
-## Running the clipping script (reproduce event clips)
+## Evaluation
 
-### Overview
+The evaluation script compares baseline model predictions against ground truth annotations to measure detection performance across two levels — event level and sequence level.
 
-Reproduces short clips from long-form videos using baseline JSON event metadata and writes them to a structured folder under `REPRODUCED_CLIPS_DIR`.
+### How It Works
 
-### Input / Output
+1. Loads all baseline prediction JSON files from the results directory
+2. Loads the ground truth annotations from the processed clips index CSV
+3. Matches predictions to ground truth events using temporal IoU per video
+4. Computes precision, recall, F1, F2 and bounding box IoU at the event level
+5. Computes temporal IoU at the sequence level
+6. Stratifies all results by pen and weaning stage
+7. Saves a full evaluation report as a JSON file
 
-**Input:** JSON metadata in `LOCAL_DIR/results/metadata/baseline` referencing source videos.  
-**Output:** `.mp4` clips in `ROOT_DIR/reproduced_clips` (optionally with `_boxed.mp4` variants).
+### Input
 
-### Prerequisites
+| Property | Details |
+|---|---|
+| Predictions | Directory of baseline JSON files from `results/metadata/baseline/` |
+| Ground truth | Processed clips index CSV from `data/raw/all_clips_index_raw.csv` |
 
-- Make sure your `.env` is set correctly (see above).
-- Make sure baseline metadata exists locally at:
-`mooVision/results/metadata/baseline`
+### Output
 
-This path is derived from `LOCAL_DIR` in `.env`:
+Results are saved to the path specified by `--output`.
 
-`BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"`
+**Output fields:**
 
-### How to run
-From the repo root:
+| Field | Description |
+|---|---|
+| `true_positives` | Predicted events that correctly match a ground truth event |
+| `false_positives` | Predicted events with no matching ground truth event |
+| `false_negatives` | Ground truth events the model missed |
+| `precision` | Fraction of flagged events that were correct |
+| `recall` | Fraction of real events that were found |
+| `f1` | Balanced average of precision and recall |
+| `f2` | Recall-weighted score — prioritizes not missing real events |
+| `avg_bbox_iou` | Average spatial overlap between predicted and ground truth boxes |
+| `avg_temporal_iou` | Average time window overlap between predictions and ground truth |
+| `by_pen` | All metrics broken down by pen |
+| `by_weaning_stage` | All metrics broken down by weaning stage |
+
+### How to Run
+
+1. Using default thresholds:
 
 ```bash
-
-uv run python scripts/clipping.py
-
+    uv run python scripts/evaluation.py \
+        --predictions results/metadata/baseline/ \
+        --ground_truth data/raw/all_clips_index_raw.csv \
+        --output results/evaluation_report.json
 ```
 
-Outputs are written to the directory configured in `config.py`:
+2. Using custom thresholds:
 
-- `REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"`
+```bash
+    uv run python scripts/evaluation.py \
+        --predictions results/metadata/baseline/ \
+        --ground_truth data/raw/all_clips_index_raw.csv \
+        --output results/evaluation_report.json \
+        --confidence_threshold 0.6 \
+        --temporal_iou_threshold 0.4
+```
+
+### Arguments
+
+| Argument | Type | Default | Description |
+|---|---|---|---|
+| `--predictions` | str | - | Directory containing baseline JSON prediction files (required) |
+| `--ground_truth` | str | - | Path to processed clips index CSV (required) |
+| `--output` | str | - | Path to save evaluation report JSON (optional) |
+| `--confidence_threshold` | float | `0.5` | Minimum confidence score to consider a prediction |
+| `--temporal_iou_threshold` | float | `0.5` | Minimum temporal IoU to count a prediction as a match |
+
+### Tuning Tips
+
+- **`--temporal_iou_threshold`** — lower values (e.g. `0.3`) are more lenient about timing overlap. Raise if you want stricter matching
+- **`--confidence_threshold`** — raise if too many low confidence predictions are being counted. Lower if the model is being too conservative
