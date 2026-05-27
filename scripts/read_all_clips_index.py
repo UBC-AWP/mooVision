@@ -17,6 +17,7 @@ from config import (
     UNLABELLED_CLIPS_DIR,
     LABELLED_CLIPS_DIR,
     SOURCE_VIDEOS_DIR,
+    INDEX_PATH,
 )
 
 PROCESSED_INDEX_OUTPUT = Path("data/processed/processed_clips_index.csv").absolute()
@@ -92,7 +93,7 @@ def read_data_from_index(
     """
 
     ### FILTER FOR EXISTING PATHS AND SOURCE PATHS
-
+    index_path = Path(index_path).absolute()
     # --- Read in Index (from OneDrive) ---
     if index_path.exists():
         all_clips_index = pd.read_csv(index_path)
@@ -223,6 +224,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Data splitting.")
     parser.add_argument(
         "--index_path",
+        default=INDEX_PATH,
         help="Path to data index.",
     )
     parser.add_argument(
@@ -263,13 +265,15 @@ def parse_args():
     return parser.parse_args()
 
 
+# run with
+
 if __name__ == "__main__":
     args = parse_args()
     read_data_from_index(
         index_path=args.index_path,
         unlabelled_clips_dir=args.unlabelled_clips_dir,
         labelled_clips_dir=args.labelled_clips_dir,
-        source_videos_dir=args.source_video_dir,
+        source_videos_dir=args.source_videos_dir,
         raw_index_output=args.raw_index_output,
         processed_index_output=args.processed_index_output,
         FORCE=args.FORCE,
