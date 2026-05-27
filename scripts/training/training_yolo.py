@@ -1,15 +1,12 @@
 """
-Base function to be used for training a YOLO models based on a
-frame-by-frame analysis.
-
-NOTE:  IMAGE SIZE= 1920 x 1800 (for moovision cross-sucking-clips)
+Frame-by-frame object detection training using Ultralytics YOLO models.
 """
 
 from ultralytics import YOLO
 from pathlib import Path
 import sys
+import argparse
 
-test_path = Path("data/processed/pipeline_testing/test.csv").absolute()
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 
@@ -31,7 +28,7 @@ def train_yolo_model(
     **kwargs,
 ):
     """
-    Train YOLOv8 model.
+    Train a YOLO model.
 
     Takes in training set from preprocessing.py and trains a YOLOv8 model of
     the specified size.
@@ -52,7 +49,7 @@ def train_yolo_model(
         Output directory. This is where output of model training is stored, including model
         weights and predictions.
     model : int
-        YOLO model to use for training. i.e. 26 for v26, 8 for v8.
+        YOLO model version. i.e. 26 for v26, 8 for v8.
     model_size : str
         Model size (n=nano, s=small, m=medium, l=large, x=xlarge). A larger
         model may take longer to train or use, but it may also provide
@@ -98,22 +95,23 @@ def train_yolo_model(
 
     Examples
     --------
-    # After running scripts read_all_clips_index.py, and splitting.py run...
-    yaml_path = "data/processed/pipeline_testing/yolo_format"  #/path/to/yaml/file
-    train_yolo_model(
-        yaml_path=yaml_path,
-        model_size="n",
-        epochs=3,
-        imgsz=640,
-        batch=8,
-        rect=True,
-        device="mps",
-        save=True,
-        patience=50,
-        plots=True,
-        name="cross_sucking",
-        project="runs/detect",
-    )
+    .. code-block:: python
+
+        # After running scripts read_all_clips_index.py, and splitting.py run...
+        yaml_path = "data/processed/pipeline_testing/yolo_format"  #/path/to/yaml/file
+        train_yolo_model(
+            yaml_path=yaml_path,
+            model_size="n",
+            epochs=3,
+            imgsz=640,
+            batch=8,
+            rect=True,
+            device="mps",
+            save=True,
+            patience=50,
+            name="cross_sucking",
+            project="runs/detect",
+        )
     """
     # Load pretrained model
     model = YOLO(f"yolov{model}{model_size}.pt")
@@ -138,28 +136,99 @@ def train_yolo_model(
     # return model, results
 
 
-# UPDATE TO CLEAN AND TAKE IN ARGUMENTS
-def main():
-    # Train the model
-    yaml_path = "data/processed/pipeline_testing/yolo_format"  #
-    train_yolo_model(
-        yaml_path=yaml_path,
-        name="cross_sucking",
-        project="runs/detect",
-        model=26,
-        model_size="n",  # Nano model
-        device="mps",  # Mac GPU --- change to detect correct output here!
-        epochs=3,
-        batch=8,
-        imgsz=640,  # adjusted image size from 1920x1800
-        rect=True,  # Keep image ratio
-        save=True,
-        plots=True,
+def parse_args():
+    parser = argparse.ArgumentParser(description="Training for YOLO models.")
+    parser.add_argument(
+        "--yaml_path",
+        type=str,
+        help="Path to data file.",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        help="Random state for reproducibility in train/val split.",
+    )
+    parser.add_argument(
+        "--name",
+        type=str,
+        default="cross-sucking",
+        help="Experiment name",
+    )
+    parser.add_argument(
+        "--project",
+        type=str,
+        default="runs/detect",
+        help="Output directory.",
+    )
+    parser.add_argument(
+        "--model",
+        default=26,
+        type=int,
+        help="YOLO model version. i.e. 26 for v26, 8 for v8.",
+    )
+    parser.add_argument(
+        "--model_size",
+        default="n",  # nano
+        type=str,
+        help="Model size (n=nano, s=small, m=medium, l=large, x=xlarge).",
+    )
+    parser.add_argument(
+        "--epochs",
+        default=1,
+        type=int,
+        help="Number of full passes over df during training.",
+    )
+    parser.add_argument(
+        "--batch",
+        default=16,
+        type=int,
+        help="Batch size.",
+    )
+    parser.add_argument(
+        "--patience",
+        default=100,
+        type=int,
+        help="Number of epochs to wait with no imrpovement before early stopping.",
+    )
+    parser.add_argument(
+        "--img_size",
+        default=640,
+        type=int,
+        help="Image size for training.",
+    )
+    parser.add_argument(
+        "--not_rect",
+        default=True,
+        action="store_false",
+        help="Do not maintain image ratio.",
+    )
+    parser.add_argument(
+        "--do_not_save",
+        default=True,
+        action="store_false",
+        help="Disables saving of training checkpoints and final model weights.",
+    )
+    return parser.parse_args()
 
-
-print("Training complete!")
-print("Best model saved to: ...")
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    print("Training YOLO model ...")
+    train_yolo_model(
+        yaml_path=args.yaml_path,
+        name=args.name,
+        project=args.project,
+        model=args.model,
+        model_size=args.model_size,  # Nano model
+        device=args.device,
+        epochs=args.epochs,
+        batch=args.batch,
+        patience=args.patience,  # YOLO Default
+        img_size=args.img_size,  # adjusted image size from 1920x1800
+        rect=args.not_rect,  # Keep image ratio
+        save=args.do_not_save,
+    )
+
+    print("Training complete!")
+    print("Best model saved to: ...")
