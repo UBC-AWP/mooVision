@@ -54,3 +54,134 @@ def test_frame_has_overlap_picks_highest_iou_pair():
     assert has_overlap is True
     assert best_box == [10, 10, 90, 90]
 
+
+# Extract events tests
+
+def test_extract_events_filters_out_short_noise_durations():
+    """Verify events shorter than min_duration are successfully discarded."""
+    fps = 10.0
+    min_duration = 1.0  # Requires at least 10 consecutive frames to qualify
+    
+    # Sequence: 12 true frames (Keep), 5 false frames, 3 true frames (Discard as noise)
+    frame_flags = [True] * 12 + [False] * 5 + [True] * 3
+    confidences = [0.9] * len(frame_flags)
+    frame_boxes = [[10, 20, 30, 40]] * len(frame_flags)
+    frame_indices = list(range(len(frame_flags)))
+
+    events = extract_events(frame_flags, fps, min_duration, confidences, frame_boxes, frame_indices)
+
+    # Only 1 valid event should have survived the filter
+    assert len(events) == 1
+    assert events[0]["start_sec"] == 0.0
+    assert events[0]["end_sec"] == 11.0 / fps  # 11th index frame
+    assert events[0]["duration_sec"] == 1.1
+
+
+# Validation tests
+
+def test_run_detection_raises_file_not_found_on_missing_video(mocker):
+    """Ensure pipeline breaks gracefully if your video path doesn't point to a file."""
+    # Mock os.path.exists to simulate that the model exists but the video doesn't
+    mocker.patch("os.path.exists", side_effect=lambda path: path == "valid_model.pt")
+    
+    with pytest.raises(FileNotFoundError, match="Video file not found"):
+        run_detection("missing_video.mp4", "valid_model.pt", 0.1, 0.5, 1.0, 1)
+
+
+def test_run_detection_raises_value_error_on_missing_model_classes(mocker):
+    """Ensure pipeline crashes cleanly if the user attempts to find a cow using an ML model not trained on cows."""
+    mocker.patch("os.path.exists", return_value=True)
+    
+    # Stub out YOLO completely
+    mock_yolo = mocker.patch("detector.YOLO")
+    mock_instance = mock_yolo.return_value
+    # Give it an arbitrary class map lacking "cow"
+    mock_instance.names = {0: "person", 1: "dog"}
+
+    with pytest.raises(ValueError, match="cow is not found in model classes"):
+        run_detection("valid_video.mp4", "valid_model.pt", 0.1, 0.5, 1.0, 1)
+
+# Test full pipeline
+
+def test_run_detection_full_pipeline_success(mocker):
+    """
+    Executes an end-to-end integration loop of your full pipeline logic.
+    Mocks away the heavy hardware/disk dependencies (OpenCV, YOLO, Disk Write).
+    """
+    # 1. Mock IO Safety checks
+    mocker.patch("os.path.exists", return_value=True)
+    mocker.patch("os.makedirs")
+    
+    # Intercept your file-save logic completely so we don't dump JSONs onto your hard drive
+    mock_open = mocker.patch("builtins.open", mocker.mock_open())
+
+    # 2. Mock YOLO setup
+    mock_yolo_class = mocker.patch("detector.YOLO")
+    mock_model_instance = mocker.MagicMock()
+    # Provide the necessary class names dictionary mapping containing our target
+    mock_model_instance.names = {0: "person", 42: "cow"}
+    mock_yolo_class.return_value = mock_model_instance
+
+    # 3. Mock OpenCV Video Engine
+    mock_cv2_cap_class = mocker.patch("detector.cv2.VideoCapture")
+    mock_cap_instance = mocker.MagicMock()
+    mock_cap_instance.isOpened.return_value = True
+    
+    # Route Cap property queries (FPS, Width, Height, Frame Count) safely
+    mock_cap_instance.get.side_effect = lambda prop: {
+        5: 10.0,   # cv2.CAP_PROP_FPS
+        3: 640,    # cv2.CAP_PROP_FRAME_WIDTH
+        4: 480,    # cv2.CAP_PROP_FRAME_HEIGHT
+        7: 2       # cv2.CAP_PROP_FRAME_COUNT
+    }.get(prop, 0.0)
+    
+    # Configure video reader to yield 2 valid empty image frames, then signal EOF (False)
+    mock_cap_instance.read.side_effect = [
+        (True, np.zeros((480, 640, 3), dtype=np.uint8)),
+        (True, np.zeros((480, 640, 3), dtype=np.uint8)),
+        (False, None)
+    ]
+    mock_cv2_cap_class.return_value = mock_cap_instance
+
+    # Intercept window renderings so UI dialogue boxes don't pop up on your monitor
+    mocker.patch("detector.cv2.imshow")
+    mocker.patch("detector.cv2.waitKey", return_value=1)
+
+    # 4. Mock Artificial YOLO Inference Results 
+    # Construct two dummy bounding boxes positioned right on top of each other
+    mock_box_a = mocker.MagicMock()
+    mock_box_a.cls = [mocker.MagicMock(item=lambda: 42)]  # Class 42 matches our cow target
+    mock_box_a.xyxy = [[10, 10, 100, 100]]
+    mock_box_a.conf = [mocker.MagicMock(item=lambda: 0.88)]
+
+    mock_box_b = mocker.MagicMock()
+    mock_box_b.cls = [mocker.MagicMock(item=lambda: 42)]
+    mock_box_b.xyxy = [[15, 15, 105, 105]]
+    mock_box_b.conf = [mocker.MagicMock(item=lambda: 0.92)]
+
+    mock_result_frame = mocker.MagicMock()
+    mock_result_frame.boxes = [mock_box_a, mock_box_b]
+    mock_result_frame.plot.return_value = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    # The pipeline reads element [0] of the object list returned by calling the model
+    mock_model_instance.return_value = [mock_result_frame]
+
+    # Run pipeline processing with min_duration set very low so 2 frames easily make an event
+    metadata = run_detection(
+        video_path="test_pasture_video.mp4",
+        model_path="fake_yolo.pt",
+        iou_threshold=0.1,
+        conf_threshold=0.5,
+        min_duration=0.1,
+        frame_skip=1
+    )
+
+    # Validate metadata object structures
+    assert metadata["identifier"] == "test_pasture_video.mp4"
+    assert metadata["fps"] == 10.0
+    assert metadata["total_frames"] == 2
+    assert metadata["cross_sucking_detected"] is True
+    assert metadata["num_events"] == 1
+    
+    # Assert JSON file save protocol was triggered correctly
+    mock_open.assert_called_once()
