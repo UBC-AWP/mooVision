@@ -50,6 +50,44 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 
 ---
 
+## Running the Pipeline (testing version)
+
+After configuring you `.env` file, run the following commands from your terminal in the MooVision root directory:
+
+1. Read in Raw index, and Processed video indexes.
+
+   ```bash
+   uv run scripts/read_all_clips_index.py 
+   ```
+
+2. Split Data into train and tes splits.
+
+   ```bash
+   uv run scripts/splitting.py 
+   ```
+
+3. Preprocess Data for fine-tuning YOLO object detection model.
+
+   ```bash
+   uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --skip=10
+   ```
+
+4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
+
+   ```bash
+   uv run scripts/training/training_yolo.py --yaml_path="data/processed/pipeline_testing/yolo_format/dataset.yaml" --device="..."
+   ```
+
+5. Run baseline on testing set
+
+6. Load and Run YOLO model on testing set
+
+7. Evaluate results
+
+8. Clip frames from results
+
+---
+
 ## Baseline Cross-Sucking Detector
 
 A baseline script for detecting cross-sucking behaviour in calves using YOLO bounding box overlap. For each input video, the script produces a JSON metadata file containing the time windows where cross-sucking may have occurred, along with the per-frame intersection box coordinates of the overlapping region.
