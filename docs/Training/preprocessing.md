@@ -127,8 +127,6 @@ Example:
 
 `extract_labels` assumes that within zipped annotation folders bounding boxes exist in a obj_train_data folder as `.txt` files, along with images highlighted with said bounding boxes. `extract_labels` extracts only the `.txt` files in this folder, forcibly carrying the hierarchy `obj_train_data/frame_000001.txt` with it as well. The file paths of `.txt` files are then rewritten to remove the `obj_train_data` hierarchy and flatten the output. i.e. this changes filepaths from `labels/train/obj_train_data/0001_None_frame_000001.txt` to `labels/train/0001_None_frame_000001.txt`
 
-The function allows for potential name changes to the ``labels/train/obj_train_data/0001_None_frame_000001.txt`` folder via the `target_folder` argument. By default this is set as `obj_train_data`, but can be changed by passing `--target_folder="name_of_folder"` as a command line argument.
-
 ### Temporal Frame Skipping
 
 The skip parameter controls downsampling density. For instance, setting skip=5 extracts every 5th frame. Using larger step intervals accelerates dataset generation and reduces spatial autocorrelation (redundant data), but excessive downsampling introduces temporal tracking errors across fast-moving targets.
@@ -149,7 +147,7 @@ By default, the pipeline preserves existing targets to save disk I/O time. If an
 By default, the script requires an input path and output directory specified as strings.
 
 ```bash
-uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format"
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format"
 ```
 
 ### Skip Frames
@@ -157,7 +155,7 @@ uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_t
 Passing the `--skip=` argument controls the downsampling density. `skip=5` reads every 5th frame.
 
 ```bash
-uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --skip=5
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --skip=5
 ```
 
 ### Control Training and Validation Sizes
@@ -165,7 +163,7 @@ uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_t
 Use the `--val_size=` to control the training and validation sizes. val_size is in [0.0, 1.0]. The training size is 1-val_size.
 
 ```bash
-uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --val_size=0.2
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --val_size=0.2
 ```
 
 ### Changing the Random State
@@ -173,7 +171,7 @@ uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_t
 To control the random state for splitting train/val sets, use `--random_state=`.
 
 ```bash
-uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --random_state=300
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --random_state=300
 ```
 
 ### Overwriting Files
@@ -181,15 +179,7 @@ uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_t
 To overwrite files use the `--FORCE` argument.
 
 ```bash
-uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --FORCE
-```
-
-### Changing Target Folder
-
-To overwrite files use the `--target_folder=` argument.
-
-```bash
-uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --target_folder="obj_train_data"
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --FORCE
 ```
 
 ---
