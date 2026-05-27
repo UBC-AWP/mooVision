@@ -93,7 +93,7 @@ def read_data_from_index(
     """
 
     ### FILTER FOR EXISTING PATHS AND SOURCE PATHS
-    index_path = Path(index_path).absolute()
+    # index_path = Path(index_path).absolute()
     # --- Read in Index (from OneDrive) ---
     if index_path.exists():
         all_clips_index = pd.read_csv(index_path)
