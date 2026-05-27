@@ -199,7 +199,14 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
 
 ## Running the clipping script (reproduce event clips)
 
-Use this script to reproduce short clip videos from baseline JSON event metadata.
+### Overview
+
+Reproduces short clips from long-form videos using baseline JSON event metadata and writes them to a structured folder under `REPRODUCED_CLIPS_DIR`.
+
+### Input / Output
+
+**Input:** JSON metadata in `LOCAL_DIR/results/metadata/baseline` referencing source videos.  
+**Output:** `.mp4` clips in `ROOT_DIR/reproduced_clips` (optionally with `_boxed.mp4` variants).
 
 ### Prerequisites
 
@@ -211,7 +218,7 @@ This path is derived from `LOCAL_DIR` in `.env`:
 
 `BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"`
 
-### Run
+### How to run
 From the repo root:
 
 ```bash
