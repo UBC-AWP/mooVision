@@ -467,12 +467,11 @@ def run_yolo_preprocessing(
     output_dir : Path
         Base directory path where the 'images/' and 'labels/' subfolders
         will be compiled.
+    target_folder : float
+        Folder within zipped files holding bounding box annotations..
     skip : int
         The sequence interval step size for downsampling frame data (e.g.,
         passing 5 extracts every 5th sequential frame).
-    test_size : float
-        The proportion of the dataset to include in the validation split
-        (between 0.0 and 1.0).
     val_size : float
         The proportion of the dataset to include in the training split
         (between 0.0 and 1.0).
@@ -569,13 +568,13 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         type=str,
-        help=f"Output directory for train/test splits (default: {Path("data/processed/pipeline_testing/yolo_format").absolute()})",
+        help="Output directory for train/val splits.)",
     )
     parser.add_argument(
         "--target_folder",
         type=str,
         default="obj_train_data",
-        help=f"Output directory for train/test splits (default: {Path("data/processed/pipeline_testing/yolo_format").absolute()})",
+        help="Output directory for train/test splits (default: 'obj_train_data')",
     )
     parser.add_argument(
         "--skip",
