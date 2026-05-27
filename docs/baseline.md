@@ -1,9 +1,9 @@
 
-## Baseline Cross-Sucking Detector
+# Baseline Cross-Sucking Detector
 
 A baseline script for detecting cross-sucking behaviour in calves using YOLO bounding box overlap. For each input video, the script produces a JSON metadata file containing the time windows where cross-sucking may have occurred, along with the per-frame intersection box coordinates of the overlapping region.
 
-### How It Works
+## How It Works
 
 1. Loads a pretrained YOLO26 model by default (the model works on COCO dataset which detects `cow` class as a proxy for calves)
 2. Loads one video at a time (this setting might be changed in the future)
@@ -18,14 +18,14 @@ A baseline script for detecting cross-sucking behaviour in calves using YOLO bou
 2. The model, IoU threshold, confidence threshold, and number of skipped frames can be changed into other baseline models using arguments which will be described below
 3. The argument `skip_frame` allows to skip N number of frames at a time (e.g. `skip_frame = 5` means processing every 5 frames instead of just 1 frame each)
 
-### Input (baseline)
+## Input (baseline)
 
 | Property | Details |
 |---|---|
 | Format | `.mp4`, `.avi`, or any format supported by OpenCV |
 | Content | Single video clip of calves in a pen |
 
-### Output (baseline)
+## Output (baseline)
 
 Results are saved to `results/metadata/baseline/` automatically.
 
@@ -81,7 +81,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 | `avg_confidence` | Average YOLO detection confidence across all frames in the event |
 | `intersection_box` | Per-frame pixel coordinates of the overlapping region for downstream annotation |
 
-### How to run the baseline
+## How to run the baseline
 
 1. Using the default parameters:
 
@@ -102,7 +102,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 
 **Note:** If your file path contains spaces, wrapping it in quotes will avoid shell parsing errors. The file path should look like `"\Users\mickeymouse\data\video_cross_sucking.mp4"`
 
-### Arguments
+## Arguments
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
@@ -120,7 +120,7 @@ Results are saved to `results/metadata/baseline/` automatically.
 - **`--min_duration`** — raise if brief accidental box overlaps are being flagged. A value of `1.0–2.0` seconds works well as a starting point
 - **`--frame_skip`** — raise for faster processing on long videos (5–15 is a good range). Keep at `1` if you need precise event boundaries or are looking for very short events
 
-#### Demo Examples
+### Demo Examples
 
 For demonstration purposes, we provide 2 clip samples each for cross-sucking and non-cross-sucking examples (each video ~15-17s).
 
@@ -188,3 +188,7 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
 - Apply smoothing filters (e.g. Kalman filter, moving average) to bounding box trajectories to reduce flickering. Implement frame correlation analysis to determine the minimum number of consecutive frames required to accept a detection, reducing false events from transient YOLO errors
 
 - Implement intelligent frame skipping to downscale processing as data volume increases. For instance, process frames densely in regions of detected overlap, sparsely elsewhere. This will reduce storage and computation while maintaining event precision
+
+## Functions
+
+::: scripts.baseline
