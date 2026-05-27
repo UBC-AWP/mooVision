@@ -31,10 +31,9 @@ from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR
 
 
 def extract_labels(
-    labels_path: List[Path],
+    label_paths: List[Path],
     output_dir: Path,
     labels_root: Path,
-    target_folder: str,
     split: str,
     skip: int,
     FORCE: bool = False,
@@ -63,9 +62,6 @@ def extract_labels(
         Path to output directory.
     labels_root : Path
         Path to root directory of label outputs of cross-sucking events.
-    target_folder : str
-        The target folder to extract frames from in the .zip files conataining
-        the annotated data. For CVAT outputs this should be `obj_train_data`.
     split : str
         One of `train`, `val`. Dictates which split folder, train/ or val/, the
         labels should be extracted to.
@@ -163,7 +159,7 @@ def extract_labels(
         #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####
 
         # Loop over zip file paths (CVAT Outputs)
-        for input_path in labels_path:
+        for input_path in label_paths:
 
             ### THIS SHOULD BE EARLIER MAYBE? = yes, else we might
             # # run through severral iterations of this list until we get to something that is not a string
@@ -176,7 +172,7 @@ def extract_labels(
             # Standardie Path to Posix Standard
             input_path = labels_root / input_path.replace("\\", "/")
 
-            if not labels_path.exists():
+            if not input_path.exists():
                 raise FileNotFoundError(f"{input_path} not found.")
 
             # Get numeric id and part id of labelled output
@@ -190,11 +186,7 @@ def extract_labels(
                 part_id = f"part0{part_id}"
 
             # Target folder in zip file
-            target_folder = target_folder
-
-            ## WHAT HAPPENS IF THIS THROWS AN ERROR!
-            if not target_folder.exists() or not target_folder.is_dir():
-                raise FileNotFoundError(f"{target_folder} not found at {input_path}")
+            target_folder = "obj_train_data"
 
             # Look in zip folder
             with zipfile.ZipFile(input_path, "r") as zip_ref:
@@ -250,7 +242,7 @@ def extract_labels(
 
 
 def extract_frames(
-    videos: List[str],
+    video_paths: List[str],
     videos_root: Path,
     output_dir,
     split: str,
@@ -358,7 +350,7 @@ def extract_frames(
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        for video_file in videos:
+        for video_file in video_paths:
 
             # Standardize Path to Posix Standard
             video_file = videos_root / video_file.replace("\\", "/")
@@ -446,7 +438,6 @@ def create_yaml(
 def run_yolo_preprocessing(
     input_path: str,
     output_dir: str,
-    target_folder: str,
     skip: int,
     val_size: float,
     random_state: int = 300,
@@ -507,6 +498,9 @@ def run_yolo_preprocessing(
     # Convert inputs to Path objects
     train_path = Path(input_path).absolute()
     output_path = Path(output_dir).absolute()
+    skip = int(skip)
+    val_size = float(val_size)
+    random_state = int(random_state)
 
     train_df = pd.read_csv(train_path, index_col=0)
 
@@ -518,16 +512,15 @@ def run_yolo_preprocessing(
 
     # Extract frames and bounding box annotations for the train set
     extract_labels(
-        input_paths=train["labelled_clip_relative_path"],
+        label_paths=train["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
         output_dir=output_path,
-        target_folder=target_folder,
         split="train",
         skip=skip,
         FORCE=FORCE,
     )
     extract_frames(
-        videos=train["clip_relative_path"],
+        video_paths=train["clip_relative_path"],
         videos_root=UNLABELLED_CLIPS_DIR,
         output_dir=output_path,
         split="train",
@@ -537,16 +530,15 @@ def run_yolo_preprocessing(
 
     # Extract frames and bounding box annotations for the val set
     extract_labels(
-        input_paths=val["labelled_clip_relative_path"],
+        label_paths=val["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
         output_dir=output_path,
-        target_folder=target_folder,
         split="val",
         skip=skip,
         FORCE=FORCE,
     )
     extract_frames(
-        videos=val["clip_relative_path"],
+        video_paths=val["clip_relative_path"],
         videos_root=UNLABELLED_CLIPS_DIR,
         output_dir=output_path,
         split="val",
@@ -569,12 +561,6 @@ def parse_args():
         "--output_dir",
         type=str,
         help="Output directory for train/val splits.)",
-    )
-    parser.add_argument(
-        "--target_folder",
-        type=str,
-        default="obj_train_data",
-        help="Output directory for train/test splits (default: 'obj_train_data')",
     )
     parser.add_argument(
         "--skip",
@@ -608,7 +594,6 @@ if __name__ == "__main__":
     run_yolo_preprocessing(
         input_path=args.input_path,
         output_dir=args.output_dir,
-        target_folder=args.target_folder,
         skip=args.skip,
         val_size=args.val_size,
         random_state=args.random_state,
