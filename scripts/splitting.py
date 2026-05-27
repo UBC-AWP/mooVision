@@ -53,17 +53,17 @@ def train_test_to_csv(
         import pandas as pd
         from sklearn.model_selection import train_test_split
 
-        # 1. Create dummy data and define paths
+        # Create dummy data and define paths
         data = {"feature": [1, 2, 3, 4], "label": [0, 1, 0, 1]}
         df = pd.DataFrame(data)
         out_path = Path("data/processed/random")
 
-        # 2. Split into train and test
+        # Split into train and test
         train_df, test_df = train_test_split(
             df, test_size=0.50, random_state=42, shuffle=True
         )
 
-        # 3. Save to disk (overwriting any older runs)
+        # Save to disk (overwriting any older runs)
         train_test_to_csv(train_df, test_df, output_dir=out_path, FORCE=True)
     """
 
@@ -420,30 +420,33 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, run=True
     .. code-block:: python
 
         from pathlib import Path
-        from unittest.mock import MagicMock, patch
-        from my_project.preprocessing import extract_frames
+        import pandas as pd
+        from scripts.splitting import day_based_split
 
-        # Create dummy directories
-        video_root = Path("temp_videos")
-        output_dir = Path("temp_output")
-        video_root.mkdir(parents=True, exist_ok=True)
-        (video_root / "0042_clip.mp4").touch() # Just an empty file shell
+        # Setup mock data spanning multiple recording days
+        mock_data = {
+            "clip_id": [101, 102, 103, 104, 105],
+            "phase": ["PREWEANING", "WEANING", "POSTWEANING", "WEANING", "PREWEANING"],
+            "behavior": ["sucking", "normal", "sucking", "normal", "sucking"]
+        }
+        df = pd.DataFrame(mock_data)
 
-        # Mock OpenCV so it simulates reading 10 successful frames
-        with patch('cv2.VideoCapture') as mock_caps:
-            instance = mock_caps.return_value
-            instance.isOpened.side_effect = [True] * 10 + [False]
-            instance.read.return_value = (True, "mock_frame_data")
-            instance.grab.return_value = True
+        # Save mock data to a temp file path
+        csv_input = Path("data/processed_clips_index.csv")
+        csv_input.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(csv_input, index=False)
 
-            # Run the extraction function safely without a real video file
-            extract_frames(
-                videos=["0042_clip.mp4"],
-                videos_root=video_root,
-                output_dir=output_dir,
-                split="train",
-                skip=2
-            )
+        # Output target directory
+        base_output = Path("data/processed")
+
+        # Perform day-based holdout split
+        period_based_split(
+            input_path=csv_input,
+            output_dir=base_output,
+            FORCE=True,
+            run=True
+        )
+
     """
     # Do nothing if user passes false for random_split
     if not run:
@@ -524,123 +527,6 @@ def parse_args():
         default=PROCESSED_INDEX,
         help="Path to processed data file.",
     )
-<<<<<<< Updated upstream
-
-    # Match clips to source video split
-    condition = df["source_video_basename"].isin(train)
-    train = df[condition]
-    test = df[~condition]
-
-    # Save to csv
-    train_test_to_csv(train, test, output_dir, force)
-
-
-def day_based_split(input_path: Path, output_dir: Path, force=False):
-    """
-    Day-based split. Train/test split within the same pens and periods, grouped by day.
-    Reads raw data and clip names from csv, outputs train.csv and test.csv.
-    """
-    # Read Data
-    if input_path.exists():
-        df = pd.read_csv(input_path)
-    else:
-        raise FileNotFoundError(f"{input_path} does not exist.")
-    # Day level split
-    condition = df["day"].isin([1, 2])
-    train, test = df[condition], df[~condition]
-
-    # Save to csv
-    train_test_to_csv(train, test, output_dir, force)
-
-
-def pen_based_split(input_path: Path, output_dir: Path, force=False):
-    """
-    Pan-based split. Withhold one pen for evaluation, train on remaining pens.
-
-    Rotates the pen withheld for evaluation to create a total of 3 train/test splits.
-
-    Reads raw data and clip names from csv, outputs train.csv and test.csv.
-    """
-    # Read Data
-    if input_path.exists():
-        df = pd.read_csv(input_path)
-    else:
-        raise FileNotFoundError(f"{input_path} does not exist.")
-
-    # Pen-level Splits
-    pens = df["pen"].unique()
-    for pen in pens:
-        filtered = [x for x in pens if x != pen]
-        condition = df["pen"].isin(filtered)
-        train, test = df[condition], df[~condition]
-
-        # Save to csv
-        train_test_to_csv(train, test, output_dir / f"pen_{pen}", force)
-
-
-def period_based_split(input_path: Path, output_dir: Path, force=False):
-    """
-    Period-based split. Withhold one period for evaluation, train on remaining periods.
-
-    Rotates the period withheld for evalution to create a total of 3 train/test splits.
-
-    Reads raw data and clip names from csv, outputs train.csv and test.csv.
-    """
-    # Read Data
-    if input_path.exists():
-        df = pd.read_csv(input_path)
-    else:
-        raise FileNotFoundError(f"{input_path} does not exist.")
-
-    # Period-level Splits
-    periods = df["phase"].unique()
-    for period in periods:
-        filtered = [x for x in periods if x != period]
-        condition = df["phase"].isin(filtered)
-        train, test = df[condition], df[~condition]
-
-        # Save to csv
-        train_test_to_csv(train, test, output_dir / f"{period}", force)
-
-
-def pipeline_testing(input_path: Path, output_dir: Path, force=False):
-    """
-    Random Shuffle clips into train and test. Save small portion for pipeline testing (DELETE THIS FUNCTION LATER)
-
-    Reads raw data and clip names from csv, randomly shuffles them into train and test, and outputs train.csv, test.csv.
-    """
-    # Read Data
-    if input_path.exists():
-        df = pd.read_csv(input_path)
-    else:
-        raise FileNotFoundError(f"{input_path} does not exist.")
-
-    # Random Shuffle Source Videos
-    temp_df = df["source_video_basename"].drop_duplicates()
-    train, test = train_test_split(
-        temp_df, test_size=0.33, train_size=0.67, random_state=300, shuffle=True
-    )
-
-    # Match clips to source video split
-    condition = df["source_video_basename"].isin(train)
-    train = df[condition]
-    test = df[~condition]
-
-    train = train.iloc[7:13]
-    test = test.iloc[14]
-
-    # Save to csv
-    train_test_to_csv(train, test, output_dir, force)
-
-
-def main():
-    # --- Read in index file ---
-    # if PROCESSED_INDEX.exists():
-    #     processed_index = pd.read_csv(PROCESSED_INDEX)
-    # else:
-    #     raise FileNotFoundError(f"{PROCESSED_INDEX} does not exist.")
-    # Add technical execuation logic
-=======
     parser.add_argument(
         "--output_dir",
         default=OUTPUT_DIR,
@@ -662,7 +548,6 @@ def main():
         action="store_false",
         help="Disable day-based splitting",
     )
-<<<<<<< HEAD
     parser.add_argument(
         "--no_pen_split",
         action="store_false",
@@ -679,20 +564,9 @@ def main():
         help="Disable day-based splitting",
     )
     return parser.parse_args()
-=======
-    pipeline_testing(
-        input_path=PROCESSED_INDEX,
-        output_dir=OUTPUT_DIR / "pipeline_testing",
-        force=True,
-    )
-    print("Checking files created...")
-    print("All files created.")
-    print("Data splitting done.")
->>>>>>> 8dcbb2801beac09fb29b19bdc7a96ff9487f8643
 
 
 if __name__ == "__main__":
->>>>>>> Stashed changes
     print("Running data splitting...")
     args = parse_args()
     print("Creating CSV files...")
@@ -720,15 +594,12 @@ if __name__ == "__main__":
         FORCE=args.FORCE,
         run=args.no_period_split,
     )
-<<<<<<< Updated upstream
-=======
     pipeline_testing(
         input_path=args.data_path,
         output_dir=args.output_dir,
         FORCE=args.FORCE,
         run=args.no_pipeline_testing,
     )
->>>>>>> Stashed changes
     print("Checking files created...")
     print("All files created.")
     print("Data splitting done.")
