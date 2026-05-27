@@ -25,17 +25,21 @@ my_yolo_dataset/
 
 ## Intput Requirements
 
-The script takes in a path to a `train.csv` file. Before running the preprocessing execution block, ensure your local workspace satisfies the following dependencies:
+| Property | Details |
+|---|---|
+| Format | `train.csv` |
+| Content | Upstream data index of a train/test split |
+
+Before running the preprocessing execution block, ensure your local workspace satisfies the following dependencies:
 
 - `train.csv` / `test.csv` Paths: An upstream data index mapping individual clips to their corresponding annotation zip files.
-- Environment File: A fully populated local .env configuration mapping your local volume paths for UNLABELLED_CLIPS_DIR and LABELLED_CLIPS_DIR.
-- If your tracking indexes are not yet generated, execute the upstream data layer pipeline sequentially via your terminal:
+- Environment File: A fully populated local .env configuration mapping your local volume paths for ROOT_DIR and LOCAL_DIR.
+- Downloaded videos and zipped annotations (else preprocessing time will be significantly extended by file downloads).
+- If your data indexes are not yet generated, execute the upstream data layer pipeline sequentially via your terminal:
 
 ```bash
 uv run scripts/read_all_clips_index.py
-```
 
-```bash
 uv run scripts/splitting.py
 ```
 
@@ -43,13 +47,10 @@ uv run scripts/splitting.py
 
 ## Output
 
-Output is a YOLO training set.
+By default results are saved to `data/training/yolo/split_name`.
 
 ```text
-Labelling format: numericID_partID_frame_frameNum.jpg (or.txt)
-Examples: 0001_None_frame_000001.jpg, 0003_part01_frame_000645.jpg
-
-my_yolo_dataset/
+data/training/yolo/split_name/
 ├── data.yaml     
 ├── images/                  
 │   ├── train/              
@@ -85,21 +86,32 @@ data.yaml
 
 ## How it works
 
-The script takes in a `train.csv` file, creates train/val splits and sends a list of relative paths of cross-sucking videos ( `clip_relative_path` col) to `extract_frames` and a list of relative paths of annotated data (`labelled_clip_relative_path` col) to `extract_labels`.
+1) Read in `train.csv` from path, split into train and val splits.  
+2) For each split, pass a list relative paths to cross-sucking videos to `extract_frames` and a list of relative paths to zipped annotations to `extract_labels`. Relative paths of cross-sucking videos are stored in the `clips_relative_path` column, and relative paths of annotations are stored in the `labelled_clips_relative_path` column.  
+3) `extract_frames` reads in each video in the list, extracts frames as jpg images, and saves frames to either an `images/train/` or an `images/val/` subfolder depending on the split source.  
+4) `extract_labels` reads each .zip file in the list, extracts bounding box annotations as .txt files, and saves these to either a `labels/train/` or a `labels/val/` subfolder depending on the split source.  
+5) `build_yaml` creates a yaml file at `data/training/yolo/split_name/` with required classes and paths.  
 
-`extract_frames` reads in each video in the list, extracts frames as jpg images, and saves frames to either a `train/` or `val/` subfolder within an `images/` folder depending on the split source.
+### Edge Cases
 
-`extract_labels` reads each .zip file in the list, extracts bounding box annotations as .txt files, and saves these to either a `train/` or `val/` subfolder within an `labels/` folder depending on the split source.
+**"Crucial Synchronization Requirement"**
+    YOLO models link images to annotations by replacing sections of file paths: (`images` -> `labels`, `.jpg` -> `.txt`). For your dataset to sync correctly, your video processing frame rate **must exactly match** the frame indexes exported in your annotation bounding boxes. If there is a frame rate or naming mismatch, your labels will misalign with your target images, and an error will be raised.
 
-!!! warning "Crucial Synchronization Requirement"
-    YOLO models link images to annotations by replacing sections of file paths: (`images` -> `labels`, `.jpg` -> `.txt`)
-    For your dataset to sync correctly, your video processing frame rate **must exactly match** the frame indexes exported in your annotation bounding boxes. If there is a frame rate or naming mismatch, your labels will misalign with your target images.
+**"Corrupted Videos, and Mislabelled Annotations"**
+    OLO models link images to annotations by replacing sections of file paths: (`images` -> `labels`, `.jpg` -> `.txt`). For your dataset to sync correctly, your video processing frame rate **must exactly match** the frame indexes exported in your annotation bounding boxes. If there is a frame rate or naming mismatch, your labels will misalign with your target images, and an error will be raised. `-- To be filled out`
 
-### Functionality
+**"Missing Videos, or Missing Annotations"**
+    OLO models link images to annotations by replacing sections of file paths: (`images` -> `labels`, `.jpg` -> `.txt`). For your dataset to sync correctly, your video processing frame rate **must exactly match** the frame indexes exported in your annotation bounding boxes. If there is a frame rate or naming mismatch, your labels will misalign with your target images, and an error will be raised. `-- To be filled out`
 
-#### Naming
+---
 
-To handle name matching, both `extract_frames` and `extract_labels` use parsing functions from `scripts/matching.py` to extract the numeric ID and part ID of each video/zipped file. Frames are then named using the following template.
+## Core Pipeline Concepts
+
+### File Structure and Naming Mechanics
+
+To match names across videos and annotations, and prevent namespace collision across overlapping frame numbers, both extract_frames and extract_labels use parsing functions from `scripts/matching.py` to extract the numeric ID and part ID of each video/zipped file. Adding the numericID and partID ensures there are no repeated names, and allows functionality for reading in multiple videos and zipped files.
+
+Files are uniformly written out using a deterministic unique index:
 
 ```{markdown}
 Format:
@@ -111,29 +123,78 @@ Example:
 
 ```
 
-Since the first frame of each video is extracted as `frame_000001.jpg` be default, adding the numericID and partID ensures there are no repeated names, and allows functionality for reading in multiple videos and zipped files.
+#### Challenges
 
-#### Splitting
+`extract_labels` assumes that within zipped annotation folders bounding boxes exist in a obj_train_data folder as `.txt` files, along with images highlighted with said bounding boxes. `extract_labels` extracts only the `.txt` files in this folder, forcibly carrying the hierarchy `obj_train_data/frame_000001.txt` with it as well. The file paths of `.txt` files are then rewritten to remove the `obj_train_data` hierarchy and flatten the output. i.e. this changes filepaths from `labels/train/obj_train_data/0001_None_frame_000001.txt` to `labels/train/0001_None_frame_000001.txt`
 
-The `split` argument aligned with the video source and determines which folder (train/val) the output should be saved to.
+The function allows for potential name changes to the ``labels/train/obj_train_data/0001_None_frame_000001.txt`` folder via the `target_folder` argument. By default this is set as `obj_train_data`, but can be changed by passing `--target_folder="name_of_folder"` as a command line argument.
 
-#### Skipping frames
+### Temporal Frame Skipping
 
-The `skip` argument allows for skipping of frames when reading in data. For example, `skip=5` will read in every 5th frame. Reading in fewer frames will allow for faster preprocessing, and training, although it may come at the cost of increased error.
+The skip parameter controls downsampling density. For instance, setting skip=5 extracts every 5th frame. Using larger step intervals accelerates dataset generation and reduces spatial autocorrelation (redundant data), but excessive downsampling introduces temporal tracking errors across fast-moving targets.
 
-#### Overwriting Files
+**"Crucial Synchronization Requirement"**
+    The labeling extraction matches text coordinates directly against image arrays via exact name mappings. Your video recording frame rate must exactly match the frame indexes exported in your annotation bounding boxes. Any timing offset will cause your labels to misalign with your frames.
 
-By default, running preprocessing will not overwrite any file, if they exist. To overwrite existing files/directories run `FORCE=True`. This will remove any existing training sets at teh output directory and recreate a new one from scratch.
- 
+### Overwrite Behaviours (FORCE)
+
+By default, the pipeline preserves existing targets to save disk I/O time. If an output target directory is present, the script skips parsing. To discard stale data matrices and completely rebuild your dataset structures from scratch, pass the explicit overwrite flag: FORCE=True.
+
 ---
 
 ## Usage
 
+### Basic
+
+By default, the script requires an input path and output directory specified as strings.
+
+```bash
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format"
+```
+
+### Skip Frames
+
+Passing the `--skip=` argument controls the downsampling density. `skip=5` reads every 5th frame.
+
+```bash
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --skip=5
+```
+
+### Control Training and Validation Sizes
+
+Use the `--val_size=` to control the training and validation sizes. val_size is in [0.0, 1.0]. The training size is 1-val_size.
+
+```bash
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --val_size=0.2
+```
+
+### Changing the Random State
+
+To control the random state for splitting train/val sets, use `--random_state=`.
+
+```bash
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --random_state=300
+```
+
+### Overwriting Files
+
+To overwrite files use the `--FORCE` argument.
+
+```bash
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --FORCE
+```
+
+### Changing Target Folder
+
+To overwrite files use the `--target_folder=` argument.
+
+```bash
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --ouput_dir="data/processed/pipeline_testing/yolo_format" --target_folder="obj_train_data"
+```
+
 ---
 
 ## Function Reference
-
----
 
 ::: scripts.training.preprocessing
     options:
