@@ -603,6 +603,36 @@ def period_based_split(input_path: Path, output_dir: Path, force=False):
         train_test_to_csv(train, test, output_dir / f"{period}", force)
 
 
+def pipeline_testing(input_path: Path, output_dir: Path, force=False):
+    """
+    Random Shuffle clips into train and test. Save small portion for pipeline testing (DELETE THIS FUNCTION LATER)
+
+    Reads raw data and clip names from csv, randomly shuffles them into train and test, and outputs train.csv, test.csv.
+    """
+    # Read Data
+    if input_path.exists():
+        df = pd.read_csv(input_path)
+    else:
+        raise FileNotFoundError(f"{input_path} does not exist.")
+
+    # Random Shuffle Source Videos
+    temp_df = df["source_video_basename"].drop_duplicates()
+    train, test = train_test_split(
+        temp_df, test_size=0.33, train_size=0.67, random_state=300, shuffle=True
+    )
+
+    # Match clips to source video split
+    condition = df["source_video_basename"].isin(train)
+    train = df[condition]
+    test = df[~condition]
+
+    train = train.iloc[7:13]
+    test = test.iloc[14]
+
+    # Save to csv
+    train_test_to_csv(train, test, output_dir, force)
+
+
 def main():
     # --- Read in index file ---
     # if PROCESSED_INDEX.exists():
@@ -632,6 +662,7 @@ def main():
         action="store_false",
         help="Disable day-based splitting",
     )
+<<<<<<< HEAD
     parser.add_argument(
         "--no_pen_split",
         action="store_false",
@@ -648,6 +679,16 @@ def main():
         help="Disable day-based splitting",
     )
     return parser.parse_args()
+=======
+    pipeline_testing(
+        input_path=PROCESSED_INDEX,
+        output_dir=OUTPUT_DIR / "pipeline_testing",
+        force=True,
+    )
+    print("Checking files created...")
+    print("All files created.")
+    print("Data splitting done.")
+>>>>>>> 8dcbb2801beac09fb29b19bdc7a96ff9487f8643
 
 
 if __name__ == "__main__":
