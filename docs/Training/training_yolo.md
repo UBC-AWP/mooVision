@@ -86,10 +86,12 @@ train_yolo_model(
     name="cross-sucking",
     project="runs/detect",
     model=26,
-    model_size="m",
-    device="mps",
+    model_size="n",
+    device="cpu",
+    exist_ok=False,
     epochs=100,
     batch=16,
+    time=10.0,
     img_size=640,
     patience=50,
     rect=True,
@@ -107,8 +109,10 @@ python train_yolo_model.py \
   --model 26 \
   --model_size m \
   --device mps \
+  --exist_ok \
   --epochs 100 \
   --batch 16 \
+  --time 10 \
   --img_size 640 \
   --patience 50
 ```
