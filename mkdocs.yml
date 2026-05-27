@@ -22,8 +22,12 @@ plugins:
 
 nav:
   - Home: index.md
-  - Research Questions:
-    - Data Spliting: Research Questions/data_splitting.md
+  - Model Pipeline:
+    - Reading In Data: read_all_clips_index.md
+    - Splitting Data: Training/data_splitting.md
+    - Preprocessing: Training/preprocessing.md
+    - Training:
+      - YOLO: Training/training_yolo.md
     - Baseline: baseline.md
     - Model Evaluation: evaluation.md
     - Clipping: clipping.md
