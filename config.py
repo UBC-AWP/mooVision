@@ -35,7 +35,7 @@ LABELLED_CLIPS_DIR = ROOT_DIR / "cross_sucking_labelled"
 SOURCE_VIDEOS_DIR = ROOT_DIR / "raw_cross_sucking_datalog" / "videos"
 
 # Index
-INDEX_PATH = UNLABELLED_CLIPS_DIR / "all_clips_index.csv"  # Cloud Copy
+INDEX_PATH = UNLABELLED_CLIPS_DIR / "all_clips_index.csv"
 RAW_INDEX_PATH = (
     LOCAL_DIR / "data" / "raw" / "data/raw/all_clips_index_raw.csv"
 )  # Local Copy
