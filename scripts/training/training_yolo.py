@@ -127,7 +127,7 @@ def train_yolo_model(
         time=time,
         patience=patience,
         batch=batch,
-        img_size=img_size,
+        imgsz=img_size,
         save=save,
         rect=rect,
         **kwargs,
@@ -163,7 +163,7 @@ def parse_args():
     )
     parser.add_argument(
         "--model",
-        default=26,
+        default=8,
         type=int,
         help="YOLO model version. i.e. 26 for v26, 8 for v8.",
     )
