@@ -430,7 +430,8 @@ def create_yaml(
         "names": class_names,
     }
 
-    with open(output_path, "w") as f:
+    out = dataset_path + "/" + output_path
+    with open(out, "w") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
 
