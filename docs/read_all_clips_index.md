@@ -22,6 +22,10 @@ Pointform desctiption of how the script works goes here.
 
 Detailed Pipeline concept descriptions go here
 
+## Usage
+
+CLI usage goes here.
+
 ## Function Reference
 
 ::: scripts.read_all_clips_index

@@ -17,7 +17,6 @@ from config import (
     UNLABELLED_CLIPS_DIR,
     LABELLED_CLIPS_DIR,
     SOURCE_VIDEOS_DIR,
-    INDEX_PATH,
 )
 
 PROCESSED_INDEX_OUTPUT = Path("data/processed/processed_clips_index.csv").absolute()
@@ -224,43 +223,42 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Data splitting.")
     parser.add_argument(
         "--index_path",
-        default=INDEX_PATH,
-        help="Path to processed data file.",
+        help="Path to data index.",
     )
     parser.add_argument(
         "--unlabelled_clips_dir",
         default=UNLABELLED_CLIPS_DIR,
-        help=f"Output directory for train/test splits (default: {OUTPUT_DIR})",
+        help="Path to cross-sucking clips directory.",
     )
     parser.add_argument(
         "--labelled_clips_dir",
         default=LABELLED_CLIPS_DIR,
         action="store_true",
-        help="Overwrite existing file folders (default: False)",
+        help="Path to annotations directory.",
     )
     parser.add_argument(
         "--source_videos_dir",
         default=SOURCE_VIDEOS_DIR,
         action="store_false",
-        help="Disable random-based splitting",
+        help="Path to source videos directory.",
     )
     parser.add_argument(
         "--raw_index_output",
         default=RAW_INDEX_OUTPUT,
         action="store_false",
-        help="Disable day-based splitting",
+        help="Output path for raw index file.",
     )
     parser.add_argument(
         "--processed_index_output",
         default=PROCESSED_INDEX_OUTPUT,
         action="store_false",
-        help="Disable pen-based splitting",
+        help="Output path for processed index file.",
     )
     parser.add_argument(
         "--FORCE",
         default=False,
         action="store_true",
-        help="Disable period-based splitting",
+        help="Force overwrite of existing data.",
     )
     return parser.parse_args()
 
