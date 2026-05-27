@@ -180,11 +180,18 @@ def parse_args():
         help="Number of full passes over df during training.",
     )
     parser.add_argument(
+        "--time",
+        default=None,
+        type=float,
+        help="Max training time in hours.",
+    )
+    parser.add_argument(
         "--batch",
         default=16,
         type=int,
         help="Batch size.",
     )
+
     parser.add_argument(
         "--patience",
         default=100,
@@ -209,6 +216,12 @@ def parse_args():
         action="store_false",
         help="Disables saving of training checkpoints and final model weights.",
     )
+    parser.add_argument(
+        "--exist_ok",
+        default=False,
+        action="store_true",
+        help="Overwrite existing project.",
+    )
     return parser.parse_args()
 
 
@@ -220,13 +233,15 @@ if __name__ == "__main__":
         name=args.name,
         project=args.project,
         model=args.model,
-        model_size=args.model_size,  # Nano model
+        model_size=args.model_size,
         device=args.device,
+        exist_ok=args.exist_ok,
         epochs=args.epochs,
         batch=args.batch,
-        patience=args.patience,  # YOLO Default
-        img_size=args.img_size,  # adjusted image size from 1920x1800
-        rect=args.not_rect,  # Keep image ratio
+        time=args.time,
+        patience=args.patience,
+        img_size=args.img_size,
+        rect=args.not_rect,
         save=args.do_not_save,
     )
 
