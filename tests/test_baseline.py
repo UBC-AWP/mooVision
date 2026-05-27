@@ -110,13 +110,20 @@ def test_extract_events_filters_out_short_noise_durations():
 # Validation tests
 
 def test_run_detection_raises_file_not_found_on_missing_video(mocker):
-    """Ensure pipeline breaks gracefully if your video path doesn't point to a file."""
+    """Ensure pipeline breaks gracefully if the video path doesn't point to a file."""
     # Mock os.path.exists to simulate that the model exists but the video doesn't
     mocker.patch("os.path.exists", side_effect=lambda path: path == "valid_model.pt")
     
     with pytest.raises(FileNotFoundError, match="Video file not found"):
         run_detection("missing_video.mp4", "valid_model.pt", 0.1, 0.5, 1.0, 1)
 
+def test_run_detection_raises_file_not_found_on_missing_model(mocker):
+    """Ensure pipeline breaks gracefully if the model path doesn't exist."""
+    # First call (video check) returns True. Second call (model check) returns False.
+    mocker.patch("os.path.exists", side_effect=[True, False])
+    
+    with pytest.raises(FileNotFoundError, match="Model file not found"):
+        run_detection("valid_video.mp4", "missing_model.pt", 0.1, 0.5, 1.0, 1)
 
 def test_run_detection_raises_value_error_on_missing_model_classes(mocker):
     """Ensure pipeline crashes cleanly if the user attempts to find a cow using an ML model not trained on cows."""
@@ -135,14 +142,13 @@ def test_run_detection_raises_value_error_on_missing_model_classes(mocker):
 
 def test_run_detection_full_pipeline_success(mocker):
     """
-    Executes an end-to-end integration loop of your full pipeline logic.
+    Executes an end-to-end integration loop of the full pipeline logic.
     Mocks away the heavy hardware/disk dependencies (OpenCV, YOLO, Disk Write).
     """
     # 1. Mock IO Safety checks
     mocker.patch("os.path.exists", return_value=True)
     mocker.patch("os.makedirs")
     
-    # Intercept your file-save logic completely so we don't dump JSONs onto your hard drive
     mock_open = mocker.patch("builtins.open", mocker.mock_open())
 
     # 2. Mock YOLO setup
@@ -173,7 +179,7 @@ def test_run_detection_full_pipeline_success(mocker):
     ]
     mock_cv2_cap_class.return_value = mock_cap_instance
 
-    # Intercept window renderings so UI dialogue boxes don't pop up on your monitor
+    # Intercept window renderings so UI dialogue boxes don't pop up on the monitor
     mocker.patch("cv2.imshow")
     mocker.patch("cv2.waitKey", return_value=1)
 
