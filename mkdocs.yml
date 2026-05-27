@@ -25,6 +25,8 @@ nav:
   - Model Pipeline:
     - Splitting Data: Training/data_splitting.md
     - Preprocessing: Training/preprocessing.md
+    - Training:
+      - YOLO: Training/training_yolo.md
     - Baseline: baseline.md
     - Model Evaluation: evaluation.md
     - Clipping: clipping.md
