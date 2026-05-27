@@ -2,6 +2,8 @@
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache
+.ruff_cache
 
 # --- Tooling / version managers ---
 .python-version
@@ -21,3 +23,9 @@ site/
 
 # --- Models ---
 *.pt
+
+# --- Data ---
+data/
+
+# --- YOLO OUTPUT ---
+runs/
