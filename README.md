@@ -50,26 +50,26 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 
 ---
 
-## Running the Pipeline (testing version)
+## Running the Pipeline (demo version)
 
 After configuring you `.env` file, run the following commands from your terminal in the MooVision root directory:
 
 1. Read in Raw index, and Processed video indexes.
 
    ```bash
-   uv run scripts/read_all_clips_index.py 
+   uv run scripts/read_all_clips_index.py --FORCE
    ```
 
 2. Split Data into train and tes splits.
 
    ```bash
-   uv run scripts/splitting.py 
+   uv run scripts/splitting.py --FORCE
    ```
 
-3. Preprocess Data for fine-tuning YOLO object detection model.
+3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set)
 
    ```bash
-   uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --skip=10
+   uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --skip=10 --FORCE
    ```
 
 4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
@@ -78,13 +78,40 @@ After configuring you `.env` file, run the following commands from your terminal
    uv run scripts/training/training_yolo.py --yaml_path="data/processed/pipeline_testing/yolo_format/dataset.yaml" --device="..."
    ```
 
-5. Run baseline on testing set
+5. Run baseline on testing set:
 
-6. Load and Run YOLO model on testing set
+   - Cross-sucking examples (~2-3 minutes):
 
-7. Evaluate results
+      ```bash
+      uv run scripts/baseline/baseline.py --video "sample_videos/cross_sucking_clip_sample/CS_0276_WEAN_d1_p2_cowT_16102025_ch02-20251016124717_19033_19045.mp4"
+      ```
 
-8. Clip frames from results
+   - Non-cross-sucking examples (~1-2 minutes):
+
+      ```bash
+      uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch05_20251114073451_15s.mp4"
+      ```
+
+6. Load and Run YOLO model on testing set:
+
+   ```bash
+   #script will be done tonight for this.
+   ```
+
+7. Evaluate results:
+
+   ```bash
+       uv run python scripts/evaluation.py \
+           --predictions results/metadata/baseline/ \
+           --ground_truth data/raw/all_clips_index_raw.csv \
+           --output results/evaluation_report.json
+   ```
+
+8. Clip frames from results:
+
+   ```bash
+       uv run python scripts/clipping.py
+   ```
 
 ---
 
@@ -319,3 +346,35 @@ Results are saved to the path specified by `--output`.
 
 - **`--temporal_iou_threshold`** — lower values (e.g. `0.3`) are more lenient about timing overlap. Raise if you want stricter matching
 - **`--confidence_threshold`** — raise if too many low confidence predictions are being counted. Lower if the model is being too conservative
+
+---
+
+## Clipping
+
+Running the clipping script (reproduce event clips)
+
+### Overview
+
+Reproduces short clips from long-form videos using baseline JSON event metadata and writes them to a structured folder under REPRODUCED_CLIPS_DIR.
+
+### Input / Output
+
+Input: JSON metadata in LOCAL_DIR/results/metadata/baseline referencing source videos.
+Output: .mp4 clips in ROOT_DIR/reproduced_clips (optionally with _boxed.mp4 variants).
+
+### Prerequisites
+
+Make sure your .env is set correctly (see above).
+Make sure baseline metadata exists locally at: `mooVision/results/metadata/baseline`
+This path is derived from `LOCAL_DIR` in `.env`: `BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"`
+
+### How to run
+
+From the repo root:
+
+```bash
+uv run python scripts/clipping.py
+```
+  
+Outputs are written to the directory configured in config.py:
+REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"
