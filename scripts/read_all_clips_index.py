@@ -9,6 +9,7 @@ import sys
 import pandas as pd
 import warnings
 from matching import is_match
+import argparse
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -219,17 +220,59 @@ def read_data_from_index(
         print(f"Saved to {processed_index_dir}")
 
 
-def main():
-    read_data_from_index(
-        index_path=INDEX_PATH,
-        unlabelled_clips_path=UNLABELLED_CLIPS_DIR,
-        labelled_clips_path=LABELLED_CLIPS_DIR,
-        source_videos_path=SOURCE_VIDEOS_DIR,  # filter out bad source video too!
-        out_index_dir=RAW_INDEX_OUTPUT,
-        processed_index_dir=PROCESSED_INDEX_OUTPUT,
-        FORCE=True,
+def parse_args():
+    parser = argparse.ArgumentParser(description="Data splitting.")
+    parser.add_argument(
+        "--index_path",
+        default=INDEX_PATH,
+        help="Path to processed data file.",
     )
+    parser.add_argument(
+        "--unlabelled_clips_dir",
+        default=UNLABELLED_CLIPS_DIR,
+        help=f"Output directory for train/test splits (default: {OUTPUT_DIR})",
+    )
+    parser.add_argument(
+        "--labelled_clips_dir",
+        default=LABELLED_CLIPS_DIR,
+        action="store_true",
+        help="Overwrite existing file folders (default: False)",
+    )
+    parser.add_argument(
+        "--source_videos_dir",
+        default=SOURCE_VIDEOS_DIR,
+        action="store_false",
+        help="Disable random-based splitting",
+    )
+    parser.add_argument(
+        "--raw_index_output",
+        default=RAW_INDEX_OUTPUT,
+        action="store_false",
+        help="Disable day-based splitting",
+    )
+    parser.add_argument(
+        "--processed_index_output",
+        default=PROCESSED_INDEX_OUTPUT,
+        action="store_false",
+        help="Disable pen-based splitting",
+    )
+    parser.add_argument(
+        "--FORCE",
+        default=False,
+        action="store_true",
+        help="Disable period-based splitting",
+    )
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    read_data_from_index(
+        index_path=args.index_path,
+        unlabelled_clips_dir=args.unlabelled_clips_dir,
+        labelled_clips_dir=args.labelled_clips_dir,
+        source_videos_dir=args.source_video_dir,
+        raw_index_output=args.raw_index_output,
+        processed_index_output=args.processed_index_output,
+        FORCE=True,
+    )
