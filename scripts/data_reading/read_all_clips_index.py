@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 import pandas as pd
 import warnings
-from matching import is_match
+from scripts.data_reading.matching import is_match
 import argparse
 
 sys.path.append(str(Path(__file__).parent.parent))

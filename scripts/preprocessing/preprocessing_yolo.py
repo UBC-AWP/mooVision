@@ -26,7 +26,7 @@ import pandas as pd
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from scripts.matching import parse_labelled_name, parse_unlabelled_name
+from scripts.data_reading.matching import parse_labelled_name, parse_unlabelled_name
 from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR
 
 
