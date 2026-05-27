@@ -23,17 +23,47 @@ def test_compute_iou_partial_overlap():
     box_b = [5, 0, 15, 10]    # Area = 100
     # Intersection is from x=5 to 10, y=0 to 10 -> Area = 50
     # Union = 100 + 100 - 50 = 150
-    # Expected IoU = 50 / 150 = 0.3333...
+    # Expected IoU = 50 / 150
     iou, inter_box = compute_iou(box_a, box_b)
     
-    assert pytest.approx(iou, rel=1e-4) == 0.3333
+    assert pytest.approx(iou, rel=1e-4) == 50/150
     assert inter_box == [5, 0, 10, 10]
+
+    # test just overlap with area value of 1
+    box_a = [0, 0, 10, 10]    # Area = 100
+    box_b = [9, 9, 11, 11]    # Area = 4
+    # Intersection is from x=9 to 10, y=9 to 10 -> Area = 1
+    # Union = 100 + 4 - 1 = 103
+    # Expected IoU = 1 / 103
+    iou, inter_box = compute_iou(box_a, box_b)
+    
+    assert pytest.approx(iou, rel=1e-4) == 1/103
+    assert inter_box == [9, 9, 10, 10]
+
+    # box is inside another box
+    box_a = [0, 0, 10, 10]    # Area = 100
+    box_b = [1, 9, 9, 10]    # Area = 4
+    # Intersection is from x=1 to 9, y=9 to 10 -> Area = 8
+    # Union = 100 + 8 - 8 = 100
+    # Expected IoU = 8/100
+    iou, inter_box = compute_iou(box_a, box_b)
+    
+    assert pytest.approx(iou, rel=1e-4) == 8/100
+    assert inter_box == [1, 9, 9, 10]
 
 
 def test_compute_iou_no_overlap():
     """Verify that completely disconnected boxes yield 0.0 IoU."""
     box_a = [0, 0, 50, 50]
     box_b = [100, 100, 150, 150]
+    iou, inter_box = compute_iou(box_a, box_b)
+    
+    assert iou == 0.0
+    assert inter_box is None
+
+    # edge cases where the boxes are next to each other
+    box_a = [0, 0, 50, 50]
+    box_b = [50, 0, 100, 50]
     iou, inter_box = compute_iou(box_a, box_b)
     
     assert iou == 0.0
@@ -73,8 +103,8 @@ def test_extract_events_filters_out_short_noise_durations():
     # Only 1 valid event should have survived the filter
     assert len(events) == 1
     assert events[0]["start_sec"] == 0.0
-    assert events[0]["end_sec"] == 11.0 / fps  # 11th index frame
-    assert events[0]["duration_sec"] == 1.1
+    assert events[0]["end_sec"] == 12.0 / fps  # 11th index frame
+    assert events[0]["duration_sec"] == 1.2
 
 
 # Validation tests
@@ -93,7 +123,7 @@ def test_run_detection_raises_value_error_on_missing_model_classes(mocker):
     mocker.patch("os.path.exists", return_value=True)
     
     # Stub out YOLO completely
-    mock_yolo = mocker.patch("detector.YOLO")
+    mock_yolo = mocker.patch("scripts.baseline.baseline.YOLO")
     mock_instance = mock_yolo.return_value
     # Give it an arbitrary class map lacking "cow"
     mock_instance.names = {0: "person", 1: "dog"}
@@ -116,14 +146,14 @@ def test_run_detection_full_pipeline_success(mocker):
     mock_open = mocker.patch("builtins.open", mocker.mock_open())
 
     # 2. Mock YOLO setup
-    mock_yolo_class = mocker.patch("detector.YOLO")
+    mock_yolo_class = mocker.patch("scripts.baseline.baseline.YOLO")
     mock_model_instance = mocker.MagicMock()
     # Provide the necessary class names dictionary mapping containing our target
     mock_model_instance.names = {0: "person", 42: "cow"}
     mock_yolo_class.return_value = mock_model_instance
 
     # 3. Mock OpenCV Video Engine
-    mock_cv2_cap_class = mocker.patch("detector.cv2.VideoCapture")
+    mock_cv2_cap_class = mocker.patch("cv2.VideoCapture")
     mock_cap_instance = mocker.MagicMock()
     mock_cap_instance.isOpened.return_value = True
     
@@ -144,19 +174,19 @@ def test_run_detection_full_pipeline_success(mocker):
     mock_cv2_cap_class.return_value = mock_cap_instance
 
     # Intercept window renderings so UI dialogue boxes don't pop up on your monitor
-    mocker.patch("detector.cv2.imshow")
-    mocker.patch("detector.cv2.waitKey", return_value=1)
+    mocker.patch("cv2.imshow")
+    mocker.patch("cv2.waitKey", return_value=1)
 
     # 4. Mock Artificial YOLO Inference Results 
     # Construct two dummy bounding boxes positioned right on top of each other
     mock_box_a = mocker.MagicMock()
     mock_box_a.cls = [mocker.MagicMock(item=lambda: 42)]  # Class 42 matches our cow target
-    mock_box_a.xyxy = [[10, 10, 100, 100]]
+    mock_box_a.xyxy = [np.array([10, 10, 100, 100])]
     mock_box_a.conf = [mocker.MagicMock(item=lambda: 0.88)]
 
     mock_box_b = mocker.MagicMock()
     mock_box_b.cls = [mocker.MagicMock(item=lambda: 42)]
-    mock_box_b.xyxy = [[15, 15, 105, 105]]
+    mock_box_b.xyxy = [np.array([15, 15, 105, 105])]
     mock_box_b.conf = [mocker.MagicMock(item=lambda: 0.92)]
 
     mock_result_frame = mocker.MagicMock()

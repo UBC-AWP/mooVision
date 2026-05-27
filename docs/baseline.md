@@ -179,7 +179,7 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
 
 ## Future Improvements
 
-- Consider using proportion-based overlap (% of bounding box covered) as a better alternative or an addition to using overlapping area which is sensitive to camera angle and distance.
+- Consider using other proportion-based overlaps (e.g. intersection over minimum, etc.) as a better alternative or an addition to using overlapping area which is sensitive to camera angle and distance.
 
 - Use a "grace period" for handling the brief detection gaps (0.5–1.0 seconds) due to YOLO's missed break event continuity, splitting a single cross-sucking into multiple fragmented events. This will allow events separated by brief gaps to be treated as a single continuous interaction
 
