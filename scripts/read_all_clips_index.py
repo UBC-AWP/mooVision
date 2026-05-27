@@ -26,11 +26,11 @@ RAW_INDEX_OUTPUT = Path("data/raw/all_clips_index_raw.csv").absolute()
 
 def read_data_from_index(
     index_path: Path,
-    unlabelled_clips_path: Path,
-    labelled_clips_path: Path,
-    source_videos_path: Path,  # filter out bad source video too!
-    out_index_dir: Path,
-    processed_index_dir: Path,
+    unlabelled_clips_dir: Path,
+    labelled_clips_dir: Path,
+    source_videos_dir: Path,  # filter out bad source video too!
+    raw_index_output: Path,
+    processed_index_output: Path,
     FORCE: bool = False,
 ):
     """
@@ -78,7 +78,7 @@ def read_data_from_index(
     source files and cross sucking clips, as well as other specific column
     formats. See documentation for more details.
 
-    Naming Convention:
+    Naming Conventions:
         Convention:
             CS_{clip_number)_{Weaning_period}_d{day_number}_p{pen_number}_cow{cow_identifier}_{ddmmyyyy}_{source_video_base_name}_{clip_start_time_s}_{clip_end_time_s}.mp4
         Example:
@@ -89,7 +89,7 @@ def read_data_from_index(
 
     Examples
     --------
-    >>> read_data_from_index(ROOT / INDEX_PATH)
+    >>> read_data_from_index(INDEX_PATH)
     """
 
     ### FILTER FOR EXISTING PATHS AND SOURCE PATHS
@@ -103,33 +103,33 @@ def read_data_from_index(
     # --- Save Raw index to disk ---
 
     # Do nothing if raw index already exists
-    if out_index_dir.exists() and not FORCE:
-        print(f"{out_index_dir} already exists.")
+    if raw_index_output.exists() and not FORCE:
+        print(f"{raw_index_output} already exists.")
 
     # Save raw index to repo if it does not, or if forced
     else:
         # Create Path
-        out_index_dir.parent.mkdir(parents=True, exist_ok=True)
+        raw_index_output.parent.mkdir(parents=True, exist_ok=True)
         # Save Raw Index
-        all_clips_index.to_csv(out_index_dir)
+        all_clips_index.to_csv(raw_index_output)
         # Print Confirmation
-        print(f"Saved to {out_index_dir}")
+        print(f"Saved to {raw_index_output}")
 
     # --- Process Raw Index ---
 
     # Do nothing if processed file already exists
-    if processed_index_dir.exists() and not FORCE:
-        print(f"{processed_index_dir} already exists.")
+    if processed_index_output.exists() and not FORCE:
+        print(f"{processed_index_output} already exists.")
     else:
         # Create directory
-        processed_index_dir.parent.mkdir(parents=True, exist_ok=True)
+        processed_index_output.parent.mkdir(parents=True, exist_ok=True)
 
         # Create filter list for index
         exists = []
         for p in all_clips_index["clip_relative_path"]:
 
             # Create Consistent Path Structure in Posix Standard ("/")
-            path = str(unlabelled_clips_path / p)
+            path = str(unlabelled_clips_dir / p)
             path = path.replace("\\", "/")
 
             # If clip exists in unlabelled_clips_path append True
@@ -143,7 +143,7 @@ def read_data_from_index(
 
         # Get name and path for all labelled cross sucking files (.zip files)
         paths = []
-        for path in labelled_clips_path.rglob(
+        for path in labelled_clips_dir.rglob(
             "*.zip"
         ):  # assume all .zip files are labelled CS
             paths.append(
@@ -216,8 +216,8 @@ def read_data_from_index(
             ~available_clips_index["labelled_clip_relative_path"].isna()
         ]
 
-        available_clips_index.to_csv(processed_index_dir)
-        print(f"Saved to {processed_index_dir}")
+        available_clips_index.to_csv(processed_index_output)
+        print(f"Saved to {processed_index_output}")
 
 
 def parse_args():
@@ -274,5 +274,5 @@ if __name__ == "__main__":
         source_videos_dir=args.source_video_dir,
         raw_index_output=args.raw_index_output,
         processed_index_output=args.processed_index_output,
-        FORCE=True,
+        FORCE=args.FORCE,
     )
