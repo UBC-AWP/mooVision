@@ -202,3 +202,82 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
         ```bash
         uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch04_20250828075551_15s.mp4"
         ```
+---
+
+## Evaluation
+
+The evaluation script compares baseline model predictions against ground truth annotations to measure detection performance across two levels — event level and sequence level.
+
+### How It Works
+
+1. Loads all baseline prediction JSON files from the results directory
+2. Loads the ground truth annotations from the processed clips index CSV
+3. Matches predictions to ground truth events using temporal IoU per video
+4. Computes precision, recall, F1, F2 and bounding box IoU at the event level
+5. Computes temporal IoU at the sequence level
+6. Stratifies all results by pen and weaning stage
+7. Saves a full evaluation report as a JSON file
+
+### Input
+
+| Property | Details |
+|---|---|
+| Predictions | Directory of baseline JSON files from `results/metadata/baseline/` |
+| Ground truth | Processed clips index CSV from `data/raw/all_clips_index_raw.csv` |
+
+### Output
+
+Results are saved to the path specified by `--output`.
+
+**Output fields:**
+
+| Field | Description |
+|---|---|
+| `true_positives` | Predicted events that correctly match a ground truth event |
+| `false_positives` | Predicted events with no matching ground truth event |
+| `false_negatives` | Ground truth events the model missed |
+| `precision` | Fraction of flagged events that were correct |
+| `recall` | Fraction of real events that were found |
+| `f1` | Balanced average of precision and recall |
+| `f2` | Recall-weighted score — prioritizes not missing real events |
+| `avg_bbox_iou` | Average spatial overlap between predicted and ground truth boxes |
+| `avg_temporal_iou` | Average time window overlap between predictions and ground truth |
+| `by_pen` | All metrics broken down by pen |
+| `by_weaning_stage` | All metrics broken down by weaning stage |
+
+### How to Run
+
+1. Using default thresholds:
+
+```bash
+    uv run python scripts/evaluation.py \
+        --predictions results/metadata/baseline/ \
+        --ground_truth data/raw/all_clips_index_raw.csv \
+        --output results/evaluation_report.json
+```
+
+2. Using custom thresholds:
+
+```bash
+    uv run python scripts/evaluation.py \
+        --predictions results/metadata/baseline/ \
+        --ground_truth data/raw/all_clips_index_raw.csv \
+        --output results/evaluation_report.json \
+        --confidence_threshold 0.6 \
+        --temporal_iou_threshold 0.4
+```
+
+### Arguments
+
+| Argument | Type | Default | Description |
+|---|---|---|---|
+| `--predictions` | str | - | Directory containing baseline JSON prediction files (required) |
+| `--ground_truth` | str | - | Path to processed clips index CSV (required) |
+| `--output` | str | - | Path to save evaluation report JSON (optional) |
+| `--confidence_threshold` | float | `0.5` | Minimum confidence score to consider a prediction |
+| `--temporal_iou_threshold` | float | `0.5` | Minimum temporal IoU to count a prediction as a match |
+
+### Tuning Tips
+
+- **`--temporal_iou_threshold`** — lower values (e.g. `0.3`) are more lenient about timing overlap. Raise if you want stricter matching
+- **`--confidence_threshold`** — raise if too many low confidence predictions are being counted. Lower if the model is being too conservative
