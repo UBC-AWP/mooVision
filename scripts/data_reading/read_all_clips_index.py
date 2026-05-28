@@ -8,10 +8,10 @@ from pathlib import Path
 import sys
 import pandas as pd
 import warnings
-from scripts.data_reading.matching import is_match
+from matching import is_match
 import argparse
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from config import (
     UNLABELLED_CLIPS_DIR,
