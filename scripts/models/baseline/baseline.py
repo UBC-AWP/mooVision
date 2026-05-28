@@ -207,15 +207,16 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
         FileNotFoundError: If video or model file cannot be found
         ValueError: If target class is not in model
     """
+    # Download and loading the model
+    print(f"[INFO] Loading model: {model_path}")
+    model = YOLO(model_path)
+
     # Validate inputs
     if not os.path.exists(video_path):
         raise FileNotFoundError(f"Video file not found: {video_path}")
     
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model file not found: {model_path}")
-    
-    print(f"[INFO] Loading model: {model_path}")
-    model = YOLO(model_path)
 
     class_name_to_id = {v: k for k, v in model.names.items()}
     target_ids = {class_name_to_id[TARGET_CLASS_NAME]} if TARGET_CLASS_NAME in class_name_to_id else set()
