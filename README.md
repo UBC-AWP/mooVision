@@ -89,7 +89,7 @@ After configuring you `.env` file, run the following commands from your terminal
    - Non-cross-sucking examples (~1-2 minutes):
 
       ```bash
-      uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch05_20251114073451_15s.mp4"
+      uv run scripts/models/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch05_20251114073451_15s.mp4"
       ```
 
 6. Load and Run YOLO model on testing set:
