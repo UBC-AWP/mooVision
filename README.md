@@ -57,25 +57,25 @@ After configuring you `.env` file, run the following commands from your terminal
 1. Read in Raw index, and Processed video indexes.
 
    ```bash
-   uv run scripts/read_all_clips_index.py --FORCE
+   uv run scripts/data_reading/read_all_clips_index.py --FORCE
    ```
 
 2. Split Data into train and tes splits.
 
    ```bash
-   uv run scripts/splitting.py --FORCE
+   uv run scripts/data_splitting/data_splitting.py --FORCE
    ```
 
 3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set)
 
    ```bash
-   uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/processed/pipeline_testing/yolo_format" --skip=10 --FORCE
+   uv run scripts/preprocessing/preprocessing_yolo.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/training/pipeline_testing/yolo_format" --skip=10 --FORCE
    ```
 
 4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
 
    ```bash
-   uv run scripts/training/training_yolo.py --yaml_path="data/processed/pipeline_testing/yolo_format/dataset.yaml" --device="..."
+   uv run scripts/training/training_yolo.py --yaml_path="data/training/pipeline_testing/yolo_format/dataset.yaml" --device="..."
    ```
 
 5. Run baseline on testing set:
@@ -83,7 +83,7 @@ After configuring you `.env` file, run the following commands from your terminal
    - Cross-sucking examples (~2-3 minutes):
 
       ```bash
-      uv run scripts/baseline/baseline.py --video "sample_videos/cross_sucking_clip_sample/CS_0276_WEAN_d1_p2_cowT_16102025_ch02-20251016124717_19033_19045.mp4"
+      uv run scripts/models/baseline/baseline.py --video "sample_videos/cross_sucking_clip_sample/CS_0276_WEAN_d1_p2_cowT_16102025_ch02-20251016124717_19033_19045.mp4"
       ```
 
    - Non-cross-sucking examples (~1-2 minutes):
