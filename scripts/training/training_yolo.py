@@ -110,7 +110,7 @@ def train_yolo_model(
             save=True,
             patience=50,
             name="cross_sucking",
-            project="runs/detect",
+            project="MooVision",
         )
     """
     # Load pretrained model
@@ -158,7 +158,7 @@ def parse_args():
     parser.add_argument(
         "--project",
         type=str,
-        default="runs/detect",
+        default="MooVision",
         help="Output directory.",
     )
     parser.add_argument(
@@ -246,4 +246,4 @@ if __name__ == "__main__":
     )
 
     print("Training complete!")
-    print("Best model saved to: ...")
+    print("Best model saved to: runs/detect/MooVision/cross-sucking/weights/best.pt")
