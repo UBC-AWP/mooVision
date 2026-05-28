@@ -186,7 +186,7 @@ uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_t
 
 ## Function Reference
 
-::: scripts.training.preprocessing
+::: scripts.preprocessing.preprocessing_yolo
     options:
         show_source: false
         show_root_heading: true

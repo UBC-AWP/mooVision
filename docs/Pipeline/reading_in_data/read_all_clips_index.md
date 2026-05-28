@@ -28,7 +28,7 @@ CLI usage goes here.
 
 ## Function Reference
 
-::: scripts.read_all_clips_index
+::: scripts.data_reading.read_all_clips_index
     options:
         show_source: false
         show_root_heading: true

@@ -23,14 +23,14 @@ plugins:
 nav:
   - Home: index.md
   - Model Pipeline:
-    - Reading In Data: read_all_clips_index.md
-    - Splitting Data: Training/data_splitting.md
-    - Preprocessing: Training/preprocessing.md
+    - Reading In Data: Pipeline/reading_in_data/read_all_clips_index.md
+    - Splitting Data: Pipeline/data_splitting/data_splitting.md
+    - Preprocessing: Pipeline/preprocessing/preprocessing.md
     - Training:
-      - YOLO: Training/training_yolo.md
-    - Baseline: baseline.md
-    - Model Evaluation: evaluation.md
-    - Clipping: clipping.md
+      - YOLO: Pipeline/Training/training_yolo.md
+    - Baseline: Pipeline/models/baseline.md
+    - Model Evaluation: Pipeline/evaluation/evaluation.md
+    - Clipping: Pipeline/generating_clips/clipping.md
   - Utils:
     - Utils: utils/get_video.md
   - About:

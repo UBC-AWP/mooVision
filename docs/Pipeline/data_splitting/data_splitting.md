@@ -171,7 +171,7 @@ Note: If you are creating your own processed data file, the data must adhere to 
 
 ## Function Reference
 
-::: scripts.splitting
+::: scripts.data_splitting.data_splitting
     options:
         show_source: false
         show_root_heading: true
