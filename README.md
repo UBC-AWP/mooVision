@@ -50,6 +50,9 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 
 ---
 
+## Pipeline Diagram
+
+
 ## Running the Pipeline (demo version)
 
 After configuring you `.env` file, run the following commands from your terminal in the MooVision root directory:
