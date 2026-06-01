@@ -1,7 +1,7 @@
 site_name: MooVision
 
 theme:
-  name: readthedocs
+  name: material
   highlightjs: true
   hljs_languages:
     - yaml
@@ -11,7 +11,6 @@ extra_css:
   - stylesheets/extra.css
 
 markdown_extensions:
-  - pymdownx.superfences
   - pymdownx.tabbed
   - pymdownx.details
   - pymdownx.arithmatex
@@ -25,7 +24,9 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 
 extra_javascript:
+  - https://unpkg.com/@mermaid-js/layout-elk@0.1.7/dist/mermaid-layout-elk.js
   - https://unpkg.com/mermaid@11/dist/mermaid.min.js
+  - javascripts/mermaid-init.js
 
 plugins:
   - search
