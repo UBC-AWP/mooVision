@@ -51,7 +51,7 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 ---
 
 ## Pipeline Diagram
-
+<img src="img/pipeline_diagram.png" width="370"/>
 
 ## Running the Pipeline (demo version)
 
