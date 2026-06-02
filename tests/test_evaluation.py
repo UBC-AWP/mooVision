@@ -123,3 +123,120 @@ class TestComputeTemporalIou:
         """
         iou = compute_temporal_iou(3.0, 8.0, 6.0, 12.0)
         assert 0.0 <= iou <= 1.0
+
+# ===========================================================================
+# TESTS: compute_bbox_iou
+# ===========================================================================
+ 
+class TestComputeBboxIou:
+    """
+    Tests for compute_bbox_iou().
+ 
+    Note: this function uses min area normalization instead of union
+    to correct for camera distance bias. A score of 1.0 means the
+    smaller box is completely covered by the overlap.
+    """
+ 
+    def test_perfect_overlap(self):
+        """
+        Identical boxes should give overlap ratio of 1.0.
+        """
+        box = [0, 0, 100, 100]
+        iou = compute_bbox_iou(box, box)
+        assert iou == 1.0
+ 
+    def test_no_overlap(self):
+        """
+        Completely non-overlapping boxes should give 0.0.
+        """
+        box_pred = [0,   0,  50,  50]
+        box_gt   = [60, 60, 110, 110]
+        iou = compute_bbox_iou(box_pred, box_gt)
+        assert iou == 0.0
+ 
+    def test_partial_overlap(self):
+        """
+        Partially overlapping boxes should give ratio between 0 and 1.
+        """
+        box_pred = [0,  0, 100, 100]
+        box_gt   = [50, 0, 150, 100]
+        iou = compute_bbox_iou(box_pred, box_gt)
+        assert 0.0 < iou < 1.0
+ 
+    def test_camera_distance_bias_correction(self):
+        """
+        Tests the key feature of this function: correcting for camera distance.
+ 
+        Two scenarios with the same proportional overlap but different box sizes
+        (simulating calves at different distances from camera).
+        Both should give similar overlap ratios, unlike standard IoU which
+        would give very different scores.
+ 
+        Small boxes (far away calves):
+            pred: 100x100, gt: 100x100, overlap: 80x80
+            min_area ratio = 6400/10000 = 0.64
+ 
+        Large boxes (close up calves):
+            pred: 400x400, gt: 400x400, overlap: 320x320
+            min_area ratio = 102400/160000 = 0.64
+ 
+        Both should give the same score since proportional overlap is identical.
+        """
+        # Small boxes — far away calves
+        small_pred = [0,   0,  100, 100]
+        small_gt   = [20,  20, 120, 120]
+        iou_small  = compute_bbox_iou(small_pred, small_gt)
+ 
+        # Large boxes — close up calves (4x scale)
+        large_pred = [0,   0,  400, 400]
+        large_gt   = [80,  80, 480, 480]
+        iou_large  = compute_bbox_iou(large_pred, large_gt)
+ 
+        # Scores should be similar despite different box sizes
+        assert abs(iou_small - iou_large) < 0.05
+ 
+    def test_smaller_box_fully_inside_larger(self):
+        """
+        If the smaller box is completely inside the larger box,
+        the overlap ratio should be 1.0 since the entire smaller
+        box is covered.
+        """
+        box_pred = [25, 25, 75, 75]    # smaller box
+        box_gt   = [0,  0,  100, 100]  # larger box containing pred
+        iou = compute_bbox_iou(box_pred, box_gt)
+        assert iou == 1.0
+ 
+    def test_zero_area_box(self):
+        """
+        A box with zero area (point) should return 0.0
+        to avoid division by zero.
+        """
+        box_pred = [50, 50, 50, 50]    # zero area
+        box_gt   = [0,  0,  100, 100]
+        iou = compute_bbox_iou(box_pred, box_gt)
+        assert iou == 0.0
+ 
+    def test_result_between_zero_and_one(self):
+        """
+        Overlap ratio should always be between 0 and 1.
+        """
+        box_pred = [10, 10, 60, 60]
+        box_gt   = [30, 30, 80, 80]
+        iou = compute_bbox_iou(box_pred, box_gt)
+        assert 0.0 <= iou <= 1.0
+ 
+    def test_symmetry(self):
+        """
+        Note: unlike standard IoU, min-area normalization is NOT fully
+        symmetric when boxes have different sizes. This test documents
+        that behavior so it is understood and expected.
+        """
+        box_pred = [0,  0,  100, 100]  # larger box
+        box_gt   = [25, 25, 75,  75]   # smaller box inside pred
+ 
+        iou_ab = compute_bbox_iou(box_pred, box_gt)
+        iou_ba = compute_bbox_iou(box_gt,   box_pred)
+ 
+        # Both should be 1.0 since smaller box is fully inside larger
+        assert iou_ab == 1.0
+        assert iou_ba == 1.0
