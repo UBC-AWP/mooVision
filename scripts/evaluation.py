@@ -204,46 +204,52 @@ def compute_bbox_iou(box_pred: list, box_gt: list) -> float:
     return intersection / union if union > 0 else 0.0
 
 
-def compute_avg_bbox_iou_for_event(
-    pred_boxes: list,
-    gt_boxes: list
-) -> float:
+def compute_bbox_iou(box_pred: list, box_gt: list) -> float:
     """
-    Compute average bounding box IoU across all frames in a matched event.
+    Compute bounding box overlap normalized by the smaller box area.
 
-    Since each event stores per-frame bounding boxes, this averages
-    the IoU over all frames where both a predicted and ground truth
-    box are available.
+    Instead of standard IoU (which divides by union), this divides by the
+    minimum of the two box areas. This corrects for camera distance bias:
+    calves closer to the camera have larger bounding boxes, which would
+    unfairly inflate standard IoU scores. By normalizing to the smaller
+    box, the score reflects how well the predicted box covers the ground
+    truth region regardless of box size or camera distance.
 
     Parameters
     ----------
-    pred_boxes : list of dict
-        Per-frame predicted boxes from baseline.py:
-        [{"frame": int, "x1": int, "y1": int, "x2": int, "y2": int}, ...]
-    gt_boxes : list of dict
-        Per-frame ground truth boxes in same format.
+    box_pred : list [x1, y1, x2, y2]
+        Predicted bounding box in pixel coordinates.
+    box_gt : list [x1, y1, x2, y2]
+        Ground truth bounding box in pixel coordinates.
 
     Returns
     -------
     float
-        Average IoU across matched frames. 0.0 if no frames match.
+        Overlap ratio between 0.0 and 1.0.
+        1.0 means the smaller box is completely covered by the overlap.
+        0.0 means no overlap at all.
     """
-    # Build a lookup of ground truth boxes by frame number
-    gt_by_frame = {b["frame"]: b for b in gt_boxes}
+    # Find the overlapping rectangle
+    inter_x1 = max(box_pred[0], box_gt[0])
+    inter_y1 = max(box_pred[1], box_gt[1])
+    inter_x2 = min(box_pred[2], box_gt[2])
+    inter_y2 = min(box_pred[3], box_gt[3])
 
-    ious = []
-    for pb in pred_boxes:
-        frame = pb["frame"]
-        if frame in gt_by_frame:
-            gb = gt_by_frame[frame]
-            iou = compute_bbox_iou(
-                [pb["x1"], pb["y1"], pb["x2"], pb["y2"]],
-                [gb["x1"], gb["y1"], gb["x2"], gb["y2"]]
-            )
-            ious.append(iou)
+    inter_w = max(0, inter_x2 - inter_x1)
+    inter_h = max(0, inter_y2 - inter_y1)
+    intersection = inter_w * inter_h
 
-    return float(np.mean(ious)) if ious else 0.0
+    # Area of each box
+    area_pred = (box_pred[2] - box_pred[0]) * (box_pred[3] - box_pred[1])
+    area_gt   = (box_gt[2]   - box_gt[0])   * (box_gt[3]   - box_gt[1])
 
+    # Normalize by the smaller box area
+    min_area = min(area_pred, area_gt)
+
+    if min_area == 0:
+        return 0.0
+
+    return intersection / min_area
 
 def compute_precision_recall_f(
     true_positives: int,
