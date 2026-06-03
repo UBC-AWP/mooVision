@@ -30,6 +30,8 @@ def read_data(
     index_path: str,
 ) -> pd.DataFrame:
 
+    if not isinstance(index_path, str):
+        raise TypeError(f"index_path must be of type str, got {type(index_path)}.")
     # Read in Index from any format and return df
     p = Path(index_path)
 
@@ -51,40 +53,56 @@ def read_data(
         return loader(index_path)
 
 
-def validate_data(df: pd.DataFrame, df_schema: pa.DataFrameSchema) -> pd.DataFrame:
+def validate_data(
+    df: pd.DataFrame,
+    df_schema: pa.DataFrameSchema,
+) -> pd.DataFrame:
+    # Pandera does not catch empty df
+    if df.empty:
+        raise ValueError("df is empty.")
     # Validate df against scheme, return all errors
     try:
         return df_schema.validate(df, lazy=True)
     except pa.errors.SchemaErrors as e:
-        raise ValueError(f"Data validation failed on raw index: {e}") from e
+        raise ValueError(f"Data validation failed: {e}") from e
 
 
-def save_data(df: pd.DataFrame, path: Path, force: bool = False) -> None:
-    # Save df to Path
-    if path.exists() and not force:
-        print(f"{path} already exists.")
-    else:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(path, index=False)
-        print(f"Saved raw file to {path}")
+def save_data(df: pd.DataFrame, path: str) -> None:
+    path = Path(path)
+    if df.empty:
+        raise ValueError("df is empty, nothing to save")
+    if path.suffix != ".csv":
+        raise ValueError(f"Expected a .csv path, got {path.suffix}")
+    # Write data to csv
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, index=False)
+    print(f"Saved raw file to {path}")
 
 
-def filter_existing_clips(df: pd.DataFrame, processed_index_output: str, force: bool = False) -> pd.DataFrame:
+def filter_existing_clips(
+    df: pd.DataFrame,
+    clips_dir: str,
+) -> pd.DataFrame:
+
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df must be of type pd.Dataframe, got {type(df)}")
+    if not isinstance(clips_dir, str):
+        raise TypeError(f"clips_dir must be of type str, got {type(clips_dir)}")
+    if df.empty:
+        raise ValueError("df is empty")
+
     # Process Raw Index df
-    # Assumes df has already been validated for correct schema.
-    path = Path(processed_index_output)
-    
-    if processed_index_output.exists() and not force:
-        print(f"{processed_index_output} already exists.")
+    clips_dir_path = Path(clips_dir)
+
+    if not clips_dir_path.exists():
+        raise FileNotFoundError(f"{clips_dir_path} does not exist.")
     else:
-
-        processed_index_output.parent.mkdir(parents=True, exist_ok=True)
-
         # Create filter
         exists = []
-        for p in all_clips_index["clip_relative_path"]:
+        for p in df["clip_relative_path"]:  # Requires Schema Validation
 
-            path = str(unlabelled_clips_dir / p)
+            # Consistent Path Structure
+            path = str(clips_dir_path / p)
             path = path.replace("\\", "/")
 
             if Path(path).exists():
@@ -92,28 +110,120 @@ def filter_existing_clips(df: pd.DataFrame, processed_index_output: str, force: 
             else:
                 exists.append(False)
 
-        # Filter for existing clips
-        available_clips_index = all_clips_index[exists].copy()
+        # Filter clips
+        filtered_df = df[exists].copy()
+
+        # Raise warning if filtered_df is empty.
+        if filtered_df.empty:
+            warnings.warn("No clips remaining after filtering.")
 
         # Report Dropped Clips
-        n_dropped = len(all_clips_index) - exists.count(True)
+        n_dropped = len(df) - exists.count(True)
         if n_dropped:
-            missing = all_clips_index[~pd.Series(exists)]["clip_name"].tolist()
-            warnings.warn(f"Dropped {n_dropped} clips with no file on disk:\n{missing}")
+            dropped = df[~pd.Series(exists)]["clip_name"].tolist()
+            warnings.warn(f"Dropped {n_dropped} clips with no file on disk:\n{dropped}")
+
+        return filtered_df
 
 
+def get_label_paths(labels_dir: str) -> list[str]:
+    # Get name and path for all labelled cross sucking files (.zip files)
+    paths = []
+    for path in labels_dir.rglob(
+        "*.zip"
+    ):  # assumes all .zip files are annotations for CS events
+        paths.append(
+            (path.name, str(Path(*path.parts[-4:])))
+        )  # Use relative path; assumes file structure.
+    return paths
 
-def match_annotation_paths() -> pd.DataFrame:
-    pass
+
+def match_label_paths(df: pd.DataFrame, label_paths: list[str]) -> list[str]:
+
+    # --- Add labelled CS paths to index.csv ---
+
+    # Get unlabelled clip names (for matching)
+    clips = df["clip_name"]
+    labelled_paths = [None] * len(clips)
+
+    ### FIX THIS LOOP
+
+    # Loop over unlabelled names
+    for i, name in enumerate(clips):
+        matches = []
+
+        # Search labelled names for matches (based on numeric id and part number)
+        for path in label_paths:
+            if is_match(name, path[0]):
+                matches.append(path[1])
+
+        # Multiple matches raises error; all clips should have unqiue identifiers, except fixed videos
+        if len(matches) > 2:
+            raise ValueError(
+                f"Expected exactly 1 labelled cross sucking file for ID {name}, "
+                f"but found {len(matches)} matches:\n"
+                f"{matches}"
+            )
+        # Handle multiple matches with fixed video; default to base clip and warn user
+        elif len(matches) == 2:  # assumes one base path and one fixed-video path
+            if ("fixed_clips" in matches[0]) and ("fixed_clips" not in matches[1]):
+                labelled_paths[i] = matches[1]
+                warnings.warn(
+                    f"\nAmbiguity Warning: {name} returned multiple matches: {matches}. \n"
+                    f"Defaulting to use the base clip option: '{matches[1]}'.\n",
+                    # f"If you want to use fixed clips, please run ",
+                    category=UserWarning,
+                    stacklevel=2,
+                )
+            elif ("fixed_clips" in matches[1]) and ("fixed_clips" not in matches[0]):
+                labelled_paths[i] = matches[0]
+                warnings.warn(
+                    f"\nAmbiguity Warning: {name} returned multiple matches: {matches}. \n"
+                    f"Defaulting to use the base clip option: '{matches[0]}'.\n",
+                    # f"If you want to use fixed clips, please run ",
+                    category=UserWarning,
+                    stacklevel=2,
+                )
+            else:
+                raise ValueError(
+                    f"Expected exactly 1 labelled cross sucking file for ID {name}, "
+                    f"but found {len(matches)} matches:\n"
+                    f"{matches}"
+                )
+        # Add single match to labelled_paths, None if no match
+        elif len(matches) == 1:
+            labelled_paths[i] = matches[0]
+        else:
+            labelled_paths[i] = None
+
+    return labelled_paths
+
+
+def add_label_paths(df: pd.DataFrame, labelled_paths: list[str]) -> pd.DataFrame:
+    # Add labelled Paths to df
+    df["labelled_clip_relative_path"] = labelled_paths
+
+    #  Filter for rows with labels
+    filtered_df = df[~df["labelled_clip_relative_path"].isna()]
+
+    # Report Dropped Clips
+    n_dropped = len(filtered_df) - len(df)
+    if n_dropped:
+        dropped = df[df["labelled_clip_relative_path"].isna()]["clip_name"].to_list()
+        warnings.warn(
+            f"Dropped {n_dropped} clips with no matching annotation files\n:{dropped}"
+        )
+
+    return filtered_df
 
 
 def read_data_from_index_file(
     index_path: str,
-    unlabelled_clips_dir: Path,
-    labelled_clips_dir: Path,
-    source_videos_dir: Path,  # filter out bad source video too!
-    raw_index_output: Path,
-    processed_index_output: Path,
+    clips_dir: str,
+    labels_dir: str,
+    source_dir: str,  # filter out bad source video too!
+    raw_output: str,
+    processed_output: str,
     force: bool = False,
 ):
     """
@@ -131,16 +241,16 @@ def read_data_from_index_file(
     ----------
     index_path : str
         Path to index.csv file.
-    unlabelled__clips_path : Path
+    clips_dir : str
         Path to folder with unlabelled cross sucking clips.
-    labelled_clips_path : Path
+    labels_dir : str
         Path to folder with labelled cross sucking clips (CVAT Output).
-    source_videos_path : Path
+    source_dir: str
         Path to raw source videos.
-    out_index_dir : Path
-        Path to raw index.csv file
-    output_index_dir : Path
-        Path to output index.csv file
+    raw_output : str
+        Path to output raw index file
+    processed_output : str
+        Path to output processed index file
     FORCE : bool
         Force rewriting of indices if they already exist
 
@@ -174,102 +284,26 @@ def read_data_from_index_file(
     --------
     >>> read_data_from_index(INDEX_PATH)
     """
-    
-        # Get name and path for all labelled cross sucking files (.zip files)
-        paths = []
-        for path in labelled_clips_dir.rglob(
-            "*.zip"
-        ):  # assumes all .zip files are annotations for CS events
-            paths.append(
-                (path.name, str(Path(*path.parts[-4:])))
-            )  # Use relative path; assumes file structure.
+    # Check if files exist, if so do nothing,
+    # else read in data
+    # Read in Raw Data
+    df_raw = read_data(index_path)
+    df_raw_validated = validate_data(df_raw, schema)
+    # Save Raw index
+    save_data(df_raw_validated, raw_output, force=force)
 
-        # --- Add labelled CS paths to index.csv ---
+    path_filtered_df = filter_existing_clips(
+        df=df_raw_validated,
+        output_path=processed_output,
+        clips_dir=clips_dir,
+        force=force,
+    )
 
-        # Get unlabelled clip names (for matching)
-        clips = available_clips_index["clip_name"]
-        labelled_paths = [None] * len(clips)
+    paths = get_label_paths(labels_dir=labels_dir)
+    label_filtered_df = add_label_paths(df=path_filtered_df, label_paths=paths)
+    df_processed = validate_data(label_filtered_df, processed_schema)
 
-        # Loop over unlabelled names
-        for i, name in enumerate(clips):
-            matches = []
-
-            # Search labelled names for matches (based on numeric id and part number)
-            for path in paths:
-                if is_match(name, path[0]):
-                    matches.append(path[1])
-
-            # Multiple matches raises error; all clips should have unqiue identifiers, except fixed videos
-            if len(matches) > 2:
-                raise ValueError(
-                    f"Expected exactly 1 labelled cross sucking file for ID {name}, "
-                    f"but found {len(matches)} matches:\n"
-                    f"{matches}"
-                )
-            # Handle multiple matches with fixed video; default to base clip and warn user
-            elif len(matches) == 2:  # assumes one base path and one fixed-video path
-                if ("fixed_clips" in matches[0]) and ("fixed_clips" not in matches[1]):
-                    labelled_paths[i] = matches[1]
-                    warnings.warn(
-                        f"\nAmbiguity Warning: {name} returned multiple matches: {matches}. \n"
-                        f"Defaulting to use the base clip option: '{matches[1]}'.\n",
-                        # f"If you want to use fixed clips, please run ",
-                        category=UserWarning,
-                        stacklevel=2,
-                    )
-                elif ("fixed_clips" in matches[1]) and (
-                    "fixed_clips" not in matches[0]
-                ):
-                    labelled_paths[i] = matches[0]
-                    warnings.warn(
-                        f"\nAmbiguity Warning: {name} returned multiple matches: {matches}. \n"
-                        f"Defaulting to use the base clip option: '{matches[0]}'.\n",
-                        # f"If you want to use fixed clips, please run ",
-                        category=UserWarning,
-                        stacklevel=2,
-                    )
-                else:
-                    raise ValueError(
-                        f"Expected exactly 1 labelled cross sucking file for ID {name}, "
-                        f"but found {len(matches)} matches:\n"
-                        f"{matches}"
-                    )
-            # Add single match to labelled_paths, None if no match
-            elif len(matches) == 1:
-                labelled_paths[i] = matches[0]
-            else:
-                labelled_paths[i] = None
-
-        # Add labelled Paths to index
-        available_clips_index["labelled_clip_relative_path"] = labelled_paths
-
-        #  Filter out rows with no labelled clips
-        available_clips_labels_index = available_clips_index[
-            ~available_clips_index["labelled_clip_relative_path"].isna()
-        ]
-
-        # Report Dropped Clips
-        n_dropped = len(available_clips_labels_index) - len(available_clips_index)
-        if n_dropped:
-            dropped = available_clips_index[
-                available_clips_index["labelled_clip_relative_path"].isna()
-            ]
-            warnings.warn(
-                f"Dropped {n_dropped} clips with no matching annotation files\n:{dropped}"
-            )
-
-        # --- Validate Processed Data Frame ---
-
-        try:
-            available_clips_labels_index = processed_schema.validate(
-                available_clips_labels_index, lazy=True
-            )
-        except pa.errors.SchemaErrors as e:
-            raise ValueError(f"Data validation failed for processed data: {e}") from e
-
-        # --- Read to CSV
-        available_clips_labels_index.to_csv(processed_index_output, index=False)
-        print(f"Saved to {processed_index_output}")
+    save_data(df=df_processed, path=processed_output, force=force)
 
 
 def parse_args():
@@ -315,7 +349,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    read_data_from_index(
+    read_data_from_index_file(
         index_path=args.index_path,
         unlabelled_clips_dir=args.unlabelled_clips_dir,
         labelled_clips_dir=args.labelled_clips_dir,
