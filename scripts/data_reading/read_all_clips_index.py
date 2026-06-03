@@ -117,32 +117,23 @@ def read_data_from_index(
     # --- Schema Validation ---
     try:
         all_clips_index = schema.validate(df, lazy=True)
-        # carry on as normal
-    except pa.errors.SchemaError as e:
-        print(f"Validation failed: {e.failure_cases}")
-    # decide what to do — stop, log, skip, etc.
+    except pa.errors.SchemaErrors as e:
+        raise ValueError(f"Data validation failed: {e}") from e
 
     # --- Save Raw index to disk ---
-
-    # Do nothing if raw index already exists
     if raw_index_output.exists() and not FORCE:
         print(f"{raw_index_output} already exists.")
-
-    # Save raw index to repo if it does not, or if forced
     else:
-        raw_index_output.mkdir(parents=True, exist_ok=True)
-        all_clips_index.to_csv(raw_index_output)
-        print(f"Saved to {raw_index_output}")
+        raw_index_output.parent.mkdir(parents=True, exist_ok=True)
+        all_clips_index.to_csv(raw_index_output, index=False)
+        print(f"Saved raw file to {raw_index_output}")
 
     # --- Process Raw Index ---
-
-    # Do nothing if processed file already exists
     if processed_index_output.exists() and not FORCE:
         print(f"{processed_index_output} already exists.")
-    # Else, process Data file for videos with existing clip paths and
     else:
         # Create directory
-        processed_index_output.mkdir(parents=True, exist_ok=True)
+        processed_index_output.parent.mkdir(parents=True, exist_ok=True)
 
         # Create filter list for index
         exists = []
@@ -159,13 +150,13 @@ def read_data_from_index(
                 exists.append(False)
 
         # Keep only clips that exist at unlabelled_clips_path
-        available_clips_index = all_clips_index[exists]
+        available_clips_index = all_clips_index[exists].copy()
 
         # Get name and path for all labelled cross sucking files (.zip files)
         paths = []
         for path in labelled_clips_dir.rglob(
             "*.zip"
-        ):  # assume all .zip files are labelled CS
+        ):  # assumes all .zip files are labelled CS
             paths.append(
                 (path.name, str(Path(*path.parts[-4:])))
             )  # Use relative path; assumes file structure.
@@ -236,7 +227,7 @@ def read_data_from_index(
             ~available_clips_index["labelled_clip_relative_path"].isna()
         ]
 
-        available_clips_index.to_csv(processed_index_output)
+        available_clips_index.to_csv(processed_index_output, index=False)
         print(f"Saved to {processed_index_output}")
 
 
@@ -255,25 +246,21 @@ def parse_args():
     parser.add_argument(
         "--labelled_clips_dir",
         default=LABELLED_CLIPS_DIR,
-        action="store_true",
         help="Path to annotations directory.",
     )
     parser.add_argument(
         "--source_videos_dir",
         default=SOURCE_VIDEOS_DIR,
-        action="store_false",
         help="Path to source videos directory.",
     )
     parser.add_argument(
         "--raw_index_output",
         default=RAW_INDEX_OUTPUT,
-        action="store_false",
         help="Output path for raw index file.",
     )
     parser.add_argument(
         "--processed_index_output",
         default=PROCESSED_INDEX_OUTPUT,
-        action="store_false",
         help="Output path for processed index file.",
     )
     parser.add_argument(
@@ -284,8 +271,6 @@ def parse_args():
     )
     return parser.parse_args()
 
-
-# run with
 
 if __name__ == "__main__":
     args = parse_args()
