@@ -2,6 +2,14 @@
 Module to read all_clips_index.csv.
 
 Filters for videos existing in file path, and appends corresponding labelled video paths.
+
+Notes
+-----
+Naming Conventions:
+    Convention:
+        CS_{clip_number)_{Weaning_period}_d{day_number}_p{pen_number}_cow{cow_identifier}_{ddmmyyyy}_{source_video_base_name}_{clip_start_time_s}_{clip_end_time_s}.mp4
+    Example:
+        CS_0001_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702.mp4
 """
 
 from pathlib import Path
@@ -325,13 +333,6 @@ def read_data_from_index_file(
     This function ensures that the index file contains relative paths to the
     source files and cross sucking clips, as well as other specific column
     formats. See documentation for more details.
-
-    Naming Conventions:
-        Convention:
-            CS_{clip_number)_{Weaning_period}_d{day_number}_p{pen_number}_cow{cow_identifier}_{ddmmyyyy}_{source_video_base_name}_{clip_start_time_s}_{clip_end_time_s}.mp4
-        Example:
-            CS_0001_POSTWEAN_d1_p2_cow6_02112025_ch02-20251102075200_684_702.mp4
-
 
     This is an internal funciton, input paths should be called via config.py.
 
