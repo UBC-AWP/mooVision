@@ -27,16 +27,11 @@ RAW_INDEX_OUTPUT = Path("data/raw/all_clips_index_raw.csv").absolute()
 
 
 def read_data(
-    index_path: str,
+    path: Path,
 ) -> pd.DataFrame:
 
-    if not isinstance(index_path, str):
-        raise TypeError(f"index_path must be of type str, got {type(index_path)}.")
-    # Read in Index from any format and return df
-    p = Path(index_path)
-
-    if not p.exists():
-        raise FileNotFoundError(f"{p} does not exist.")
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist.")
 
     loaders = {
         ".csv": pd.read_csv,
@@ -45,32 +40,43 @@ def read_data(
         ".json": pd.read_json,
         ".tsv": lambda f: pd.read_csv(f, sep="\t"),
     }
-    loader = loaders.get(p.suffix.lower())
+    loader = loaders.get(path.suffix.lower())
 
     if not loader:
-        raise ValueError(f"Unsupported format: {p.suffix}")
+        raise ValueError(f"Unsupported format: {path.suffix}")
     else:
-        return loader(index_path)
+        return loader(path)
 
 
 def validate_data(
     df: pd.DataFrame,
     df_schema: pa.DataFrameSchema,
 ) -> pd.DataFrame:
-    # Pandera does not catch empty df
+    # Check inputs
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df should be of type pd.DataFrame, got {type(df)}")
+    if not isinstance(df_schema, pa.DataFrameSchema):
+        raise TypeError(
+            f"df should be of type pa.DataFrameSchema, got {type(df_schema)}"
+        )
+    # Check df not empty
     if df.empty:
         raise ValueError("df is empty.")
-    # Validate df against scheme, return all errors
+    # Validate df against schema, return all errors
     try:
         return df_schema.validate(df, lazy=True)
     except pa.errors.SchemaErrors as e:
         raise ValueError(f"Data validation failed: {e}") from e
 
 
-def save_data(df: pd.DataFrame, path: str) -> None:
-    path = Path(path)
+def save_data(df: pd.DataFrame, path: Path) -> None:
+    # Check inputs
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df should be of type pd.DataFrame, got {type(df)}")
+    # Check df not empty
     if df.empty:
         raise ValueError("df is empty, nothing to save")
+    # Check format is csv
     if path.suffix != ".csv":
         raise ValueError(f"Expected a .csv path, got {path.suffix}")
     # Write data to csv
@@ -81,72 +87,92 @@ def save_data(df: pd.DataFrame, path: str) -> None:
 
 def filter_existing_clips(
     df: pd.DataFrame,
-    clips_dir: str,
+    clips_dir: Path,
 ) -> pd.DataFrame:
 
+    # Check inputs
     if not isinstance(df, pd.DataFrame):
         raise TypeError(f"df must be of type pd.Dataframe, got {type(df)}")
-    if not isinstance(clips_dir, str):
-        raise TypeError(f"clips_dir must be of type str, got {type(clips_dir)}")
+    # Check df is not empty
     if df.empty:
         raise ValueError("df is empty")
 
     # Process Raw Index df
-    clips_dir_path = Path(clips_dir)
+    if not clips_dir.exists():
+        raise FileNotFoundError(f"{clips_dir} does not exist.")
 
-    if not clips_dir_path.exists():
-        raise FileNotFoundError(f"{clips_dir_path} does not exist.")
-    else:
-        # Create filter
-        exists = []
-        for p in df["clip_relative_path"]:  # Requires Schema Validation
+    # Create filter
+    exists = []
+    for p in df["clip_relative_path"]:  # Relies on Schema Validation
 
-            # Consistent Path Structure
-            path = str(clips_dir_path / p)
-            path = path.replace("\\", "/")
+        # Consistent Path Structure
+        path = str(clips_dir / p)
+        path = path.replace("\\", "/")
 
-            if Path(path).exists():
-                exists.append(True)
-            else:
-                exists.append(False)
+        if Path(path).exists():
+            exists.append(True)
+        else:
+            exists.append(False)
 
-        # Filter clips
-        filtered_df = df[exists].copy()
+    # Filter clips
+    filtered_df = df[exists].copy()
 
-        # Raise warning if filtered_df is empty.
-        if filtered_df.empty:
-            warnings.warn("No clips remaining after filtering.")
+    # Raise warning if filtered_df is empty.
+    if filtered_df.empty:
+        warnings.warn("No clips remaining after filtering.")
 
-        # Report Dropped Clips
-        n_dropped = len(df) - exists.count(True)
-        if n_dropped:
-            dropped = df[~pd.Series(exists)]["clip_name"].tolist()
-            warnings.warn(f"Dropped {n_dropped} clips with no file on disk:\n{dropped}")
+    # Report Dropped Clips
+    n_dropped = len(df) - exists.count(True)
+    if n_dropped:
+        dropped = df[~pd.Series(exists)]["clip_name"].tolist()
+        warnings.warn(f"Dropped {n_dropped} clips with no file on disk:\n{dropped}")
 
-        return filtered_df
+    return filtered_df
 
 
-def get_label_paths(labels_dir: str) -> list[str]:
+def get_label_paths(labels_dir: Path) -> list[tuple[str, str]]:
+    """
+    Notes:
+        Assumes all `.zip` files in the labels_dir directory are
+        annotations for CS events. Ensure there are no errant zip files
+        in the data as this function will read in all .zip files which
+        may cause errors down the line.
+    """
     # Get name and path for all labelled cross sucking files (.zip files)
+    if not labels_dir.exists():
+        raise FileNotFoundError(f"{labels_dir} does not exist.")
     paths = []
     for path in labels_dir.rglob(
         "*.zip"
     ):  # assumes all .zip files are annotations for CS events
         paths.append(
             (path.name, str(Path(*path.parts[-4:])))
-        )  # Use relative path; assumes file structure.
+        )  # Uses relative path; assumes file structure.
+
+    if not paths:
+        raise FileNotFoundError(f"No .zip files found in {labels_dir}")
+
     return paths
 
 
-def match_label_paths(df: pd.DataFrame, label_paths: list[str]) -> list[str]:
+def match_label_paths(
+    df: pd.DataFrame, label_paths: list[tuple[str, str]]
+) -> list[str | None]:
+
+    # Check inputs
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df must be of type pd.Dataframe, got {type(df)}")
+    # Check for emty inputs
+    if df.empty:
+        raise ValueError("df is empty")
+    if not label_paths:
+        raise ValueError("label_paths is empty")
 
     # --- Add labelled CS paths to index.csv ---
 
     # Get unlabelled clip names (for matching)
     clips = df["clip_name"]
     labelled_paths = [None] * len(clips)
-
-    ### FIX THIS LOOP
 
     # Loop over unlabelled names
     for i, name in enumerate(clips):
@@ -196,12 +222,38 @@ def match_label_paths(df: pd.DataFrame, label_paths: list[str]) -> list[str]:
         else:
             labelled_paths[i] = None
 
+    # Warn if no matches found for any clips
+    if all(p is None for p in labelled_paths):
+        warnings.warn("No matches found for any clips.")
+
     return labelled_paths
 
 
 def add_label_paths(df: pd.DataFrame, labelled_paths: list[str]) -> pd.DataFrame:
+
+    # Check inputs
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df must be of type pd.Dataframe, got {type(df)}")
+    # Check for emty inputs
+    if df.empty:
+        raise ValueError("df is empty")
+    if not labelled_paths:
+        raise ValueError("labelled_paths is empty")
+
     # Add labelled Paths to df
     df["labelled_clip_relative_path"] = labelled_paths
+
+    return df
+
+
+def filter_label_paths(df: pd.DataFrame) -> pd.DataFrame:
+
+    # Check inputs
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"df must be of type pd.Dataframe, got {type(df)}")
+    # Check for emty inputs
+    if df.empty:
+        raise ValueError("df is empty")
 
     #  Filter for rows with labels
     filtered_df = df[~df["labelled_clip_relative_path"].isna()]
@@ -214,16 +266,19 @@ def add_label_paths(df: pd.DataFrame, labelled_paths: list[str]) -> pd.DataFrame
             f"Dropped {n_dropped} clips with no matching annotation files\n:{dropped}"
         )
 
+    if filtered_df.empty:
+        warnings.warn("No clips remaiing after filtering.")
+
     return filtered_df
 
 
 def read_data_from_index_file(
-    index_path: str,
-    clips_dir: str,
-    labels_dir: str,
-    source_dir: str,  # filter out bad source video too!
-    raw_output: str,
-    processed_output: str,
+    index_path: Path,
+    clips_dir: Path,
+    labels_dir: Path,
+    source_dir: Path,  # filter out bad source video too!
+    raw_output: Path,
+    processed_output: Path,
     force: bool = False,
 ):
     """
@@ -239,17 +294,17 @@ def read_data_from_index_file(
 
     Parameters
     ----------
-    index_path : str
+    index_path : Path
         Path to index.csv file.
-    clips_dir : str
+    clips_dir : Path
         Path to folder with unlabelled cross sucking clips.
-    labels_dir : str
+    labels_dir : Path
         Path to folder with labelled cross sucking clips (CVAT Output).
-    source_dir: str
+    source_dir: Path
         Path to raw source videos.
-    raw_output : str
+    raw_output : Path
         Path to output raw index file
-    processed_output : str
+    processed_output : Path
         Path to output processed index file
     FORCE : bool
         Force rewriting of indices if they already exist
@@ -284,26 +339,36 @@ def read_data_from_index_file(
     --------
     >>> read_data_from_index(INDEX_PATH)
     """
-    # Check if files exist, if so do nothing,
-    # else read in data
     # Read in Raw Data
     df_raw = read_data(index_path)
     df_raw_validated = validate_data(df_raw, schema)
     # Save Raw index
-    save_data(df_raw_validated, raw_output, force=force)
+    if raw_output.exists() and not force:
 
-    path_filtered_df = filter_existing_clips(
-        df=df_raw_validated,
-        output_path=processed_output,
-        clips_dir=clips_dir,
-        force=force,
-    )
+        print(f"File already exists at {raw_output}")
 
-    paths = get_label_paths(labels_dir=labels_dir)
-    label_filtered_df = add_label_paths(df=path_filtered_df, label_paths=paths)
-    df_processed = validate_data(label_filtered_df, processed_schema)
+    else:
 
-    save_data(df=df_processed, path=processed_output, force=force)
+        save_data(df_raw_validated, raw_output, force=force)
+
+        if processed_output.exists() and not force:
+
+            print(f"File already exists at {processed_output}")
+
+        else:
+
+            df_filtered = filter_existing_clips(
+                df=df_raw_validated,
+                output_path=processed_output,
+                clips_dir=clips_dir,
+                force=force,
+            )
+
+            paths = get_label_paths(labels_dir=labels_dir)
+            df_labels = add_label_paths(df=df_filtered, label_paths=paths)
+            df_processed = filter_label_paths(df_labels)
+            df_processed_validated = validate_data(df_processed, processed_schema)
+            save_data(df=df_processed_validated, path=processed_output, force=force)
 
 
 def parse_args():
@@ -311,31 +376,37 @@ def parse_args():
     parser.add_argument(
         "--index_path",
         default=INDEX_PATH,
+        type=Path,
         help="Path to data index.",
     )
     parser.add_argument(
         "--unlabelled_clips_dir",
         default=UNLABELLED_CLIPS_DIR,
+        type=Path,
         help="Path to cross-sucking clips directory.",
     )
     parser.add_argument(
         "--labelled_clips_dir",
         default=LABELLED_CLIPS_DIR,
+        type=Path,
         help="Path to annotations directory.",
     )
     parser.add_argument(
         "--source_videos_dir",
         default=SOURCE_VIDEOS_DIR,
+        type=Path,
         help="Path to source videos directory.",
     )
     parser.add_argument(
         "--raw_index_output",
         default=RAW_INDEX_OUTPUT,
+        type=Path,
         help="Output path for raw index file.",
     )
     parser.add_argument(
         "--processed_index_output",
         default=PROCESSED_INDEX_OUTPUT,
+        type=Path,
         help="Output path for processed index file.",
     )
     parser.add_argument(
