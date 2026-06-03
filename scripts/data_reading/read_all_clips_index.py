@@ -10,9 +10,11 @@ import pandas as pd
 import warnings
 from matching import is_match
 import argparse
+import pandera as pa
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
+from schema import schema
 from config import (
     UNLABELLED_CLIPS_DIR,
     LABELLED_CLIPS_DIR,
@@ -92,8 +94,6 @@ def read_data_from_index(
     >>> read_data_from_index(INDEX_PATH)
     """
 
-    ### FILTER FOR EXISTING PATHS AND SOURCE PATHS ###
-
     # --- Read in Index from any format (from OneDrive) ---
     p = Path(index_path)
 
@@ -112,7 +112,15 @@ def read_data_from_index(
     if not loader:
         raise ValueError(f"Unsupported format: {p.suffix}")
     else:
-        all_clips_index = loader(index_path)
+        df = loader(index_path)
+
+    # --- Schema Validation ---
+    try:
+        all_clips_index = schema.validate(df, lazy=True)
+        # carry on as normal
+    except pa.errors.SchemaError as e:
+        print(f"Validation failed: {e.failure_cases}")
+    # decide what to do — stop, log, skip, etc.
 
     # --- Save Raw index to disk ---
 
@@ -122,11 +130,8 @@ def read_data_from_index(
 
     # Save raw index to repo if it does not, or if forced
     else:
-        # Create Path
-        raw_index_output.parent.mkdir(parents=True, exist_ok=True)
-        # Save Raw Index
+        raw_index_output.mkdir(parents=True, exist_ok=True)
         all_clips_index.to_csv(raw_index_output)
-        # Print Confirmation
         print(f"Saved to {raw_index_output}")
 
     # --- Process Raw Index ---
@@ -134,9 +139,10 @@ def read_data_from_index(
     # Do nothing if processed file already exists
     if processed_index_output.exists() and not FORCE:
         print(f"{processed_index_output} already exists.")
+    # Else, process Data file for videos with existing clip paths and
     else:
         # Create directory
-        processed_index_output.parent.mkdir(parents=True, exist_ok=True)
+        processed_index_output.mkdir(parents=True, exist_ok=True)
 
         # Create filter list for index
         exists = []
