@@ -46,7 +46,7 @@ def read_data_from_index(
 
     Parameters
     ----------
-    index_path : Path
+    index_path : str
         Path to index.csv file.
     unlabelled__clips_path : Path
         Path to folder with unlabelled cross sucking clips.
@@ -94,11 +94,25 @@ def read_data_from_index(
 
     ### FILTER FOR EXISTING PATHS AND SOURCE PATHS ###
 
-    # --- Read in Index (from OneDrive) ---
-    if index_path.exists():
-        all_clips_index = pd.read_csv(index_path)
+    # --- Read in Index from any format (from OneDrive) ---
+    p = Path(index_path)
+
+    if not p.exists():
+        raise FileNotFoundError(f"{p} does not exist.")
+
+    loaders = {
+        ".csv": pd.read_csv,
+        ".xlsx": pd.read_excel,
+        ".parquet": pd.read_parquet,
+        ".json": pd.read_json,
+        ".tsv": lambda f: pd.read_csv(f, sep="\t"),
+    }
+    loader = loaders.get(p.suffix.lower())
+
+    if not loader:
+        raise ValueError(f"Unsupported format: {p.suffix}")
     else:
-        raise FileNotFoundError(f"{index_path} does not exist.")
+        all_clips_index = loader(index_path)
 
     # --- Save Raw index to disk ---
 
