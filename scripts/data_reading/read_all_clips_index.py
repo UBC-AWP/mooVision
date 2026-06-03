@@ -18,7 +18,7 @@ import pandas as pd
 import warnings
 from matching import is_match
 import argparse
-import pandera as pa
+import pandera.pandas as pa
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -65,7 +65,7 @@ def validate_data(
         raise TypeError(f"df should be of type pd.DataFrame, got {type(df)}")
     if not isinstance(df_schema, pa.DataFrameSchema):
         raise TypeError(
-            f"df should be of type pa.DataFrameSchema, got {type(df_schema)}"
+            f"df should be of type pa.DataFrameSchema, got {type(df_schema).__name__}"
         )
     # Check df not empty
     if df.empty:
@@ -133,7 +133,9 @@ def filter_existing_clips(
     n_dropped = len(df) - exists.count(True)
     if n_dropped:
         dropped = df[~pd.Series(exists)]["clip_name"].tolist()
-        warnings.warn(f"Dropped {n_dropped} clips with no file on disk:\n{dropped}")
+        warnings.warn(
+            f"Dropped {n_dropped} clips with no file on disk"
+        )  #:\n{dropped}")
 
     return filtered_df
 
@@ -180,7 +182,7 @@ def match_label_paths(
 
     # Get unlabelled clip names (for matching)
     clips = df["clip_name"]
-    labelled_paths = [None] * len(clips)
+    label_paths_list = [None] * len(clips)
 
     # Loop over unlabelled names
     for i, name in enumerate(clips):
@@ -201,7 +203,7 @@ def match_label_paths(
         # Handle multiple matches with fixed video; default to base clip and warn user
         elif len(matches) == 2:  # assumes one base path and one fixed-video path
             if ("fixed_clips" in matches[0]) and ("fixed_clips" not in matches[1]):
-                labelled_paths[i] = matches[1]
+                label_paths_list[i] = matches[1]
                 warnings.warn(
                     f"\nAmbiguity Warning: {name} returned multiple matches: {matches}. \n"
                     f"Defaulting to use the base clip option: '{matches[1]}'.\n",
@@ -210,7 +212,7 @@ def match_label_paths(
                     stacklevel=2,
                 )
             elif ("fixed_clips" in matches[1]) and ("fixed_clips" not in matches[0]):
-                labelled_paths[i] = matches[0]
+                label_paths_list[i] = matches[0]
                 warnings.warn(
                     f"\nAmbiguity Warning: {name} returned multiple matches: {matches}. \n"
                     f"Defaulting to use the base clip option: '{matches[0]}'.\n",
@@ -226,18 +228,18 @@ def match_label_paths(
                 )
         # Add single match to labelled_paths, None if no match
         elif len(matches) == 1:
-            labelled_paths[i] = matches[0]
+            label_paths_list[i] = matches[0]
         else:
-            labelled_paths[i] = None
+            label_paths_list[i] = None
 
     # Warn if no matches found for any clips
-    if all(p is None for p in labelled_paths):
+    if all(p is None for p in label_paths_list):
         warnings.warn("No matches found for any clips.")
 
-    return labelled_paths
+    return label_paths_list
 
 
-def add_label_paths(df: pd.DataFrame, labelled_paths: list[str]) -> pd.DataFrame:
+def add_label_paths(df: pd.DataFrame, label_paths: list[str]) -> pd.DataFrame:
 
     # Check inputs
     if not isinstance(df, pd.DataFrame):
@@ -245,11 +247,11 @@ def add_label_paths(df: pd.DataFrame, labelled_paths: list[str]) -> pd.DataFrame
     # Check for emty inputs
     if df.empty:
         raise ValueError("df is empty")
-    if not labelled_paths:
+    if not label_paths:
         raise ValueError("labelled_paths is empty")
 
     # Add labelled Paths to df
-    df["labelled_clip_relative_path"] = labelled_paths
+    df["labelled_clip_relative_path"] = label_paths
 
     return df
 
@@ -271,8 +273,8 @@ def filter_label_paths(df: pd.DataFrame) -> pd.DataFrame:
     if n_dropped:
         dropped = df[df["labelled_clip_relative_path"].isna()]["clip_name"].to_list()
         warnings.warn(
-            f"Dropped {n_dropped} clips with no matching annotation files\n:{dropped}"
-        )
+            f"Dropped {n_dropped} clips with no matching annotation files\n"
+        )  #:{dropped}")
 
     if filtered_df.empty:
         warnings.warn("No clips remaiing after filtering.")
@@ -350,7 +352,7 @@ def read_data_from_index_file(
 
     else:
 
-        save_data(df_raw_validated, raw_output, force=force)
+        save_data(df_raw_validated, raw_output)
 
         if processed_output.exists() and not force:
 
@@ -360,16 +362,14 @@ def read_data_from_index_file(
 
             df_filtered = filter_existing_clips(
                 df=df_raw_validated,
-                output_path=processed_output,
                 clips_dir=clips_dir,
-                force=force,
             )
-
             paths = get_label_paths(labels_dir=labels_dir)
-            df_labels = add_label_paths(df=df_filtered, label_paths=paths)
+            label_paths = match_label_paths(df_filtered, label_paths=paths)
+            df_labels = add_label_paths(df=df_filtered, label_paths=label_paths)
             df_processed = filter_label_paths(df_labels)
             df_processed_validated = validate_data(df_processed, processed_schema)
-            save_data(df=df_processed_validated, path=processed_output, force=force)
+            save_data(df=df_processed_validated, path=processed_output)
 
 
 def parse_args():
@@ -381,31 +381,31 @@ def parse_args():
         help="Path to data index.",
     )
     parser.add_argument(
-        "--unlabelled_clips_dir",
+        "--clips_dir",
         default=UNLABELLED_CLIPS_DIR,
         type=Path,
         help="Path to cross-sucking clips directory.",
     )
     parser.add_argument(
-        "--labelled_clips_dir",
+        "--labels_dir",
         default=LABELLED_CLIPS_DIR,
         type=Path,
         help="Path to annotations directory.",
     )
     parser.add_argument(
-        "--source_videos_dir",
+        "--source_dir",
         default=SOURCE_VIDEOS_DIR,
         type=Path,
         help="Path to source videos directory.",
     )
     parser.add_argument(
-        "--raw_index_output",
+        "--raw_output",
         default=RAW_INDEX_OUTPUT,
         type=Path,
         help="Output path for raw index file.",
     )
     parser.add_argument(
-        "--processed_index_output",
+        "--processed_output",
         default=PROCESSED_INDEX_OUTPUT,
         type=Path,
         help="Output path for processed index file.",
@@ -423,10 +423,10 @@ if __name__ == "__main__":
     args = parse_args()
     read_data_from_index_file(
         index_path=args.index_path,
-        unlabelled_clips_dir=args.unlabelled_clips_dir,
-        labelled_clips_dir=args.labelled_clips_dir,
-        source_videos_dir=args.source_videos_dir,
-        raw_index_output=args.raw_index_output,
-        processed_index_output=args.processed_index_output,
-        FORCE=args.FORCE,
+        clips_dir=args.clips_dir,
+        labels_dir=args.labels_dir,
+        source_dir=args.source_dir,
+        raw_output=args.raw_output,
+        processed_output=args.processed_output,
+        force=args.FORCE,
     )

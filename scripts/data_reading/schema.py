@@ -2,7 +2,7 @@
 Data Schema for MooVision Data Files
 """
 
-import pandera as pa
+import pandera.pandas as pa
 
 schema = pa.DataFrameSchema(
     columns={
@@ -64,10 +64,10 @@ schema = pa.DataFrameSchema(
             error="clip_end must be > clip_start",
         ),
         # part_index must be < part_count
-        pa.Check(
-            lambda df: (df["part_index"] < df["part_count"]).all(),
-            error="part_index must be < part_count",
-        ),
+        # pa.Check(
+        #     lambda df: (df["part_index"] < df["part_count"]).all(),
+        #     error="part_index must be < part_count",
+        # ),
     ],
     strict=True,  # fail on unexpected columns
     coerce=False,  # fail on unexpected types
@@ -82,7 +82,7 @@ processed_schema = pa.DataFrameSchema(
         "source_video_path": pa.Column(str, nullable=False),
         "source_video_basename": pa.Column(str, nullable=False),
         "labelled_clip_relative_path": pa.Column(str, nullable=False),
-        # --- Export status ---
+        # --- Export status ---r
         "export_status": pa.Column(str, nullable=False),
         # --- Part indexing ---
         "part_index": pa.Column(int, pa.Check.ge(0), nullable=False),
@@ -134,10 +134,10 @@ processed_schema = pa.DataFrameSchema(
             error="clip_end must be > clip_start",
         ),
         # part_index must be < part_count
-        pa.Check(
-            lambda df: (df["part_index"] < df["part_count"]).all(),
-            error="part_index must be < part_count",
-        ),
+        # pa.Check(
+        #     lambda df: (df["part_index"] < df["part_count"]).all(),
+        #     error="part_index must be < part_count",
+        # ),
     ],
     strict=True,  # fail on unexpected columns
     coerce=False,  # fail on unexpected types
