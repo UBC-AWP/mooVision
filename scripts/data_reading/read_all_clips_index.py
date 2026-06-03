@@ -14,7 +14,7 @@ import pandera as pa
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from schema import schema
+from schema import schema, processed_schema
 from config import (
     UNLABELLED_CLIPS_DIR,
     LABELLED_CLIPS_DIR,
@@ -226,6 +226,13 @@ def read_data_from_index(
         available_clips_index = available_clips_index[
             ~available_clips_index["labelled_clip_relative_path"].isna()
         ]
+
+        # --- Validate Processed Data Frame ---
+
+        try:
+            all_clips_index = schema.validate(df, lazy=True)
+        except pa.errors.SchemaErrors as e:
+            raise ValueError(f"Data validation failed: {e}") from e
 
         available_clips_index.to_csv(processed_index_output, index=False)
         print(f"Saved to {processed_index_output}")
