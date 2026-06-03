@@ -26,14 +26,95 @@ PROCESSED_INDEX_OUTPUT = Path("data/processed/processed_clips_index.csv").absolu
 RAW_INDEX_OUTPUT = Path("data/raw/all_clips_index_raw.csv").absolute()
 
 
-def read_data_from_index(
-    index_path: Path,
+def read_data(
+    index_path: str,
+) -> pd.DataFrame:
+
+    # Read in Index from any format and return df
+    p = Path(index_path)
+
+    if not p.exists():
+        raise FileNotFoundError(f"{p} does not exist.")
+
+    loaders = {
+        ".csv": pd.read_csv,
+        ".xlsx": pd.read_excel,
+        ".parquet": pd.read_parquet,
+        ".json": pd.read_json,
+        ".tsv": lambda f: pd.read_csv(f, sep="\t"),
+    }
+    loader = loaders.get(p.suffix.lower())
+
+    if not loader:
+        raise ValueError(f"Unsupported format: {p.suffix}")
+    else:
+        return loader(index_path)
+
+
+def validate_data(df: pd.DataFrame, df_schema: pa.DataFrameSchema) -> pd.DataFrame:
+    # Validate df against scheme, return all errors
+    try:
+        return df_schema.validate(df, lazy=True)
+    except pa.errors.SchemaErrors as e:
+        raise ValueError(f"Data validation failed on raw index: {e}") from e
+
+
+def save_data(df: pd.DataFrame, path: Path, force: bool = False) -> None:
+    # Save df to Path
+    if path.exists() and not force:
+        print(f"{path} already exists.")
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(path, index=False)
+        print(f"Saved raw file to {path}")
+
+
+def filter_existing_clips(df: pd.DataFrame, processed_index_output: str, force: bool = False) -> pd.DataFrame:
+    # Process Raw Index df
+    # Assumes df has already been validated for correct schema.
+    path = Path(processed_index_output)
+    
+    if processed_index_output.exists() and not force:
+        print(f"{processed_index_output} already exists.")
+    else:
+
+        processed_index_output.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create filter
+        exists = []
+        for p in all_clips_index["clip_relative_path"]:
+
+            path = str(unlabelled_clips_dir / p)
+            path = path.replace("\\", "/")
+
+            if Path(path).exists():
+                exists.append(True)
+            else:
+                exists.append(False)
+
+        # Filter for existing clips
+        available_clips_index = all_clips_index[exists].copy()
+
+        # Report Dropped Clips
+        n_dropped = len(all_clips_index) - exists.count(True)
+        if n_dropped:
+            missing = all_clips_index[~pd.Series(exists)]["clip_name"].tolist()
+            warnings.warn(f"Dropped {n_dropped} clips with no file on disk:\n{missing}")
+
+
+
+def match_annotation_paths() -> pd.DataFrame:
+    pass
+
+
+def read_data_from_index_file(
+    index_path: str,
     unlabelled_clips_dir: Path,
     labelled_clips_dir: Path,
     source_videos_dir: Path,  # filter out bad source video too!
     raw_index_output: Path,
     processed_index_output: Path,
-    FORCE: bool = False,
+    force: bool = False,
 ):
     """
     Reads in data from index.csv file, adds labelled cross sucking clip
@@ -93,70 +174,12 @@ def read_data_from_index(
     --------
     >>> read_data_from_index(INDEX_PATH)
     """
-
-    # --- Read in Index from any format (from OneDrive) ---
-    p = Path(index_path)
-
-    if not p.exists():
-        raise FileNotFoundError(f"{p} does not exist.")
-
-    loaders = {
-        ".csv": pd.read_csv,
-        ".xlsx": pd.read_excel,
-        ".parquet": pd.read_parquet,
-        ".json": pd.read_json,
-        ".tsv": lambda f: pd.read_csv(f, sep="\t"),
-    }
-    loader = loaders.get(p.suffix.lower())
-
-    if not loader:
-        raise ValueError(f"Unsupported format: {p.suffix}")
-    else:
-        df = loader(index_path)
-
-    # --- Schema Validation ---
-    try:
-        all_clips_index = schema.validate(df, lazy=True)
-    except pa.errors.SchemaErrors as e:
-        raise ValueError(f"Data validation failed: {e}") from e
-
-    # --- Save Raw index to disk ---
-    if raw_index_output.exists() and not FORCE:
-        print(f"{raw_index_output} already exists.")
-    else:
-        raw_index_output.parent.mkdir(parents=True, exist_ok=True)
-        all_clips_index.to_csv(raw_index_output, index=False)
-        print(f"Saved raw file to {raw_index_output}")
-
-    # --- Process Raw Index ---
-    if processed_index_output.exists() and not FORCE:
-        print(f"{processed_index_output} already exists.")
-    else:
-        # Create directory
-        processed_index_output.parent.mkdir(parents=True, exist_ok=True)
-
-        # Create filter list for index
-        exists = []
-        for p in all_clips_index["clip_relative_path"]:
-
-            # Create Consistent Path Structure in Posix Standard ("/")
-            path = str(unlabelled_clips_dir / p)
-            path = path.replace("\\", "/")
-
-            # If clip exists in unlabelled_clips_path append True
-            if Path(path).exists():
-                exists.append(True)
-            else:
-                exists.append(False)
-
-        # Keep only clips that exist at unlabelled_clips_path
-        available_clips_index = all_clips_index[exists].copy()
-
+    
         # Get name and path for all labelled cross sucking files (.zip files)
         paths = []
         for path in labelled_clips_dir.rglob(
             "*.zip"
-        ):  # assumes all .zip files are labelled CS
+        ):  # assumes all .zip files are annotations for CS events
             paths.append(
                 (path.name, str(Path(*path.parts[-4:])))
             )  # Use relative path; assumes file structure.
@@ -165,8 +188,6 @@ def read_data_from_index(
 
         # Get unlabelled clip names (for matching)
         clips = available_clips_index["clip_name"]
-
-        # Create labelled Paths column
         labelled_paths = [None] * len(clips)
 
         # Loop over unlabelled names
@@ -223,18 +244,31 @@ def read_data_from_index(
         available_clips_index["labelled_clip_relative_path"] = labelled_paths
 
         #  Filter out rows with no labelled clips
-        available_clips_index = available_clips_index[
+        available_clips_labels_index = available_clips_index[
             ~available_clips_index["labelled_clip_relative_path"].isna()
         ]
+
+        # Report Dropped Clips
+        n_dropped = len(available_clips_labels_index) - len(available_clips_index)
+        if n_dropped:
+            dropped = available_clips_index[
+                available_clips_index["labelled_clip_relative_path"].isna()
+            ]
+            warnings.warn(
+                f"Dropped {n_dropped} clips with no matching annotation files\n:{dropped}"
+            )
 
         # --- Validate Processed Data Frame ---
 
         try:
-            all_clips_index = schema.validate(df, lazy=True)
+            available_clips_labels_index = processed_schema.validate(
+                available_clips_labels_index, lazy=True
+            )
         except pa.errors.SchemaErrors as e:
-            raise ValueError(f"Data validation failed: {e}") from e
+            raise ValueError(f"Data validation failed for processed data: {e}") from e
 
-        available_clips_index.to_csv(processed_index_output, index=False)
+        # --- Read to CSV
+        available_clips_labels_index.to_csv(processed_index_output, index=False)
         print(f"Saved to {processed_index_output}")
 
 
