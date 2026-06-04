@@ -284,3 +284,247 @@ def tubes_to_events(
         })
  
     return events
+
+# ---------------------------------------------------------------------------
+# STEP 5: FULL DETECTION PIPELINE
+# ---------------------------------------------------------------------------
+ 
+def run_seq_nms_detection(
+    video_path: str,
+    model_path: str,
+    conf_threshold: float,
+    iou_threshold: float,
+    min_duration: float,
+    frame_skip: int,
+) -> dict:
+    """
+    Full YOLOv26 + Seq-NMS detection pipeline.
+ 
+    Steps:
+        1. Load fine-tuned YOLOv26 model
+        2. Open video and process every Nth frame
+        3. Run YOLO inference on each frame
+        4. Collect all per-frame detections
+        5. Apply Seq-NMS to link detections into tubes
+        6. Suppress weak detections within tubes
+        7. Convert tubes to event windows
+        8. Save results as JSON
+ 
+    Parameters
+    ----------
+    video_path : str
+        Path to input video file.
+    model_path : str
+        Path to fine-tuned YOLO weights file (e.g. best.pt).
+    conf_threshold : float
+        Minimum YOLO detection confidence to keep a box.
+    iou_threshold : float
+        Minimum spatial IoU to link boxes across frames into tubes.
+    min_duration : float
+        Minimum event duration in seconds.
+    frame_skip : int
+        Process every Nth frame. 1 = every frame.
+ 
+    Returns
+    -------
+    dict
+        Full metadata dict, also saved as JSON to
+        results/metadata/seq_nms/<video_name>_results.json
+    """
+    print(f"[INFO] Loading model: {model_path}")
+    model = YOLO(model_path)
+ 
+    # Get target class ID from model
+    class_name_to_id = {v: k for k, v in model.names.items()}
+    if TARGET_CLASS_NAME in class_name_to_id:
+        target_ids = {class_name_to_id[TARGET_CLASS_NAME]}
+    else:
+        # Fall back to cow class if cross-sucking not found
+        # (for testing with pretrained weights)
+        print(f"[WARN] '{TARGET_CLASS_NAME}' not found in model classes.")
+        print(f"[WARN] Available classes: {list(model.names.values())}")
+        print(f"[WARN] Falling back to 'cow' class for testing.")
+        target_ids = {class_name_to_id["cow"]} if "cow" in class_name_to_id else set()
+ 
+    if not target_ids:
+        raise ValueError(
+            f"Neither '{TARGET_CLASS_NAME}' nor 'cow' found in model classes: "
+            f"{list(model.names.values())}"
+        )
+ 
+    print(f"[INFO] Detecting class IDs: {target_ids}")
+ 
+    # Open video
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise FileNotFoundError(f"Cannot open video: {video_path}")
+ 
+    fps          = cap.get(cv2.CAP_PROP_FPS)
+    width        = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height       = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    print(f"[INFO] Video: {width}x{height} @ {fps:.1f} fps | {total_frames} frames")
+ 
+    # Collect per-frame detections
+    # Each entry is a list of detections for that frame
+    frame_detections = []
+    frame_idx = 0
+ 
+    print("[INFO] Processing frames...")
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+ 
+        # Skip frames
+        if frame_idx % frame_skip != 0:
+            frame_idx += 1
+            frame_detections.append([])  # empty detection for skipped frame
+            continue
+ 
+        # Run YOLO inference
+        results = model(frame, conf=conf_threshold, verbose=False)[0]
+ 
+        # Show annotated frame
+        annotated = results.plot()
+        cv2.imshow("Seq-NMS Detection", annotated)
+        cv2.waitKey(1)
+ 
+        # Collect detections for this frame
+        dets = []
+        for box in results.boxes:
+            if int(box.cls[0].item()) in target_ids:
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                dets.append({
+                    "frame":      frame_idx,
+                    "x1":         x1,
+                    "y1":         y1,
+                    "x2":         x2,
+                    "y2":         y2,
+                    "confidence": float(box.conf[0].item()),
+                })
+ 
+        frame_detections.append(dets)
+        frame_idx += 1
+ 
+        if frame_idx % 100 == 0:
+            print(f"  ...frame {frame_idx}/{total_frames}")
+ 
+    cap.release()
+    cv2.destroyAllWindows()
+ 
+    print(f"[INFO] Processed {frame_idx} frames, collected detections.")
+ 
+    # Apply Seq-NMS
+    print("[INFO] Building tubes with Seq-NMS...")
+    tubes = build_tubes(frame_detections, iou_threshold)
+    print(f"[INFO] Built {len(tubes)} tubes before suppression.")
+ 
+    # Suppress weak detections
+    tubes = suppress_weak_detections(tubes, conf_threshold)
+    print(f"[INFO] {len(tubes)} tubes after suppression.")
+ 
+    # Convert tubes to events
+    events = tubes_to_events(tubes, fps, min_duration)
+    print(f"[INFO] {len(events)} events after filtering by min duration.")
+ 
+    # Build metadata — same format as baseline.py
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    output_dir = "results/metadata/seq_nms"
+    os.makedirs(output_dir, exist_ok=True)
+ 
+    metadata = {
+        "identifier":             os.path.basename(video_path),
+        "video_path":             os.path.abspath(video_path),
+        "model":                  model_path,
+        "conf_threshold":         conf_threshold,
+        "iou_threshold":          iou_threshold,
+        "min_duration_sec":       min_duration,
+        "frame_skip":             frame_skip,
+        "fps":                    fps,
+        "total_frames":           total_frames,
+        "total_duration_sec":     round(total_frames / fps, 2),
+        "cross_sucking_detected": len(events) > 0,
+        "num_events":             len(events),
+        "events":                 events,
+    }
+ 
+    # Save JSON
+    json_path = os.path.join(output_dir, f"{video_name}_results.json")
+    with open(json_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+ 
+    # Print summary
+    print("\n" + "═" * 50)
+    print(f"  VIDEO:    {metadata['identifier']}")
+    print(f"  FLAGGED:  {metadata['cross_sucking_detected']}")
+    print(f"  EVENTS:   {metadata['num_events']}")
+    for i, ev in enumerate(events):
+        print(f"    Event {i+1}: {ev['start_sec']}s → {ev['end_sec']}s "
+              f"({ev['duration_sec']}s) | conf={ev['avg_confidence']}")
+    print(f"  OUTPUT:   {json_path}")
+    print("═" * 50 + "\n")
+ 
+    return metadata
+ 
+ 
+# ---------------------------------------------------------------------------
+# ARGUMENT PARSER
+# ---------------------------------------------------------------------------
+ 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="YOLOv26 + Seq-NMS cross-sucking detector."
+    )
+    parser.add_argument(
+        "--video",
+        required=True,
+        help="Path to input video file."
+    )
+    parser.add_argument(
+        "--model",
+        required=True,
+        help="Path to fine-tuned YOLO weights file (e.g. runs/detect/cross-sucking/weights/best.pt)."
+    )
+    parser.add_argument(
+        "--conf_threshold",
+        type=float,
+        default=DEFAULT_CONF_THRESHOLD,
+        help=f"Minimum YOLO detection confidence. Default: {DEFAULT_CONF_THRESHOLD}"
+    )
+    parser.add_argument(
+        "--iou_threshold",
+        type=float,
+        default=DEFAULT_IOU_THRESHOLD,
+        help=f"Minimum IoU to link detections across frames into tubes. Default: {DEFAULT_IOU_THRESHOLD}"
+    )
+    parser.add_argument(
+        "--min_duration",
+        type=float,
+        default=DEFAULT_MIN_DURATION,
+        help=f"Minimum event duration in seconds. Default: {DEFAULT_MIN_DURATION}"
+    )
+    parser.add_argument(
+        "--frame_skip",
+        type=int,
+        default=DEFAULT_FRAME_SKIP,
+        help=f"Process every Nth frame. Default: {DEFAULT_FRAME_SKIP}"
+    )
+    return parser.parse_args()
+ 
+ 
+# ---------------------------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------------------------
+ 
+if __name__ == "__main__":
+    args = parse_args()
+    run_seq_nms_detection(
+        video_path    = args.video,
+        model_path    = args.model,
+        conf_threshold= args.conf_threshold,
+        iou_threshold = args.iou_threshold,
+        min_duration  = args.min_duration,
+        frame_skip    = args.frame_skip,
+    )
+ 
