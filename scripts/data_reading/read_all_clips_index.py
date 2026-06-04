@@ -92,7 +92,7 @@ def validate_data(
     df_schema: pa.DataFrameSchema,
 ) -> pd.DataFrame:
     """
-    This is an internal function meant for use in `read_data_from_index_file()`.
+    This is an internal function meant for use in `read_data_from_index_file()`
 
     Validate a pandas dataframe against a data schema using pandera. Takes in a
     data frame and a dataframe schema and validates the data frame against the
@@ -223,8 +223,8 @@ def filter_existing_clips(
     This is an internal function meant to be used in read_data_from_index_file.
 
     Takes in a validated dataframe, the root directory for cross-sucking
-    clips, and filters the data frame for rows which have a `"clip_relative_path"`
-    that exists in the `clip_dir`.
+    clips, and filters the data frame for rows which have a
+    `"clip_relative_path"` that exists in the `clip_dir`.
 
     This function raises a warning if the filtered df is empty. It also
     returns a warning stating the number of rows (videos) dropped.
@@ -345,8 +345,6 @@ def get_label_paths(labels_dir: Path) -> list[tuple[str, str]]:
 
     Examples
     --------
-    Examples
-    --------
     >>> from pathlib import Path
     >>> labels_dir = Path("/data/moovision/labels")
     >>> label_paths = get_label_paths(labels_dir)  # doctest: +SKIP
@@ -354,7 +352,8 @@ def get_label_paths(labels_dir: Path) -> list[tuple[str, str]]:
     [("annotations_batch1.zip", "labels/annotations_batch1.zip"),
     ("annotations_batch2.zip", "labels/annotations_batch2.zip")]
 
-    If no .zip files are found or the directory does not exist, an error is raised:
+    If no .zip files are found or the directory does not exist, an error is
+    raised:
 
     >>> get_label_paths(Path("/data/moovision/empty_dir"))  # doctest: +SKIP
     FileNotFoundError: No .zip files found in /data/moovision/empty_dir
@@ -379,6 +378,59 @@ def get_label_paths(labels_dir: Path) -> list[tuple[str, str]]:
 def match_label_paths(
     df: pd.DataFrame, label_paths: list[tuple[str, str]]
 ) -> list[str | None]:
+    """
+    This is an internal function meant to be used in read_data_from_index_file.
+
+    Takes in a df and a list of zip folder names and relative paths to
+    annotated cross-sucking data folders output from get_label_paths(). For
+    each cross-sucking clip in the df, match_label_paths searches over all
+    names/paths in label_paths to find a matching annotaion folder. The
+    function returns a list of relative paths to these matching annotation
+    folders, or None if a matching folder cannot be found.
+
+    These names use the is_match() function from matching.py to match
+    cross-sucking clip names to annotation folder names usign regex
+    captures to parse and compare numeric ID's and part ID's from each name.
+    See the matching.py documentation for more detail. is_match() also
+    assumes the correct naming conventions for cross-sucking clips and
+    annotaion folders. This will raise an error if the function encounters
+    an unkown naming format.
+
+    If there are multiple/duplicate matches the function raises an error as it
+    does not know which folder contains the correct annotations. If there are
+    duplicate matches between normal video paths and video paths to fixed_clips
+    folder, the normal video paths are used, and a warning is raised.
+
+    A warning is also raised if no matches are found for any clip.
+
+    Parameter
+    ---------
+    df : pd.DataFrame
+        A pandas DataFrame
+    label_paths : list[tuple[str, str]]
+        a list of annotation folder names and relative paths inside the
+        labelled data directory.
+
+    Returns
+    -------
+    list[str | None]
+        A list of relative paths to annotaion folders, or None values if
+        a cross-sucking clip name does not match to any annotation folder
+        names.
+
+    Raises
+    ------
+    TypeError
+        If df is not a Pandas DataFrame
+    ValueError
+        If df, or label_paths is empty.
+        If there are more than 2 matches for a cross-sucking clip, or if
+        there are exactly 2 matches, but neither are a fixed_path file.
+
+    Examples
+    --------
+
+    """
 
     # Check inputs
     if not isinstance(df, pd.DataFrame):
