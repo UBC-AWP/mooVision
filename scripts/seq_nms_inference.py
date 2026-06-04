@@ -215,3 +215,72 @@ def suppress_weak_detections(
             cleaned.append(filtered)
     return cleaned
  
+ # ---------------------------------------------------------------------------
+# STEP 4: CONVERT TUBES TO EVENTS
+# ---------------------------------------------------------------------------
+ 
+def tubes_to_events(
+    tubes: list,
+    fps: float,
+    min_duration: float,
+) -> list:
+    """
+    Convert Seq-NMS tubes into event dictionaries.
+ 
+    Takes the linked tubes and converts them into the same event format
+    used by baseline.py so the rest of the pipeline (clipping, evaluation)
+    works without any changes.
+ 
+    Tubes shorter than min_duration are discarded as noise.
+ 
+    Parameters
+    ----------
+    tubes : list
+        Output of suppress_weak_detections().
+    fps : float
+        Frames per second of the video — used to convert frame numbers
+        to timestamps in seconds.
+    min_duration : float
+        Minimum event duration in seconds. Shorter tubes are discarded.
+ 
+    Returns
+    -------
+    list of dict
+        Each dict is one event with keys:
+            start_sec, end_sec, duration_sec, avg_confidence,
+            intersection_box (per-frame box coordinates)
+    """
+    events = []
+ 
+    for tube in tubes:
+        start_frame = tube[0]["frame"]
+        end_frame   = tube[-1]["frame"]
+        duration    = (end_frame - start_frame) / fps
+ 
+        # Discard short tubes
+        if duration < min_duration:
+            continue
+ 
+        avg_confidence = float(np.mean([det["confidence"] for det in tube]))
+ 
+        # Build per-frame intersection box list — matches baseline.py format
+        intersection_box = [
+            {
+                "frame": det["frame"],
+                "x1":    int(det["x1"]),
+                "y1":    int(det["y1"]),
+                "x2":    int(det["x2"]),
+                "y2":    int(det["y2"]),
+            }
+            for det in tube
+        ]
+ 
+        events.append({
+            "start_sec":        round(start_frame / fps, 2),
+            "end_sec":          round(end_frame / fps, 2),
+            "duration_sec":     round(duration, 2),
+            "avg_confidence":   round(avg_confidence, 3),
+            "intersection_box": intersection_box,
+        })
+ 
+    return events
