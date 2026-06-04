@@ -178,4 +178,40 @@ def build_tubes(
     completed_tubes.extend(active_tubes)
  
     return completed_tubes
+
+# ---------------------------------------------------------------------------
+# STEP 3: SEQ-NMS — SUPPRESS WEAK DETECTIONS WITHIN TUBES
+# ---------------------------------------------------------------------------
+ 
+def suppress_weak_detections(
+    tubes: list,
+    conf_threshold: float
+) -> list:
+    """
+    Remove low confidence detections from within each tube.
+ 
+    After linking, some frames within a tube may have low confidence
+    detections. This step removes them to clean up the tube, keeping
+    only frames where the model was confident enough.
+ 
+    Tubes that become empty after suppression are discarded.
+ 
+    Parameters
+    ----------
+    tubes : list
+        Output of build_tubes().
+    conf_threshold : float
+        Minimum confidence score to keep a detection within a tube.
+ 
+    Returns
+    -------
+    list
+        Cleaned tubes with low confidence detections removed.
+    """
+    cleaned = []
+    for tube in tubes:
+        filtered = [det for det in tube if det["confidence"] >= conf_threshold]
+        if filtered:
+            cleaned.append(filtered)
+    return cleaned
  
