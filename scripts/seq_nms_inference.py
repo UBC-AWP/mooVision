@@ -75,3 +75,107 @@ def compute_iou(box_a: list, box_b: list) -> float:
     union  = area_a + area_b - intersection
  
     return intersection / union if union > 0 else 0.0
+
+# ---------------------------------------------------------------------------
+# STEP 2: SEQ-NMS — BUILD TUBES
+# ---------------------------------------------------------------------------
+ 
+def build_tubes(
+    frame_detections: list,
+    iou_threshold: float,
+) -> list:
+    """
+    Link per-frame detections into tubes using Seq-NMS.
+ 
+    A tube is a sequence of bounding boxes linked across consecutive frames
+    that all belong to the same detected event. Think of it as tracking
+    one cross-sucking interaction through time.
+ 
+    How it works:
+        For each frame, for each detection in that frame:
+            - Look at all active tubes from the previous frame
+            - If this detection overlaps with the last box in a tube
+              above iou_threshold, extend that tube
+            - Otherwise start a new tube
+ 
+    Parameters
+    ----------
+    frame_detections : list of list of dict
+        Per-frame detections. Each entry is a list of detections for that
+        frame. Each detection is a dict with keys:
+            frame (int), x1, y1, x2, y2 (float), confidence (float)
+    iou_threshold : float
+        Minimum IoU between consecutive boxes to link them into the same tube.
+ 
+    Returns
+    -------
+    list of list of dict
+        Each tube is a list of detection dicts linked across frames.
+        Example:
+            [
+                [  # tube 1
+                    {"frame": 10, "x1": 100, "y1": 200, "x2": 300, "y2": 400, "confidence": 0.8},
+                    {"frame": 11, "x1": 102, "y1": 201, "x2": 302, "y2": 401, "confidence": 0.75},
+                ],
+                [  # tube 2
+                    ...
+                ]
+            ]
+    """
+    active_tubes    = []  # tubes still being extended
+    completed_tubes = []  # tubes that have ended
+ 
+    for frame_dets in frame_detections:
+        if not frame_dets:
+            # No detections this frame — close all active tubes
+            completed_tubes.extend(active_tubes)
+            active_tubes = []
+            continue
+ 
+        # Track which active tubes got extended this frame
+        extended = set()
+        new_tubes = []
+ 
+        for det in frame_dets:
+            best_iou   = 0.0
+            best_tube  = None
+            best_idx   = None
+ 
+            # Try to find the best active tube to extend
+            for i, tube in enumerate(active_tubes):
+                if i in extended:
+                    continue  # tube already extended this frame
+ 
+                last_box = tube[-1]
+                iou = compute_iou(
+                    [det["x1"], det["y1"], det["x2"], det["y2"]],
+                    [last_box["x1"], last_box["y1"], last_box["x2"], last_box["y2"]]
+                )
+                if iou > best_iou:
+                    best_iou  = iou
+                    best_tube = tube
+                    best_idx  = i
+ 
+            if best_iou >= iou_threshold and best_tube is not None:
+                # Extend existing tube
+                best_tube.append(det)
+                extended.add(best_idx)
+            else:
+                # Start a new tube
+                new_tubes.append([det])
+ 
+        # Close any active tubes that were not extended this frame
+        for i, tube in enumerate(active_tubes):
+            if i not in extended:
+                completed_tubes.append(tube)
+ 
+        # Keep extended tubes + new tubes as active for next frame
+        active_tubes = [
+            tube for i, tube in enumerate(active_tubes) if i in extended
+        ] + new_tubes
+ 
+    # Close any remaining active tubes at end of video
+    completed_tubes.extend(active_tubes)
+ 
+    return completed_tubes
+ 
