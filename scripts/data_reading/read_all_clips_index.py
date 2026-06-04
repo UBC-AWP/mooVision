@@ -37,6 +37,37 @@ RAW_INDEX_OUTPUT = Path("data/raw/all_clips_index_raw.csv").absolute()
 def read_data(
     path: Path,
 ) -> pd.DataFrame:
+    """
+    Read data from path and return it as a pandas dataframe. This is an
+    internal function meant for use in `read_data_from_index_file()`
+
+    Parameters
+    ----------
+    path : Path
+        Path to data file to read in
+
+    Returns
+    -------
+    pd.DataFrame
+        A pandas dataframe of the existing file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file path to the data frame does not exist.
+
+    Notes
+    -----
+    Handles multiple file types: .csv, .xlsx, .parquet, .json, .tsv.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        from config import ROOT_DIR
+        INDEX_PATH = ROOT_DIR / "cross_sucking_clips" / "all_clips_index.csv"
+        df = read_data(INDEX_PATH)
+    """
 
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist.")
@@ -60,6 +91,58 @@ def validate_data(
     df: pd.DataFrame,
     df_schema: pa.DataFrameSchema,
 ) -> pd.DataFrame:
+    """
+    This is an internal function meant for use in `read_data_from_index_file()`.
+
+    Validate a pandas dataframe against a data schema using pandera. Takes in a
+    data frame and a dataframe schema and validates the data frame against the
+    schema. This is deisgned to enforce data strucutres to ensure the pipeline
+    runs as intended through downstream usage.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataframe to validate.
+    df_schema : pa.DataFrameSchema
+        The pandera dataframe schema to validata against.
+
+    Returns
+    -------
+    pd.DataFrame
+        The validated dataframe.
+
+    Raises
+    ------
+    TypeError
+        If inputs are not a pandas DataFrame or a pandera DataFrameSchema
+    ValueError
+        If the dataframe is empty, or if there are any validation errors
+        when calling df_schema.validate(...)
+
+    Notes
+    -----
+    There are two data schemas for the MooVision project, held in schema.py.
+    These are for validating the raw data file and the processed data frame.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import pandera as pa
+    >>> schema = pa.DataFrameSchema({
+    ...     "age": pa.Column(int, pa.Check.ge(0)),
+    ...     "name": pa.Column(str),
+    ... })
+    >>> df = pd.DataFrame({"age": [25, 30], "name": ["Alice", "Bob"]})
+    >>> validate_data(df, schema)
+    age   name
+    0   25  Alice
+    1   30    Bob
+
+    >>> # Using the project schemas from schema.py
+    >>> from schema import raw_schema
+    >>> validated_df = validate_data(raw_df, raw_schema)
+
+    """
     # Check inputs
     if not isinstance(df, pd.DataFrame):
         raise TypeError(f"df should be of type pd.DataFrame, got {type(df)}")
@@ -78,6 +161,45 @@ def validate_data(
 
 
 def save_data(df: pd.DataFrame, path: Path) -> None:
+    """
+    This is an internal function meant for use in `read_data_from_index_file()`
+
+    Takes in a dataframe and a path, and saves to dataframe to the location
+    specified from the path. This is to be used to save the raw and processed
+    data files to data/raw/ and data/processed.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataframe to save
+    path : Path
+        The path to save the data frame to.
+
+    Returns
+    -------
+    None
+        This function reads to disk and does not return anything.
+
+    Raises
+    ------
+    TypeError
+        If df input is not a pandas DataFrame.
+    ValueError
+        If df is empty or if path does not end in `.csv`
+
+    Notes
+    -----
+    This function assumes the output is a `.csv` file. To update this,
+    you can update the format check in the function to replace ".csv" with
+    whichever output extension you would like.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> df = pd.DataFrame({"age": [25, 30], "name": ["Alice", "Bob"]})
+    >>> save_data(df, Path("data/processed/processed.csv))
+    Saved file to ~/.../data/processed/processed.csv
+    """
     # Check inputs
     if not isinstance(df, pd.DataFrame):
         raise TypeError(f"df should be of type pd.DataFrame, got {type(df)}")
@@ -90,13 +212,64 @@ def save_data(df: pd.DataFrame, path: Path) -> None:
     # Write data to csv
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
-    print(f"Saved raw file to {path}")
+    print(f"Saved file to {path}")
 
 
 def filter_existing_clips(
     df: pd.DataFrame,
     clips_dir: Path,
 ) -> pd.DataFrame:
+    """
+    This is an internal function meant to be used in read_data_from_index_file.
+
+    Takes in a validated dataframe, the root directory for cross-sucking
+    clips, and filters the data frame for rows which have a `"clip_relative_path"`
+    that exists in the `clip_dir`.
+
+    This function raises a warning if the filtered df is empty. It also
+    returns a warning stating the number of rows (videos) dropped.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        A pandas dataframe meant to represent the validated dataframe
+        output from validate_data()
+    clips_dir : Path
+        The path to the root directory holding all cross-sucking clips.
+
+    Returns
+    -------
+    pd.DataFrame
+        The validated dataframe filtered for rows which have cross-sucking
+        clips in the file path.
+
+    Raises
+    ------
+    TypeError
+        If df is not a pandas DataFrame.
+    ValueError
+        If df is an empty dataframe.
+    FileNotFoundError
+        If clips_dir does not exist in the file path.
+
+    Notes
+    -----
+    This function requires the "clip_relative_path" column in the data frame
+    and relies on the data validation to ensure this column exists. This is an
+    internal function that should only ever be called after validate_data().
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from pathlib import Path
+    >>> df = pd.DataFrame({
+    ...     "clip_relative_path": ["clips/a.mp4", "clips/b.mp4", "clips/c.mp4"],
+    ...     "label": ["cat", "dog", "cat"],
+    ... })
+    >>> clips_dir = Path("/data/moovision/clips")  # doctest: +SKIP
+    >>> filtered_df = filter_existing_clips(df, clips_dir)  # doctest: +SKIP
+    >>> len(filtered_df)  # doctest: +SKIP
+    """
 
     # Check inputs
     if not isinstance(df, pd.DataFrame):
@@ -142,11 +315,49 @@ def filter_existing_clips(
 
 def get_label_paths(labels_dir: Path) -> list[tuple[str, str]]:
     """
-    Notes:
-        Assumes all `.zip` files in the labels_dir directory are
-        annotations for CS events. Ensure there are no errant zip files
-        in the data as this function will read in all .zip files which
-        may cause errors down the line.
+    This is an internal function meant to be used in read_data_from_index_file.
+
+    Looks for all folders containing bounding box annotations in the labelled
+    clips directory, and creates a list of tuples with names and relative paths
+    to the annotation folders.
+
+    Assumes all `.zip` files in the labels_dir directory are annotations for CS
+    events. This function will read in all zip files in the labels_dir which
+    may cause errors down the line.
+
+    Parameters
+    ----------
+    labels_dir : Path
+        The path to the root directory containing bounding box annotations for
+        the cross-sucking clips.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        A list of tuples containing the .zip file names and relative paths
+        within the annotated labels directory.
+
+    Raises
+    ------
+    FileNotFoundError
+        If labels_dir does not exist, or if no .zip files are found in the
+        specified directory.
+
+    Examples
+    --------
+    Examples
+    --------
+    >>> from pathlib import Path
+    >>> labels_dir = Path("/data/moovision/labels")
+    >>> label_paths = get_label_paths(labels_dir)  # doctest: +SKIP
+    >>> label_paths  # doctest: +SKIP
+    [("annotations_batch1.zip", "labels/annotations_batch1.zip"),
+    ("annotations_batch2.zip", "labels/annotations_batch2.zip")]
+
+    If no .zip files are found or the directory does not exist, an error is raised:
+
+    >>> get_label_paths(Path("/data/moovision/empty_dir"))  # doctest: +SKIP
+    FileNotFoundError: No .zip files found in /data/moovision/empty_dir
     """
     # Get name and path for all labelled cross sucking files (.zip files)
     if not labels_dir.exists():
