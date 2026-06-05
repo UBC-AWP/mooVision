@@ -386,7 +386,9 @@ def match_label_paths(
     each cross-sucking clip in the df, match_label_paths searches over all
     names/paths in label_paths to find a matching annotaion folder. The
     function returns a list of relative paths to these matching annotation
-    folders, or None if a matching folder cannot be found.
+    folders, or None if a matching folder cannot be found. This is meant
+    to be passed on and later added to the index data frame as a column of
+    relative paths to data annotation folders.
 
     These names use the is_match() function from matching.py to match
     cross-sucking clip names to annotation folder names usign regex
@@ -426,6 +428,11 @@ def match_label_paths(
         If df, or label_paths is empty.
         If there are more than 2 matches for a cross-sucking clip, or if
         there are exactly 2 matches, but neither are a fixed_path file.
+
+    Notes
+    -----
+    This requires the dataset be previously validated and should only be called
+    after validate_data().
 
     Examples
     --------
@@ -502,7 +509,46 @@ def match_label_paths(
     return label_paths_list
 
 
-def add_label_paths(df: pd.DataFrame, label_paths: list[str]) -> pd.DataFrame:
+def add_label_paths(df: pd.DataFrame, label_paths: list[str | None]) -> pd.DataFrame:
+    """
+    This is an internal function meant to be used in read_data_from_index_file.
+
+    Takes in a df and a list of relative paths to annotation data folders, and
+    adds the list as a new column to the data frame. This adds corresponding
+    annotation data paths for each cross-sucking clip to the data frame.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        A pandas DataFrame
+    label_paths : list[str | None]
+        A list of relative paths to annotation data folder matched to
+        cross-sucking clips, or None if a clip does not have a match.
+
+    Returns
+    -------
+    pd.DataFrame
+        A pandas DataFrame representing the filtered index file with an extra
+        column added for relative paths to annotated data labels.
+
+    Raises
+    ------
+    TypeError
+        If df is not a pandas DataFrame.
+    ValueError
+        If either df, or labels_paths is empty.
+
+    Notes
+    -----
+    This function requires data validation and should only be called after
+    calling validate_data(). This output should also be validated using the
+    processed_schema DataFrameSchema in schema.py.
+
+    Examples
+    --------
+
+
+    """
 
     # Check inputs
     if not isinstance(df, pd.DataFrame):
@@ -520,6 +566,51 @@ def add_label_paths(df: pd.DataFrame, label_paths: list[str]) -> pd.DataFrame:
 
 
 def filter_label_paths(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    This is an internal function meant to be used in read_data_from_index_file.
+
+    Filter the data file for cross-sucking clips which have an associated
+    annotation file present in the data. Takes in a data file which has had
+    relative paths to annotation files added in a "labelled_clip_relative_path"
+    and filters for rows where this columns is not None. The column
+    "labelled_clip_relative_path" is the output of match_label_paths,
+    and has None values where matches were not found in the data. Filtering
+    out None values removes these rows from training sets as both cross-sucking
+    clips and annotation labels are required for model training.
+
+    This function requires the data is validated for the correct columns. It
+    is meant to be called after add_label_paths, and after processed data has
+    been validated.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        A pandas data frame representing the output of validate_data once
+        the relative paths to annotation labels have been added via add_labels.
+
+    Returns
+    -------
+    pd.DataFrame
+        A pandas data frame containing only cross-sucking clips that have a
+        matching annotation labels folder in the data.
+
+    Raises
+    ------
+    TypeError
+        If df is not a pandas DataFrame
+    ValueError
+        If df is empty
+
+    Notes
+    -----
+    This function will raise warnings for the number of dropped cross-sucking clips,
+    and if the returned df is empty.
+
+    Examples
+    --------
+
+
+    """
 
     # Check inputs
     if not isinstance(df, pd.DataFrame):
@@ -529,7 +620,9 @@ def filter_label_paths(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("df is empty")
 
     #  Filter for rows with labels
-    filtered_df = df[~df["labelled_clip_relative_path"].isna()]
+    filtered_df = df[
+        ~df["labelled_clip_relative_path"].isna()
+    ]  # Existence of col is ensured by data validation.
 
     # Report Dropped Clips
     n_dropped = len(filtered_df) - len(df)
@@ -599,11 +692,12 @@ def read_data_from_index_file(
     source files and cross sucking clips, as well as other specific column
     formats. See documentation for more details.
 
-    This is an internal funciton, input paths should be called via config.py.
+    This is an internal function, input paths should be called via config.py.
 
     Examples
     --------
-    >>> read_data_from_index(INDEX_PATH)
+    >>> from config import INDEX_PATH
+    >>> read_data_from_index_file(INDEX_PATH)  # doctest: +SKIP
     """
     # Read in Raw Data
     df_raw = read_data(index_path)
@@ -630,9 +724,9 @@ def read_data_from_index_file(
             paths = get_label_paths(labels_dir=labels_dir)
             label_paths = match_label_paths(df_filtered, label_paths=paths)
             df_labels = add_label_paths(df=df_filtered, label_paths=label_paths)
-            df_processed = filter_label_paths(df_labels)
-            df_processed_validated = validate_data(df_processed, processed_schema)
-            save_data(df=df_processed_validated, path=processed_output)
+            df_labels_validated = validate_data(df_labels, processed_schema)
+            df_processed = filter_label_paths(df_labels_validated)
+            save_data(df=df_processed, path=processed_output)
 
 
 def parse_args():
