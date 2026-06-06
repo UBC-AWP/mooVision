@@ -1,5 +1,13 @@
 """
 Module for running YOLO models to detect cross-sucking events and output event metadata.
+
+NOTE: This file is meant to send clips for human review: add pre and post
+buffer of 10-30s for each video meta-data output to ensure we capture the
+whole event
+
+NOTE: Redo Docstrings
+
+NOTE: Make Tests
 """
 
 import sys
