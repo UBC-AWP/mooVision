@@ -1,3 +1,16 @@
+"""
+Run a chosen model on every video in all test splits and save the output as JSON.
+
+Discovers all test.csv files under LOCAL_DIR/data/processed/ automatically.
+Each JSON result is saved to ROOT_DIR/results/metadata/<model>/<split>/<clip_name>.json
+
+Usage:
+    # for running all test.csv in all data splits (except pipeline-testing)
+    python run-testing.py --model baseline/baseline
+    # for running all test.csv in pipeline-testing for demo purposes
+    python run-testing.py --model baseline/baseline --test
+"""
+
 import argparse
 import json
 import subprocess
