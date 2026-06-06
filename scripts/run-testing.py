@@ -59,6 +59,10 @@ for csv_path in all_csvs:
 
     # load this split's test.csv
     df = pd.read_csv(csv_path)
+    # for test.csv in pipeline_testing since the csv is transposed, we need to fix it
+    if df.columns[0] == "Unnamed: 0" and df.iloc[:, 0].str.contains("clip_relative_path").any():
+        df = df.set_index(df.columns[0]).T.reset_index(drop=True)
+
     # build full video paths and grab clip names
     video_paths = [Path(UNLABELLED_CLIPS_DIR) / Path(p.replace("\\", "/")) for p in df["clip_relative_path"]]
     clip_names  = df["clip_name"].tolist()
