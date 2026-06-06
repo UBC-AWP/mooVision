@@ -6,9 +6,10 @@ Each JSON result is saved to ROOT_DIR/results/metadata/<model>/<split>/<clip_nam
 
 Usage:
     # for running all test.csv in all data splits (except pipeline-testing)
-    python run-testing.py --model baseline/baseline
+    uv run scripts/run-testing.py --model baseline/baseline
+
     # for running all test.csv in pipeline-testing for demo purposes
-    python run-testing.py --model baseline/baseline --test
+    uv run scripts/run-testing.py --model baseline/baseline --test
 """
 
 import argparse
