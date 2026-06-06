@@ -60,7 +60,7 @@ for csv_path in all_csvs:
     # load this split's test.csv
     df = pd.read_csv(csv_path)
     # build full video paths and grab clip names
-    video_paths = [Path(UNLABELLED_CLIPS_DIR) for p in df["clip_relative_path"]]
+    video_paths = [Path(UNLABELLED_CLIPS_DIR) / Path(p.replace("\\", "/")) for p in df["clip_relative_path"]]
     clip_names  = df["clip_name"].tolist()
 
     # output folder mirrors the split label so results stay organised
@@ -83,7 +83,7 @@ for csv_path in all_csvs:
 
         if result.returncode != 0:
             print(f"    FAILED: {result.stderr[:200]}")
-            continue
+            sys.exit(1)
 
         # parse the JSON the model printed
         metadata = json.loads(result.stdout)
