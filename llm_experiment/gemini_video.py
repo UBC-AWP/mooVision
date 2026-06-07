@@ -5,6 +5,9 @@ import time
 import cv2
 from pathlib import Path
 from dotenv import load_dotenv
+sys.path.append(str(Path(__file__).parent.parent)) 
+
+from config import LOCAL_DIR
 
 load_dotenv()
 
@@ -44,8 +47,67 @@ CROSS_SUCKING_VIDEO_PROMPT = (
 
 def draw_boxes_and_clip(raw_video_path: Path, api_output_json: list, output_path: Path) -> bool:
     """
-    Parses the Gemini JSON tracking list, seeking to the clip bounds, 
-    and draws bounding box markers onto frames before exporting to the current folder.
+    Draw bounding boxes on detected cross-sucking events and export clipped video.
+
+    Parses Gemini API JSON tracking data to identify cross-sucking event timestamps,
+    extracts the relevant video segment with temporal padding, and renders bounding
+    box annotations onto frames before writing the annotated clip to disk.
+
+    Parameters
+    ----------
+    raw_video_path : Path
+        Path to the source video file to be processed.
+    api_output_json : list
+        List of detection dictionaries from Gemini API, each containing:
+        - "timestamp_sec" (float): Time in seconds when detection occurred
+        - "box_2d" (tuple): Normalized bounding box coordinates (ymin, xmin, ymax, xmax)
+          in 0-1000 grid space
+    output_path : Path
+        Path where the annotated video clip will be saved (MP4 format).
+
+    Returns
+    -------
+    bool
+        True if video was successfully processed and written to disk.
+        False if no detections were found or video could not be opened.
+
+    Raises
+    ------
+    cv2.error
+        If the video file is corrupted or cannot be decoded.
+    IOError
+        If the output path is not writable.
+
+    Notes
+    -----
+    - Bounding box coordinates are normalized to a 0-1000 grid and must be scaled
+      to match the actual video resolution
+    - A 1-second temporal pad is added after the last detection to capture trailing frames
+    - The video playhead is seeked directly to the start frame for efficiency
+    - Bounding boxes are drawn in red (BGR: 0, 0, 255) with 3-pixel thickness
+    - A text label "cross-sucking" is overlaid above each bounding box
+    - Output video uses MP4V codec and maintains original FPS and resolution
+
+    Examples
+    --------
+    >>> from pathlib import Path
+    >>> video_path = Path("sample_video.mp4")
+    >>> detections = [
+    ...     {"timestamp_sec": 5.2, "box_2d": (100, 150, 300, 400)},
+    ...     {"timestamp_sec": 7.1, "box_2d": (120, 160, 320, 420)}
+    ... ]
+    >>> output = Path("output_annotated.mp4")
+    >>> success = draw_boxes_and_clip(video_path, detections, output)
+    >>> if success:
+    ...     print(f"Annotated video saved to {output}")
+    Drawing frames from 5.2s to 8.1s...
+    Successfully generated labeled asset: output_annotated.mp4
+
+    See Also
+    --------
+    cv2.VideoCapture : For reading video files
+    cv2.VideoWriter : For writing video files
+    cv2.rectangle : For drawing bounding boxes
     """
     if not api_output_json:
         print(f"Skipping video production: No cross-sucking detections returned for {raw_video_path.name}")
@@ -108,54 +170,57 @@ def draw_boxes_and_clip(raw_video_path: Path, api_output_json: list, output_path
     print(f"Successfully generated labeled asset: {output_path.name}")
     return True
 
-# Upload the video using the Files API
-EXAMPLE_VIDEOS_DIR = Path("../sample_videos/cross_sucking_clip_sample")
-raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
-for video_name, video_path in raw_videos.items():
-    print(f"Name: {video_name}, Path: {video_path}")
-    
-    video_file = client.files.upload(file=video_path)
-
-    # Wait for Google backend to process the uploaded video frames
-    while video_file.state.name == "PROCESSING":
-        print("Waiting for video processing...")
-        time.sleep(5)
-        video_file = client.files.get(name=video_file.name)
-
-    if video_file.state.name == "FAILED":
-        raise ValueError(f"Video processing failed: {video_file.error.message}")
-
-    print("Video successfully processed and ready.")
-
-    # Request the model to analyze and output raw JSON
-    print("Analyzing video tracking coordinates...")
-    response = client.models.generate_content(
-        model="gemini-2.5-flash", 
-        contents=[video_file, CROSS_SUCKING_VIDEO_PROMPT],
-        config=types.GenerateContentConfig(
-            # This restricts Gemini to only output valid JSON code strings
-            response_mime_type="application/json",
-            temperature=0.1, 
-        ),
-    )
-
-    # View and load results
-    print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
-    print(response.text)
-    
-    # SAFE JSON PARSING & RENDERING LAYER
-    try:
-        parsed_json_data = json.loads(response.text)
+def main():
+    # Upload the video using the Files API
+    EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
+    raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
+    for video_name, video_path in raw_videos.items():
+        print(f"Name: {video_name}, Path: {video_path}")
         
-        # Direct output path file name structure targets current execution folder
-        output_clip_name = Path(f"labeled_{video_path.stem}.mp4")
-        
-        draw_boxes_and_clip(
-            raw_video_path=video_path,
-            api_output_json=parsed_json_data,
-            output_path=output_clip_name
+        video_file = client.files.upload(file=video_path)
+
+        # Wait for Google backend to process the uploaded video frames
+        while video_file.state.name == "PROCESSING":
+            print("Waiting for video processing...")
+            time.sleep(5)
+            video_file = client.files.get(name=video_file.name)
+
+        if video_file.state.name == "FAILED":
+            raise ValueError(f"Video processing failed: {video_file.error.message}")
+
+        print("Video successfully processed and ready.")
+
+        # Request the model to analyze and output raw JSON
+        print("Analyzing video tracking coordinates...")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash", 
+            contents=[video_file, CROSS_SUCKING_VIDEO_PROMPT],
+            config=types.GenerateContentConfig(
+                # This restricts Gemini to only output valid JSON code strings
+                response_mime_type="application/json",
+                temperature=0.1, 
+            ),
         )
-        
-    except json.JSONDecodeError:
-        print(f"[Warning] Response for {video_name} was not valid JSON. Skipping draw step.")
 
+        # View and load results
+        print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
+        print(response.text)
+        
+        # SAFE JSON PARSING & RENDERING LAYER
+        try:
+            parsed_json_data = json.loads(response.text)
+            
+            # Direct output path file name structure targets current execution folder
+            output_clip_name = Path(f"labeled_{video_path.stem}.mp4")
+            
+            draw_boxes_and_clip(
+                raw_video_path=video_path,
+                api_output_json=parsed_json_data,
+                output_path=output_clip_name
+            )
+            
+        except json.JSONDecodeError:
+            print(f"[Warning] Response for {video_name} was not valid JSON. Skipping draw step.")
+
+if __name__ == "__main__":
+    main()
