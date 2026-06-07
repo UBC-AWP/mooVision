@@ -171,6 +171,64 @@ def draw_boxes_and_clip(raw_video_path: Path, api_output_json: list, output_path
     return True
 
 def main():
+    """
+    Process cross-sucking detection in videos using Gemini API and generate annotated clips.
+
+    Orchestrates the complete video analysis pipeline:
+    1. Discovers all MP4 videos in the sample directory
+    2. Uploads each video to Google's Files API for processing
+    3. Sends processed videos to Gemini 2.5 Flash for cross-sucking detection analysis
+    4. Parses JSON response containing bounding box coordinates and timestamps
+    5. Renders annotated video clips with detection overlays
+
+    Returns
+    -------
+    None
+        This function executes the pipeline and writes annotated videos to disk.
+
+    Raises
+    ------
+    ValueError
+        If video processing fails on the Google backend.
+    json.JSONDecodeError
+        If Gemini response cannot be parsed as valid JSON (handled gracefully with warning).
+    FileNotFoundError
+        If EXAMPLE_VIDEOS_DIR does not exist or contains no MP4 files.
+    google.api_core.exceptions.GoogleAPIError
+        If API calls to Google Files API or Gemini fail.
+
+    Notes
+    -----
+    - Videos are uploaded to Google's Files API and processed asynchronously
+    - Processing status is polled every 5 seconds until completion
+    - Gemini model is configured with temperature=0.1 for deterministic JSON output
+    - Response MIME type is restricted to "application/json" to ensure valid JSON
+    - Output videos are saved to the current execution directory as "labeled_{video_stem}.mp4"
+    - Failed JSON parsing is logged as a warning but does not halt execution
+    - Requires global variables: LOCAL_DIR, CROSS_SUCKING_VIDEO_PROMPT, client
+    - Requires: google.generativeai, pathlib, json, time
+
+    Examples
+    --------
+    >>> # Assuming credentials and prompts are configured
+    >>> main()
+    Name: sample_video.mp4, Path: /path/to/sample_video.mp4
+    Waiting for video processing...
+    Video successfully processed and ready.
+    Analyzing video tracking coordinates...
+    
+    --- RAW TEXT RESPONSE FROM GEMINI ---
+    [{"timestamp_sec": 5.2, "box_2d": [100, 150, 300, 400]}, ...]
+    
+    Drawing frames from 5.2s to 6.2s...
+    Successfully generated labeled asset: labeled_sample_video.mp4
+
+    See Also
+    --------
+    draw_boxes_and_clip : Renders bounding boxes and exports annotated video
+    client.files.upload : Uploads files to Google Files API
+    client.models.generate_content : Sends content to Gemini for analysis
+    """
     # Upload the video using the Files API
     EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
     raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
