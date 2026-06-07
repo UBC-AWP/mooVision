@@ -1,6 +1,8 @@
 import os
 import sys
+import json
 import time
+import cv2
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -40,6 +42,72 @@ CROSS_SUCKING_VIDEO_PROMPT = (
     "If cross-sucking does not occur anywhere in the video, return []."
 )
 
+def draw_boxes_and_clip(raw_video_path: Path, api_output_json: list, output_path: Path) -> bool:
+    """
+    Parses the Gemini JSON tracking list, seeking to the clip bounds, 
+    and draws bounding box markers onto frames before exporting to the current folder.
+    """
+    if not api_output_json:
+        print(f"Skipping video production: No cross-sucking detections returned for {raw_video_path.name}")
+        return False
+
+    # Extract timeline endpoints from JSON data metrics
+    timestamps = [item["timestamp_sec"] for item in api_output_json]
+    start_sec = min(timestamps)
+    # Add an extra 1-second pad to capture the tail end of the last flag segment
+    end_sec = max(timestamps) + 1.0 
+
+    # Create a quick key-lookup table for frame matching
+    box_lookup = {int(item["timestamp_sec"]): item["box_2d"] for item in api_output_json}
+
+    cap = cv2.VideoCapture(str(raw_video_path))
+    if not cap.isOpened():
+        print(f"Could not open video file: {raw_video_path.name}")
+        return False
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    start_frame = int(start_sec * fps)
+    end_frame = int(end_sec * fps)
+
+    # Move capture playhead straight to the event start frame
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+
+    print(f"Drawing frames from {start_sec}s to {end_sec}s...")
+    for current_frame_idx in range(start_frame, end_frame):
+        ret, frame = cap.read()
+        if not ret:
+            break
+            
+        current_second = int(current_frame_idx // fps)
+        
+        # Overlay box if coordinates match current time slice
+        if current_second in box_lookup:
+            ymin_norm, xmin_norm, ymax_norm, xmax_norm = box_lookup[current_second]
+            
+            # Map normalized 0-1000 grid space to real clip resolutions
+            xmin = int((xmin_norm / 1000) * width)
+            ymin = int((ymin_norm / 1000) * height)
+            xmax = int((xmax_norm / 1000) * width)
+            ymax = int((ymax_norm / 1000) * height)
+            
+            # Draw a thick red warning border (BGR: 0, 0, 255)
+            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 0, 255), 3)
+            cv2.putText(frame, "cross-sucking", (xmin, ymin - 10), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+        writer.write(frame)
+
+    cap.release()
+    writer.release()
+    print(f"Successfully generated labeled asset: {output_path.name}")
+    return True
+
 # Upload the video using the Files API
 EXAMPLE_VIDEOS_DIR = Path("../sample_videos/cross_sucking_clip_sample")
 raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
@@ -74,4 +142,20 @@ for video_name, video_path in raw_videos.items():
     # View and load results
     print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
     print(response.text)
+    
+    # SAFE JSON PARSING & RENDERING LAYER
+    try:
+        parsed_json_data = json.loads(response.text)
+        
+        # Direct output path file name structure targets current execution folder
+        output_clip_name = Path(f"labeled_{video_path.stem}.mp4")
+        
+        draw_boxes_and_clip(
+            raw_video_path=video_path,
+            api_output_json=parsed_json_data,
+            output_path=output_clip_name
+        )
+        
+    except json.JSONDecodeError:
+        print(f"[Warning] Response for {video_name} was not valid JSON. Skipping draw step.")
 
