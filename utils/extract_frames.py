@@ -9,6 +9,53 @@ from config import LOCAL_DIR
 FRAMES_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
 
 def extract_frames(video_path: Path) -> None:
+    """
+        Extract all frames from MP4 videos in a directory.
+
+        Recursively searches for all MP4 files in the given directory and extracts
+        every frame from each video as a JPEG image. Frames are saved to individual
+        subdirectories named after each video clip. Skips videos that have already
+        been processed.
+
+        Parameters
+        ----------
+        video_path : Path
+            Path to directory containing MP4 video files. Can contain subdirectories.
+
+        Returns
+        -------
+        None
+            This function writes frames to disk and does not return anything.
+
+        Raises
+        ------
+        FileNotFoundError
+            If `video_path` does not exist.
+        cv2.error
+            If a video file is corrupted or cannot be decoded.
+
+        Notes
+        -----
+        - Frames are extracted to subdirectories under `FRAMES_DIR` (global variable)
+        - Each subdirectory is named after the video stem (filename without extension)
+        - If a video has already been processed (output directory exists and contains files),
+        it will be skipped
+        - Frame filenames follow the format: `frame_XXXXXX.jpg` (zero-padded 6-digit index)
+        - Requires OpenCV (cv2) and pathlib
+
+        Examples
+        --------
+        >>> from pathlib import Path
+        >>> video_dir = Path("/videos")
+        >>> extract_frames(video_dir)
+        Name: sample_video.mp4
+        sample_video → 150 frames extracted
+
+        >>> # Output structure created:
+        >>> # FRAMES_DIR/sample_video/frame_000000.jpg
+        >>> # FRAMES_DIR/sample_video/frame_000001.jpg
+        >>> # ...
+        """
     raw_videos = {f.name: f for f in video_path.rglob("*.mp4")}
     for video_name, video_path in raw_videos.items():
         print(f"\nName: {video_name}")
