@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --account=st-nina-1
+#SBATCH --account=st-nina-1-gpu
 #SBATCH --job-name=yolo_training
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
