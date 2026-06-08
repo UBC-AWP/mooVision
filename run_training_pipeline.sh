@@ -23,7 +23,7 @@ echo "Dispatched Processing Job Array: Job ID is $PREPROCESS_JOB_ID (Waiting on 
 TRAIN_MSG=$(sbatch --dependency=afterok:$PREPROCESS_JOB_ID 04_train_yolo.sh)
 TRAIN_JOB_ID=$(echo "$TRAIN_MSG" | awk '{print $4}')
 
-echo "Dispatched Parallel GPU Training Array: Job ID is $TRAIN_JOB_ID"
+echo "Dispatched Parallel GPU Training Array: Job ID is $TRAIN_JOB_ID (Waiting on $PREPROCESS_JOB_ID)"
 
 echo "--------------------------------------------------------"
 echo "Full 8-Split Processing and Training Matrix Successfully Queued!"
