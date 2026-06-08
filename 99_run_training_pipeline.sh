@@ -13,10 +13,17 @@ READ_DATA_JOB_ID=$(echo "$READ_DATA_MSG" | awk '{print $4}')
 
 echo "Dispatched Read and Split Data Script: Job ID is $READ_DATA_JOB_ID (Waiting on $SETUP_JOB_ID)"
 
-# 2. Submit the Job Array, but tell it to WAIT for the Setup Job ID to finish perfectly
+# 3. Submit the Job Array, but tell it to WAIT for the Setup Job ID to finish perfectly
 PREPROCESS_MSG=$(sbatch --dependency=afterok:$READ_DATA_JOB_ID 03_preprocessing.sh)
-PREPROCESS_MSG_JOB_ID=$(echo "$PREPROCESS_MSG_MSG" | awk '{print $4}')
+PREPROCESS_JOB_ID=$(echo "$PREPROCESS_MSG" | awk '{print $4}')
 
-echo "Dispatched Processing Job Array: Job ID is $PREPROCESS_MSG_JOB_ID (Waiting on $READ_DATA_JOB_ID)"
+echo "Dispatched Processing Job Array: Job ID is $PREPROCESS_JOB_ID (Waiting on $READ_DATA_JOB_ID)"
+
+# 4. Step 3: Parallel Training GPU Array (8 tasks, waits for corresponding preprocessing tasks)
+TRAIN_MSG=$(sbatch --dependency=afterok:$PREPROCESS_JOB_ID 04_train_yolo.sh)
+TRAIN_JOB_ID=$(echo "$TRAIN_MSG" | awk '{print $4}')
+
+echo "Dispatched Parallel GPU Training Array: Job ID is $TRAIN_JOB_ID"
+
 echo "--------------------------------------------------------"
-echo "Pipeline successfully queued!"
+echo "Full 8-Split Processing and Training Matrix Successfully Queued!"
