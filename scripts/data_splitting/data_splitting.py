@@ -8,7 +8,7 @@ import argparse
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from config import ROOT_DIR
 
