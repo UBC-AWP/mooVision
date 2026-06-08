@@ -13,7 +13,7 @@ module load git
 cd /scratch/st-nina-1/mooVision
 
 echo "=== Running One-Time Global Setup ==="
-git pull origin arc-setup-dev
+# git pull origin arc-setup-dev
 
 # ENVIRONMENT VALIDATION & LOAD
 if [ ! -f .env_sockeye ]; then
