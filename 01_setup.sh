@@ -10,6 +10,9 @@
 
 cd /arc/project/st-nina-1/mooVision
 
+echo "=== Running One-Time Global Setup ==="
+git pull origin arc-setup-dev
+
 # ENVIRONMENT VALIDATION & LOAD
 if [ ! -f .env_sockeye ]; then
     echo "ERROR: .env_sockeye file not found in current directory!"
@@ -18,9 +21,6 @@ if [ ! -f .env_sockeye ]; then
 fi
 
 source .env_sockeye
-
-echo "=== Running One-Time Global Setup ==="
-git pull origin arc-setup-dev
 
 if [ ! -f .env ]; then
     ln -s .env_sockeye .env

@@ -15,23 +15,6 @@
 #SBATCH --array=0-7
 
 cd /arc/project/st-nina-1/mooVision
-
-# Git sync safety rule (Only task 0 pulls)
-if [ "$SLURM_ARRAY_TASK_ID" -eq 0 ]; then
-    echo "[Task 0] Synchronizing codebase with main repository via Git..."
-    git pull origin arc-setup-dev #CHANGE TO main
-    ln -s .env_sockeye .env
-else
-    sleep 5
-fi
-
-# ENVIRONMENT VALIDATION & LOAD
-if [ ! -f .env_sockeye ]; then
-    echo "ERROR: .env_sockeye file not found in current directory!"
-    echo "Please copy and configure the .env_sockeye template before submitting."
-    exit 1
-fi
-
 source .env_sockeye
 
 # Extract the specific paths for THIS parallel task instance

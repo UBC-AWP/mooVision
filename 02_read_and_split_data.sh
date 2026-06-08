@@ -1,0 +1,23 @@
+#!/bin/bash
+#SBATCH --account=st-nina-1
+#SBATCH --job-name=read_and_split_data
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=4gb
+#SBATCH --time=00:20:00
+#SBATCH --output=logs/setup_%j.out
+
+cd /arc/project/st-nina-1/mooVision
+source .env_sockeye
+
+echo "========================================================"
+echo "READING DATA FILE AND SPLITTING TO TRAIN/TEST SETS"
+echo "========================================================"
+
+uv run scripts/data_reading/read_all_clips_index.py --FORCE
+uv run scripts/data_splitting/data_splitting.py --FORCE
+
+echo "========================================================"
+echo "SUCCESS: DATA SPLITS CREATED."
+echo "========================================================"
