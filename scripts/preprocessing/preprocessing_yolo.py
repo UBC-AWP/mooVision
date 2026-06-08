@@ -155,9 +155,13 @@ def extract_labels(
             # Recursively deletes the directory and all contents
             shutil.rmtree(output_dir)
 
-        #### ---- CHECK INPUT LIST IS NOT EMPTY ---- ####
-        #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####
+        # Build new parent folder
+        output_dir.mkdir(parents=True, exist_ok=True)
 
+        #### ---- CHECK INPUT LIST IS NOT EMPTY ---- ####
+        #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####bbvbvbvbgfvgbhgfghgfvgbhjgfv
+        n_files = len(label_paths)
+        n = 0
         # Loop over zip file paths (CVAT Outputs)
         for input_path in label_paths:
 
@@ -175,7 +179,8 @@ def extract_labels(
             if not input_path.exists():
                 raise FileNotFoundError(f"{input_path} not found.")
 
-            print(f"Extracting files from {input_path.name}...")
+            n += 1
+            print(f"Extracting files from {input_path.name} ({n}/{n_files} )...")
 
             # Get numeric id and part id of labelled output
             numeric_id, part_id = parse_labelled_name(str(input_path.name))
@@ -184,63 +189,93 @@ def extract_labels(
             # --- NO? Already confirmed from other function inputs?
 
             if part_id:
-                # Format nicely
+                # Formating for file name
                 part_id = f"part0{part_id}"
 
-            # Target folder in zip file
+            file_prefix = f"{int(numeric_id):04}_{part_id}_"
             target_folder = "obj_train_data"
 
-            # Look in zip folder
             with zipfile.ZipFile(input_path, "r") as zip_ref:
 
-                # List all files in zip folder
-                all_files = zip_ref.namelist()
+                for zinfo in zip_ref.infolist():
+                    filename = zinfo.filename
 
-                # Isolate only the .txt files belonging to the target folder hierarchy
-                files_to_extract = sorted(
-                    [
-                        f
-                        for f in all_files
-                        if f.startswith(
-                            target_folder
-                        )  # assumes files names: target_folder/frame_000000.txt
-                        and ".txt" in f
-                        and (
-                            int(re.search(r"(\d+)", f).group(1)) % skip == 0
-                        )  # Take every `skip` frame
-                    ]
-                )
+                    if filename.startswith(target_folder) and filename.endswith(".txt"):
 
-                ### TEST LENGTH OF LIST HERE FOR .TXT FILES --- Return could not find labels at input_path/target_folder
+                        pure_name = filename.split("/")[-1]
 
-                for file in files_to_extract:
-                    # Extract individual files explicitly to target destination
-                    zip_ref.extract(file, output_dir)
+                        try:
+                            frame_num = int(pure_name[6:12])
+                        except ValueError:
+                            raise (
+                                f"ValueError: Incorrect naming conventions for {filename} in {path.name}"
+                            )
 
-            # target_folder = "obj_train_data/"
-            # path to target folder in output dir (extraction adds target folder in output hierarchy)
-            target_folder = output_dir / target_folder
+                        if frame_num % skip == 0:
 
-            if target_folder.exists() and target_folder.is_dir():
-                # Iterate through all files inside the sub-folder
-                for file_path in target_folder.iterdir():
-                    if file_path.is_file():
-                        # Define target path (e.g., extraction_output/train/0000_{part}_frame_000000.txt)
-                        target_path = (
-                            output_dir
-                            / f"{int(numeric_id):04}_{part_id}_{str(file_path.name)}"
-                        )
+                            target_path = output_dir / f"{file_prefix}{pure_name}"
 
-                        # Atomic filesystem move (Metadata update only, no disk write)
-                        file_path.rename(target_path)
+                            with open(target_path, "wb") as f_out:
+                                f_out.write(zip_ref.read(zinfo))
 
-                # Delete the now-empty target folder from output dir
-                target_folder.rmdir()
-                print(f"{input_path.name} files saved to {output_dir}")
-            else:
-                raise FileNotFoundError(
-                    f"{target_folder} structure not found or already processed."
-                )
+            # # Look in zip folder
+            # with zipfile.ZipFile(input_path, "r") as zip_ref:
+
+            #     # List all files in zip folder
+            #     all_files = zip_ref.namelist()
+
+            #     # Isolate only the .txt files belonging to the target folder hierarchy
+            #     files_to_extract = [
+            #         f
+            #         for f in all_files
+            #         if f.startswith(
+            #             target_folder
+            #         )  # assumes files names: target_folder/frame_000000.txt
+            #         and ".txt" in f
+            #         and (int(f[6:12]) % skip == 0)  # Take every `skip` frame
+            #     ]
+
+            #     ### TEST LENGTH OF LIST HERE FOR .TXT FILES --- Return could not find labels at input_path/target_folder
+            #     # Test length of list
+            #     if not files_to_extract:
+            #         raise FileNotFoundError(
+            #             f"Could not find labels matching criteria at {input_path}/{target_folder}"
+            #         )
+
+            #     for file in files_to_extract:
+            #         # Extract individual files explicitly to target destination
+            #         file_name = Path(file).name
+            #         target_path = (
+            #             output_dir / f"{int(numeric_id):04}_{part_id}_{str(file_name)}"
+            #         )
+            #         with open(target_path, "wb") as f_out:
+            #             f_out.write(zip_ref.read(file))
+
+            # # target_folder = "obj_train_data/"
+            # # path to target folder in output dir (extraction adds target folder in output hierarchy)
+            # target_folder = output_dir / target_folder
+
+            # if target_folder.exists() and target_folder.is_dir():
+            #     # Iterate through all files inside the sub-folder
+            #     for file_path in target_folder.iterdir():
+            #         if file_path.is_file():
+            #             # Define target path (e.g., extraction_output/train/0000_{part}_frame_000000.txt)
+            #             target_path = (
+            #                 output_dir
+            #                 / f"{int(numeric_id):04}_{part_id}_{str(file_path.name)}"
+            #             )
+
+            #             # Atomic filesystem move (Metadata update only, no disk write)
+            #             file_path.rename(target_path)
+
+            #     # Delete the now-empty target folder from output dir
+            #     target_folder.rmdir()
+            # else:
+            #     raise FileNotFoundError(
+            #         f"{target_folder} structure not found or already processed."
+            #     )
+
+        print(f"Files saved to {output_dir}")
 
 
 def extract_frames(
@@ -352,13 +387,16 @@ def extract_frames(
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        n_videos = len(video_paths)
+        n = 0
         for video_file in video_paths:
 
             # Standardize Path to Posix Standard
             video_file = videos_root / video_file.replace("\\", "/")
 
             # Print working video...
-            print(f"Extracting frames from {video_file.name}...")
+            n += 1
+            print(f"Extracting frames from {video_file.name} ({n}/{n_videos})...")
 
             # Get numeric id and part id of video clip
             numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
