@@ -50,7 +50,28 @@ IMAGE_CROSS_SUCKING_PROMPT = (
 
 def draw_boxes_and_labels(parsed_detections, image_path, video_path):
     """
-    Handles coordinate translation and overlays bounding boxes onto the target frame.
+    Translate Gemini relative coordinates and draw bounding boxes on a local frame.
+
+    Takes a parsed JSON array containing 0-1000 normalized spatial anchors, 
+    de-normalizes them back to the raw image pixel dimensions using OpenCV, 
+    and exports a target visual copy labeled with the original source context.
+
+    Parameters
+    ----------
+    parsed_detections : list of dict
+        A list of detection objects returned by the Gemini API. Each dict 
+        should contain a 'box_2d' key with a list of 4 normalized integers 
+        [ymin, xmin, ymax, xmax] and an optional 'label' string.
+    image_path : pathlib.Path
+        The exact file path pointing to the original input source frame.
+    video_path : pathlib.Path
+        The original video source path used to establish structural prefixes 
+        for exported visual files.
+
+    Returns
+    -------
+    None
+        Saves the annotated image copy directly to the workspace directory.
     """
     try:
         if not parsed_detections:
@@ -89,7 +110,23 @@ def draw_boxes_and_labels(parsed_detections, image_path, video_path):
     except Exception as e:
         print(f"[Error] Failed to draw boxes on image {image_path.name}: {e}")
 
-def main():       
+def main():      
+    """
+    Execute sequential frame extraction analysis pipelines across cattle footage.
+
+    Loops through detected directory arrays, extracts targets chronologically, 
+    and handles rate-limited payloads while managing error-handling boundaries.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+        Prints execution logs to stdout and delegates image writing tasks 
+        to `draw_boxes_and_labels`.
+    """ 
     EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
     raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
 
