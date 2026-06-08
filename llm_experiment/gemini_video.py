@@ -9,7 +9,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from config import LOCAL_DIR
 
-load_dotenv()
+# Clear out any old environment artifacts in Python memory first
+if "GEMINI_API_KEY" in os.environ: del os.environ["GEMINI_API_KEY"]
+
+load_dotenv(override=True) # Forces Python to overwrite cached keys with .env updates
 
 try:
     from google import genai
