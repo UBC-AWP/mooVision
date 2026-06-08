@@ -17,6 +17,7 @@ def train_yolo_model(
     model: int,
     model_size: int,
     device: str,
+    workers: int,
     exist_ok: bool = False,  # YOLO default
     epochs: int = 100,  # YOLO default
     time: float = None,  # YOLO default
@@ -56,6 +57,8 @@ def train_yolo_model(
         increased performance.
     device : str
         device to train on (0 for GPU, 'cuda' for CUDA, 'cpu' for CPU, 'mps' for GPU on Mac).
+    workers : int
+        Number of parallel threads to run on sockeye.
     exist_ok : bool
         If True, overwrite existing project/name directory.
     epochs : int
@@ -133,7 +136,7 @@ def train_yolo_model(
         imgsz=img_size,
         save=save,
         rect=rect,
-        workers=4,
+        workers=8,
         cache=False,
         **kwargs,
     )
@@ -152,6 +155,12 @@ def parse_args():
         "--device",
         type=str,
         default="cpu",
+        help="Device to grain on '0' for GPU, 'cpu' for cpu, 'cuda' for CUDA, 'mps' for mac gpu.",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=8,
         help="Device to grain on '0' for GPU, 'cpu' for cpu, 'cuda' for CUDA, 'mps' for mac gpu.",
     )
     parser.add_argument(
@@ -240,6 +249,7 @@ if __name__ == "__main__":
         model=args.model,
         model_size=args.model_size,
         device=args.device,
+        workers=args.workers,
         exist_ok=args.exist_ok,
         epochs=args.epochs,
         batch=args.batch,

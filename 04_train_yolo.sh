@@ -5,7 +5,7 @@
 #SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=64gb
 #SBATCH --time=12:00:00
 #SBATCH --output=logs/train_%j.out
@@ -50,6 +50,7 @@ else
         --project="$TARGET_PROJECT_DIR" \
         --name="$UNIQUE_RUN_NAME" \
         --device="0" \
+        --workers=8 \
         --model=26 \
         --model_size=m
 fi
