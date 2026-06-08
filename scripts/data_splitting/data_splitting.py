@@ -10,8 +10,10 @@ from sklearn.model_selection import train_test_split
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-PROCESSED_INDEX = Path("data/processed/processed_clips_index.csv").absolute()
-OUTPUT_DIR = Path("data/processed").absolute()
+from config import ROOT_DIR
+
+PROCESSED_INDEX = ROOT_DIR / "data/processed/processed_clips_index.csv"
+OUTPUT_DIR = ROOT_DIR / "data/processed"
 
 
 def train_test_to_csv(
