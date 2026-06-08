@@ -8,7 +8,7 @@
 #SBATCH --time=00:20:00
 #SBATCH --output=logs/setup_%j.out
 
-cd /arc/project/st-nina-1/mooVision
+cd /scratch/st-nina-1/mooVision
 source .env_sockeye
 
 echo "========================================================"

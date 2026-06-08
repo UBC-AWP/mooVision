@@ -19,7 +19,7 @@ PREPROCESS_JOB_ID=$(echo "$PREPROCESS_MSG" | awk '{print $4}')
 
 echo "Dispatched Processing Job Array: Job ID is $PREPROCESS_JOB_ID (Waiting on $READ_DATA_JOB_ID)"
 
-# 4. Step 3: Parallel Training GPU Array (8 tasks, waits for corresponding preprocessing tasks)
+# 4. Parallel Training GPU Array (8 tasks, waits for corresponding preprocessing tasks)
 TRAIN_MSG=$(sbatch --dependency=afterok:$PREPROCESS_JOB_ID 04_train_yolo.sh)
 TRAIN_JOB_ID=$(echo "$TRAIN_MSG" | awk '{print $4}')
 

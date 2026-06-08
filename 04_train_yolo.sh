@@ -12,7 +12,7 @@
 #SBATCH --error=logs/train_%j.err
 #SBATCH --array=0-7
 
-cd /arc/project/st-nina-1/mooVision
+cd /scratch/st-nina-1/mooVision
 source .env_sockeye
 
 # Identify the unique dataset YAML config for this specific thread
