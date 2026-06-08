@@ -40,3 +40,38 @@ DEFAULT_FRAME_SKIP        = 1      # Process every Nth frame
 TARGET_CLASS_NAME         = "cross-sucking"  # Class name from fine-tuned model
                                              # Change to "cow" if using pretrained weights
  
+# ---------------------------------------------------------------------------
+# STEP 1: BOUNDING BOX IoU
+# ---------------------------------------------------------------------------
+ 
+def compute_iou(box_a: list, box_b: list) -> float:
+    """
+    Compute IoU between two bounding boxes.
+ 
+    Used by Seq-NMS to decide whether two detections in consecutive
+    frames belong to the same tube.
+ 
+    Parameters
+    ----------
+    box_a, box_b : list [x1, y1, x2, y2]
+        Bounding boxes in pixel coordinates.
+ 
+    Returns
+    -------
+    float
+        IoU score between 0 and 1.
+    """
+    inter_x1 = max(box_a[0], box_b[0])
+    inter_y1 = max(box_a[1], box_b[1])
+    inter_x2 = min(box_a[2], box_b[2])
+    inter_y2 = min(box_a[3], box_b[3])
+ 
+    inter_w = max(0, inter_x2 - inter_x1)
+    inter_h = max(0, inter_y2 - inter_y1)
+    intersection = inter_w * inter_h
+ 
+    area_a = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
+    area_b = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
+    union  = area_a + area_b - intersection
+ 
+    return intersection / union if union > 0 else 0.0
