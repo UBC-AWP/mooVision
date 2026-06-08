@@ -18,10 +18,11 @@ from config import (
     LABELLED_CLIPS_DIR,
     SOURCE_VIDEOS_DIR,
     INDEX_PATH,
+    ROOT_DIR,
 )
 
-PROCESSED_INDEX_OUTPUT = Path("data/processed/processed_clips_index.csv").absolute()
-RAW_INDEX_OUTPUT = Path("data/raw/all_clips_index_raw.csv").absolute()
+PROCESSED_INDEX_OUTPUT = ROOT_DIR / "data/processed/processed_clips_index.csv"
+RAW_INDEX_OUTPUT = ROOT_DIR / "data/raw/all_clips_index_raw.csv"
 
 
 def read_data_from_index(
