@@ -15,6 +15,7 @@ import sys
 import zipfile
 import shutil
 import concurrent.futures
+import threading
 from typing import List
 import cv2
 import re
@@ -391,7 +392,16 @@ def extract_frames(
         n_videos = len(video_paths)
 
         # Initialize ThreadPoolExecutor
+        MAX_QUEUE_SIZE = 40
+        semaphore = threading.BoundedSemaphore(MAX_QUEUE_SIZE)
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
+        # Helper function to release the semaphore slot once disk write is complete
+        def safe_write(frame_path, frame_data):
+            try:
+                cv2.imwrite(frame_path, frame_data)
+            finally:
+                semaphore.release()  # Opens up a slot for the main loop to read again
 
         for n, video_file in enumerate(video_paths, 1):
 
@@ -414,14 +424,17 @@ def extract_frames(
             frame_idx = 0
 
             while cap.isOpened():
+
+                semaphore.acquire()
                 # Decode frame
                 ret, frame = cap.read()
                 if not ret:  # Break if decoding fails
+                    semaphore.release()
                     break
                     # Create Output Path
                 frame_path = output_dir / f"{file_prefix}{frame_idx:06d}.jpg"
 
-                executor.submit(cv2.imwrite, str(frame_path), frame)
+                executor.submit(safe_write, str(frame_path), frame)
 
                 # Fast frame skipping wihtout running the above
                 if skip > 1:
