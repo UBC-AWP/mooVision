@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#SBATCH --account=st-nina-1
+#SBATCH --job-name=preprocess_splits
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16gb
+#SBATCH --time=03:00:00
+#SBATCH --output=logs/preprocess_%A_%a.out
+#SBATCH --error=logs/preprocess_%A_%a.err
+
+# ─── JOB ARRAY SPECIFICATION ──────────────────────────────────────────
+# Spawns 8 independent worker tasks simultaneously (Task IDs 0 to 7)
+#SBATCH --array=0-7
+
+cd /arc/project/st-nina-1/mooVision
+
+# Git sync safety rule (Only task 0 pulls)
+if [ "$SLURM_ARRAY_TASK_ID" -eq 0 ]; then
+    echo "[Task 0] Synchronizing codebase with main repository via Git..."
+    git pull origin arc-setup-dev #CHANGE TO main
+    ln -s .env_sockeye .env
+else
+    sleep 5
+fi
+
+# ENVIRONMENT VALIDATION & LOAD
+if [ ! -f .env_sockeye ]; then
+    echo "ERROR: .env_sockeye file not found in current directory!"
+    echo "Please copy and configure the .env_sockeye template before submitting."
+    exit 1
+fi
+
+source .env_sockeye
+
+# Extract the specific paths for THIS parallel task instance
+# (We pull from the arrays we defined in .env_sockeye)
+INPUT_PATH="${PREPROCESS_YOLO_INPUT_PATHS[$SLURM_ARRAY_TASK_ID]}"
+OUTPUT_DIR="${PREPROCESS_YOLO_OUTPUT_DIRS[$SLURM_ARRAY_TASK_ID]}"
+
+echo "========================================================"
+echo "Sockeye Array Engine Active" : EXECUTING Split Task $SLURM_ARRAY_TASK_ID
+echo "Reading From CSV   : $INPUT_PATH"
+echo "Writing Out To     : $OUTPUT_DIR"
+echo "Compute Node       : $SLURM_NODENAME"
+echo "========================================================"
+
+# 3. PIPELINE EXECUTION VIA UV
+# uv automatically synchronization virtual environment settings and steps down
+uv run scripts/preprocessing/preprocessing_yolo.py \
+    --input_path="$INPUT_PATH" \
+    --output_dir="$OUTPUT_DIR" \
+    --skip=${SKIP} \
+    --FORCE
+
+echo "========================================================"
+echo "SUCCESS: Task $SLURM_ARRAY_TASK_ID finished cleanly."
+echo "========================================================"
