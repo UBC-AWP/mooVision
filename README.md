@@ -63,7 +63,7 @@ After configuring you `.env` file, run the following commands from your terminal
    uv run scripts/data_reading/read_all_clips_index.py --FORCE
    ```
 
-2. Split Data into train and tes splits.
+2. Split Data into train and test splits.
 
    ```bash
    uv run scripts/data_splitting/data_splitting.py --FORCE

@@ -175,6 +175,8 @@ def extract_labels(
             if not input_path.exists():
                 raise FileNotFoundError(f"{input_path} not found.")
 
+            print(f"Extracting files from {input_path.name}...")
+
             # Get numeric id and part id of labelled output
             numeric_id, part_id = parse_labelled_name(str(input_path.name))
 
@@ -234,7 +236,7 @@ def extract_labels(
 
                 # Delete the now-empty target folder from output dir
                 target_folder.rmdir()
-                print(f"Files saved to {output_dir}")
+                print(f"{input_path.name} files saved to {output_dir}")
             else:
                 raise FileNotFoundError(
                     f"{target_folder} structure not found or already processed."
