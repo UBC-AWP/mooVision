@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4gb
 #SBATCH --time=00:20:00
-#SBATCH --output=logs/setup_%j.out
+#SBATCH --output=logs/read_%j.out
 
 cd /scratch/st-nina-1/mooVision
 source .env_sockeye
