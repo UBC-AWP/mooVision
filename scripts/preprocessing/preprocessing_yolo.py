@@ -414,10 +414,7 @@ def extract_frames(
             frame_idx = 0
 
             while cap.isOpened():
-                # Read frames at every `skip`` position, ignore the rest
-                if frame_idx % skip == 0:
-                    pass
-                    # Decode frame
+                # Decode frame
                 ret, frame = cap.read()
                 if not ret:  # Break if decoding fails
                     break
@@ -426,17 +423,12 @@ def extract_frames(
 
                 executor.submit(cv2.imwrite, str(frame_path), frame)
 
+                # Fast frame skipping wihtout running the above
                 if skip > 1:
-                    if skip > 15:
-                        # For larger skips, jump the pointer
-                        frame_idx += skip
-                        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-                    else:
-                        # For moderate to small skips use cap.grab() (faster)
-                        for _ in range(skip - 1):
-                            if not cap.grab():
-                                break
-                        frame_idx += skip
+                    for _ in range(skip - 1):
+                        if not cap.grab():
+                            break
+                    frame_idx += skip
                 else:
                     frame_idx += 1
 
