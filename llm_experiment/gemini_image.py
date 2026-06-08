@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import time
+import cv2
 from PIL import Image
 from pathlib import Path
 from dotenv import load_dotenv
@@ -10,7 +11,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 from config import LOCAL_DIR
 from utils.extract_frames import extract_frames
 
-load_dotenv()
+# Clear out any old environment artifacts in Python memory first
+if "GEMINI_API_KEY" in os.environ: del os.environ["GEMINI_API_KEY"]
+
+load_dotenv(override=True) # Forces Python to overwrite cached keys with .env updates
 
 try:
     from google import genai
@@ -44,71 +48,96 @@ IMAGE_CROSS_SUCKING_PROMPT = (
     "If cross-sucking does not clearly occur in the image, return []."
 )
 
-# Open the image file locally using PIL
-EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
-raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
-
-for video_name, video_path in raw_videos.items():
-    folder_path = EXAMPLE_VIDEOS_DIR / video_path.stem
-    
-    if folder_path.is_dir():
-        print(f"\n{video_name} → Found folder")
-    else:
-        print(f"{folder_path} → No matching folder")
-        print(f"\nCreating folder: {folder_path}")
-        extract_frames(EXAMPLE_VIDEOS_DIR)
-        
-    for image_path in list(folder_path.glob("*.jpg"))[:5]:
-        print(f"\nProcessing image: {image_path}")
-        time.sleep(5)
-        pil_image = Image.open(image_path)
-        print(f"\nProcessing image: {image_path}")
-        print("Sending static image to Gemini API...")
-        
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            # Pass the PIL Image directly in the contents array alongside the prompt
-            contents=[pil_image, IMAGE_CROSS_SUCKING_PROMPT],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.0,  # Forces deterministic choices for testing
-            ),
-        )
-
-        print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
-        print(response.text)
-
-        # # 3. Parse and Draw Bounding Boxes using OpenCV
-        # try:
-        #     detections = json.loads(response.text)
-        #     print(f"\nSuccessfully parsed JSON. Detected objects: {len(detections)}")
+def draw_boxes_and_labels(parsed_detections, image_path, video_path):
+    """
+    Handles coordinate translation and overlays bounding boxes onto the target frame.
+    """
+    try:
+        if not parsed_detections:
+            print("No cross-sucking detected in this frame.")
+            return 
             
-        #     # Read the image via OpenCV to handle geometric drawing additions
-        #     cv_img = cv2.imread(image_path)
-        #     height, width, _ = cv_img.shape
-            
-        #     for item in detections:
-        #         if "box_2d" in item:
-        #             ymin_norm, xmin_norm, ymax_norm, xmax_norm = item["box_2d"]
-                    
-        #             # Map normalized scale [0-1000] to raw pixel dimensions
-        #             xmin = int((xmin_norm / 1000) * width)
-        #             ymin = int((ymin_norm / 1000) * height)
-        #             xmax = int((xmax_norm / 1000) * width)
-        #             ymax = int((ymax_norm / 1000) * height)
-                    
-        #             # Draw standard red rectangle marker
-        #             cv2.rectangle(cv_img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 3)
-                    
-        #             # Write identifying string flag
-        #             label_text = item.get("label", "cross-sucking")
-        #             cv2.putText(cv_img, label_text, (xmin, ymin - 10), 
-        #                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-                    
-        #     # Save the output file locally
-        #     output_path = "output_labeled_image.jpg"
-        #     cv2.imwrite(output_path, cv_img)
-        #     print(f"Success! Annotated image saved as '{output_path}'.")
+        print(f"Detected {len(parsed_detections)} event(s). Drawing boxes...")
+        
+        cv_img = cv2.imread(str(image_path))
+        height, width, _ = cv_img.shape
+        
+        for item in parsed_detections:
+            if "box_2d" in item:
+                ymin_norm, xmin_norm, ymax_norm, xmax_norm = item["box_2d"]
+                
+                xmin = int((xmin_norm / 1000) * width)
+                ymin = int((ymin_norm / 1000) * height)
+                xmax = int((xmax_norm / 1000) * width)
+                ymax = int((ymax_norm / 1000) * height)
+                
+                # Draw Box
+                cv2.rectangle(cv_img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 3)
+                
+                # Draw Label text
+                label = item.get("label", "cross-sucking")
+                cv2.putText(cv_img, label, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        
+        # Ensure target subdirectory exists before writing
+        output_dir = LOCAL_DIR / "llm_experiment"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        output_path = output_dir / f"{video_path.stem}_{image_path.stem}_labeled.jpg"
+        cv2.imwrite(str(output_path), cv_img)
+        print(f"Saved annotated image to: {output_path.name}")
+        
+    except Exception as e:
+        print(f"[Error] Failed to draw boxes on image {image_path.name}: {e}")
 
-        # except json.JSONDecodeError:
-        #     print("\nFailed to parse text as JSON structure.")
+def main():       
+    EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
+    raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
+
+    for video_name, video_path in raw_videos.items():
+        folder_path = EXAMPLE_VIDEOS_DIR / video_path.stem
+        
+        if folder_path.is_dir():
+            print(f"\n{video_name} → Found folder")
+        else:
+            print(f"{folder_path} → No matching folder")
+            print(f"\nCreating folder: {folder_path}")
+            extract_frames(EXAMPLE_VIDEOS_DIR)
+            
+        target_images = list(folder_path.glob("*.jpg"))[:3]
+            
+        for image_path in target_images:
+            print(f"\nPacing delay for 5 RPM limit...")
+            time.sleep(13)
+            
+            try:
+                pil_image = Image.open(image_path)
+            except Exception as e:
+                print(f"Could not open image {image_path.name}: {e}")
+                continue
+                
+            print(f"Processing image: {image_path.name}")
+            print("Sending static image to Gemini API...")
+            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[pil_image, IMAGE_CROSS_SUCKING_PROMPT],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.1, 
+                ),
+            )
+
+            print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
+            print(response.text)
+            
+            # SAFE JSON PARSING LAYER IN MAIN LOOP
+            try:
+                parsed_json_data = json.loads(response.text)
+                
+                draw_boxes_and_labels(parsed_json_data, image_path, video_path)
+                
+            except json.JSONDecodeError:
+                print(f"[Warning] Response for {video_name} was not valid JSON. Skipping draw step.")
+                
+if __name__ == "__main__":   
+    main()
