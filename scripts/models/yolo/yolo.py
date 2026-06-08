@@ -303,7 +303,7 @@ def parse_args():
     parser.add_argument(
         "--model",
         default="runs/detect/MooVision/cross-sucking/weights/best.pt",
-        help=f"YOLO weights file (default: runs/detect/MooVision/cross-sucking/weights/best.pt)",
+        help="YOLO weights file (default: runs/detect/MooVision/cross-sucking/weights/best.pt)",
     )
     parser.add_argument(
         "--iou_threshold",
