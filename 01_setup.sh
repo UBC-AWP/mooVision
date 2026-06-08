@@ -8,6 +8,8 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=logs/setup_%j.out
 
+module load git
+
 cd /scratch/st-nina-1/mooVision
 
 echo "=== Running One-Time Global Setup ==="
