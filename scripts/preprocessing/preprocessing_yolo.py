@@ -14,6 +14,7 @@ from pathlib import Path
 import sys
 import zipfile
 import shutil
+import concurrent.futures
 from typing import List
 import cv2
 import re
@@ -388,50 +389,72 @@ def extract_frames(
         output_dir.mkdir(parents=True, exist_ok=True)
 
         n_videos = len(video_paths)
-        n = 0
-        for video_file in video_paths:
+
+        # Initialize ThreadPoolExecutor
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
+        for n, video_file in enumerate(video_paths, 1):
 
             # Standardize Path to Posix Standard
             video_file = videos_root / video_file.replace("\\", "/")
 
             # Print working video...
-            n += 1
             print(f"Extracting frames from {video_file.name} ({n}/{n_videos})...")
 
             # Get numeric id and part id of video clip
             numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
-            if part_id:
-                part_id = f"part0{part_id}"
+            part_str = f"part0{part_id}" if part_id else None
+            file_prefix = f"{int(numeric_id):04}_{part_str}_frame_"
 
             # Video capture
             cap = cv2.VideoCapture(str(video_file))
+
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+
             frame_idx = 0
 
             while cap.isOpened():
                 # Read frames at every `skip`` position, ignore the rest
                 if frame_idx % skip == 0:
+                    pass
                     # Decode frame
-                    ret, frame = cap.read()
-                    if not ret:  # Break if decoding fails
-                        break
+                ret, frame = cap.read()
+                if not ret:  # Break if decoding fails
+                    break
                     # Create Output Path
-                    frame_path = (
-                        output_dir
-                        / f"{int(numeric_id):04}_{part_id}_frame_{frame_idx:06d}.jpg"
-                    )
+                frame_path = output_dir / f"{file_prefix}{frame_idx:06d}.jpg"
 
-                    # Write frame to output dir
-                    cv2.imwrite(str(frame_path), frame)
+                executor.submit(cv2.imwrite, str(frame_path), frame)
+
+                if skip > 1:
+                    if skip > 15:
+                        # For larger skips, jump the pointer
+                        frame_idx += skip
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                    else:
+                        # For moderate to small skips use cap.grab() (faster)
+                        for _ in range(skip - 1):
+                            if not cap.grab():
+                                break
+                        frame_idx += skip
                 else:
-                    ret = cap.grab()  # advances position, does not decode frame.
-                    if not ret:  # Skip efficiently
-                        break
+                    frame_idx += 1
 
-                frame_idx += 1
+                #     # Write frame to output dir
+                #     cv2.imwrite(str(frame_path), frame)
+                # else:
+                #     ret = cap.grab()  # advances position, does not decode frame.
+                #     if not ret:  # Skip efficiently
+                #         break
+
+                # frame_idx += 1
 
             # release video
             cap.release()
-            print(f"{video_file.name} frames saved to {output_dir}")
+            print(f"{video_file.name} frames decoded.")
+
+        executor.shutdown(wait=True)
+        print(f"All frames successfully saved to disk at {output_dir}")
 
 
 def create_yaml(
