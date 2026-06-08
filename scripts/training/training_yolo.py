@@ -20,7 +20,7 @@ def train_yolo_model(
     exist_ok: bool = False,  # YOLO default
     epochs: int = 100,  # YOLO default
     time: float = None,  # YOLO default
-    patience: int = 100,  # YOLO default
+    patience: int = 50,  # YOLO default
     batch: int | float = 16,  # YOLO default
     img_size: int = 640,  # YOLO default
     save: bool = True,  # YOLO default
@@ -133,6 +133,8 @@ def train_yolo_model(
         imgsz=img_size,
         save=save,
         rect=rect,
+        workers=4,
+        cache=False,
         **kwargs,
     )
 
@@ -150,7 +152,7 @@ def parse_args():
         "--device",
         type=str,
         default="cpu",
-        help="Random state for reproducibility in train/val split.",
+        help="Device to grain on '0' for GPU, 'cpu' for cpu, 'cuda' for CUDA, 'mps' for mac gpu.",
     )
     parser.add_argument(
         "--name",
@@ -166,7 +168,7 @@ def parse_args():
     )
     parser.add_argument(
         "--model",
-        default=8,
+        default=26,
         type=int,
         help="YOLO model version. i.e. 26 for v26, 8 for v8.",
     )
@@ -178,7 +180,7 @@ def parse_args():
     )
     parser.add_argument(
         "--epochs",
-        default=1,
+        default=50,
         type=int,
         help="Number of full passes over df during training.",
     )
@@ -190,14 +192,14 @@ def parse_args():
     )
     parser.add_argument(
         "--batch",
-        default=16,
+        default=32,
         type=int,
         help="Batch size.",
     )
 
     parser.add_argument(
         "--patience",
-        default=100,
+        default=20,
         type=int,
         help="Number of epochs to wait with no imrpovement before early stopping.",
     )
