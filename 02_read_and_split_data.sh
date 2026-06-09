@@ -3,9 +3,9 @@
 #SBATCH --job-name=read_and_split_data
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=16gb
-#SBATCH --time=00:20:00
+#SBATCH --time=01:00:00
 #SBATCH --output=logs/read_%j.out
 
 export PYTHONUNBUFFERED=1

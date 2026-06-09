@@ -30,3 +30,6 @@ data/
 
 # --- YOLO OUTPUT ---
 runs/
+
+# --- Sockeye ---
+logs/
