@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=4gb
+#SBATCH --mem=16gb
 #SBATCH --time=00:20:00
 #SBATCH --output=logs/read_%j.out
 
