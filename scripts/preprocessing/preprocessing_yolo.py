@@ -437,15 +437,6 @@ def extract_frames(
                 else:
                     frame_idx += 1
 
-                #     # Write frame to output dir
-                #     cv2.imwrite(str(frame_path), frame)
-                # else:
-                #     ret = cap.grab()  # advances position, does not decode frame.
-                #     if not ret:  # Skip efficiently
-                #         break
-
-                # frame_idx += 1
-
             # release video
             cap.release()
             print(f"{video_file.name} frames decoded.")

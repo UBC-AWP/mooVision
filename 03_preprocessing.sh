@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=32gb
+#SBATCH --mem=64gb
 #SBATCH --time=08:00:00
 #SBATCH --output=logs/preprocess_%A_%a.out
 #SBATCH --error=logs/preprocess_%A_%a.err
@@ -14,6 +14,7 @@
 # Spawns 8 independent worker tasks simultaneously (Task IDs 0 to 7)
 #SBATCH --array=0-7
 
+export PYTHONUNBUFFERED=1
 cd /scratch/st-nina-1/mooVision
 source .env_sockeye
 
@@ -35,7 +36,7 @@ uv run scripts/preprocessing/preprocessing_yolo.py \
     --input_path="$INPUT_PATH" \
     --output_dir="$OUTPUT_DIR" \
     --skip=${SKIP} \
-    --FORCE
+    --FORCE 
 
 echo "========================================================"
 echo "SUCCESS: Task $SLURM_ARRAY_TASK_ID finished cleanly."

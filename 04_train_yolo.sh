@@ -2,11 +2,11 @@
 #SBATCH --account=st-nina-1-gpu
 #SBATCH --job-name=yolo_training
 #SBATCH --partition=gpu
-#SBATCH --gpus=1
+#SBATCH --gpus=2
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64gb
+#SBATCH --mem=128gb
 #SBATCH --time=12:00:00
 #SBATCH --output=logs/train_%j.out
 #SBATCH --error=logs/train_%j.err
