@@ -27,7 +27,6 @@ echo "========================================================"
 echo "Sockeye Array Engine Active" : EXECUTING Split Task $SLURM_ARRAY_TASK_ID
 echo "Reading From CSV   : $INPUT_PATH"
 echo "Writing Out To     : $OUTPUT_DIR"
-echo "Compute Node       : $SLURM_NODENAME"
 echo "========================================================"
 
 # 3. PIPELINE EXECUTION VIA UV
