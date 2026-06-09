@@ -29,11 +29,11 @@ import pandas as pd
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from scripts.data_reading.matching import parse_labelled_name, parse_unlabelled_name
-from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR
+from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR, ROOT_DIR
 
 
 def extract_labels(
-    label_paths: List[Path],
+    label_paths: List[str],
     output_dir: Path,
     labels_root: Path,
     split: str,
@@ -144,136 +144,81 @@ def extract_labels(
         shutil.rmtree(labels_root)
         shutil.rmtree(output_dir)
     """
+    if split not in ["train", "val"]:
+        raise ValueError("split must be either 'train' or 'val'.")
 
     # Add subdirectories to output directory
-    output_dir = Path(output_dir) / "labels" / split
+    final_output_dir = Path(output_dir) / "labels" / split
 
     # Do nothing if files already exist
-    if Path(output_dir).exists() and not FORCE:
-        print(f"Files already extracted at {Path(__file__) / Path(output_dir)}")
+    if final_output_dir.exists() and not FORCE:
+        print(f"Files already extracted at {final_output_dir}. Skipping computation.")
+        return
+
+    # Input Pre-Validation (Fails fast before touching data)
+    validated_paths = []
+    for raw_path in label_paths:
+        if not isinstance(raw_path, str):
+            raise TypeError(f"ERROR: {raw_path} is not a string path.")
+
+        # Standardize path string
+        clean_path = labels_root / raw_path.replace("\\", "/")
+        if not clean_path.exists():
+            raise FileNotFoundError(f"Label file not found: {clean_path}")
+
+        validated_paths.append(clean_path)
+
+    # Build parent folder
+    final_output_dir.mkdir(parents=True, exist_ok=True)
+
+    label_batch = {}
+    n_files = len(validated_paths)
+
+    # Loop over zip file paths (CVAT Outputs)
+    for n, input_path in enumerate(validated_paths, start=1):
+        print(f"Extracting files from {input_path.name} ({n}/{n_files} )...")
+
+        # Get numeric id and part id of labelled output
+        numeric_id, part_id = parse_labelled_name(str(input_path.name))
+        part_id_str = f"part0{part_id}" if part_id else None
+        file_prefix = f"{int(numeric_id):04}_{part_id_str}_"
+
+        target_folder = "obj_train_data"
+
+        with zipfile.ZipFile(input_path, "r") as zip_ref:
+
+            for zinfo in zip_ref.infolist():
+                filename = zinfo.filename
+
+                if filename.startswith(target_folder) and filename.endswith(".txt"):
+
+                    pure_name = filename.split("/")[-1]
+
+                    try:
+                        frame_num = int(pure_name[6:12])
+                    except ValueError:
+                        raise (
+                            f"ValueError: Incorrect naming conventions for {filename} in {path.name}"
+                        )
+
+                    if frame_num % skip == 0:
+                        new_filename = f"{file_prefix}{pure_name}"
+
+                        # Ready text directly into RAM dictionary
+                        label_batch[new_filename] = zip_ref.read(zinfo)
+
+    if label_batch:
+        print("Scan complete.")
+        print(f"Executing batch-write for {len(label_batch)} labels...")
+
+        for filename, text_bytes in label_batch.items():
+            target_path = final_output_dir / filename
+            with open(target_path, "wb") as f_out:
+                f_out.write(text_bytes)
+
+        print(f"All files successfully saved to {final_output_dir}")
     else:
-
-        # Build new parent folder
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        #### ---- CHECK INPUT LIST IS NOT EMPTY ---- ####
-        #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####
-        n_files = len(label_paths)
-        n = 0
-        # Loop over zip file paths (CVAT Outputs)
-        for input_path in label_paths:
-
-            ### THIS SHOULD BE EARLIER MAYBE? = yes, else we might
-            # # run through severral iterations of this list until we get to something that is not a string
-
-            if not isinstance(input_path, str):
-                raise TypeError(
-                    f"{input_path} is not a string. labels_path should be a list of strings."
-                )
-
-            # Standardie Path to Posix Standard
-            input_path = labels_root / input_path.replace("\\", "/")
-
-            if not input_path.exists():
-                raise FileNotFoundError(f"{input_path} not found.")
-
-            n += 1
-            print(f"Extracting files from {input_path.name} ({n}/{n_files} )...")
-
-            # Get numeric id and part id of labelled output
-            numeric_id, part_id = parse_labelled_name(str(input_path.name))
-
-            ### DO I NEED TO TEST THE OUTPUTS OF THIS??
-            # --- NO? Already confirmed from other function inputs?
-
-            if part_id:
-                # Formating for file name
-                part_id = f"part0{part_id}"
-
-            file_prefix = f"{int(numeric_id):04}_{part_id}_"
-            target_folder = "obj_train_data"
-
-            with zipfile.ZipFile(input_path, "r") as zip_ref:
-
-                for zinfo in zip_ref.infolist():
-                    filename = zinfo.filename
-
-                    if filename.startswith(target_folder) and filename.endswith(".txt"):
-
-                        pure_name = filename.split("/")[-1]
-
-                        try:
-                            frame_num = int(pure_name[6:12])
-                        except ValueError:
-                            raise (
-                                f"ValueError: Incorrect naming conventions for {filename} in {path.name}"
-                            )
-
-                        if frame_num % skip == 0:
-
-                            target_path = output_dir / f"{file_prefix}{pure_name}"
-
-                            with open(target_path, "wb") as f_out:
-                                f_out.write(zip_ref.read(zinfo))
-
-            # # Look in zip folder
-            # with zipfile.ZipFile(input_path, "r") as zip_ref:
-
-            #     # List all files in zip folder
-            #     all_files = zip_ref.namelist()
-
-            #     # Isolate only the .txt files belonging to the target folder hierarchy
-            #     files_to_extract = [
-            #         f
-            #         for f in all_files
-            #         if f.startswith(
-            #             target_folder
-            #         )  # assumes files names: target_folder/frame_000000.txt
-            #         and ".txt" in f
-            #         and (int(f[6:12]) % skip == 0)  # Take every `skip` frame
-            #     ]
-
-            #     ### TEST LENGTH OF LIST HERE FOR .TXT FILES --- Return could not find labels at input_path/target_folder
-            #     # Test length of list
-            #     if not files_to_extract:
-            #         raise FileNotFoundError(
-            #             f"Could not find labels matching criteria at {input_path}/{target_folder}"
-            #         )
-
-            #     for file in files_to_extract:
-            #         # Extract individual files explicitly to target destination
-            #         file_name = Path(file).name
-            #         target_path = (
-            #             output_dir / f"{int(numeric_id):04}_{part_id}_{str(file_name)}"
-            #         )
-            #         with open(target_path, "wb") as f_out:
-            #             f_out.write(zip_ref.read(file))
-
-            # # target_folder = "obj_train_data/"
-            # # path to target folder in output dir (extraction adds target folder in output hierarchy)
-            # target_folder = output_dir / target_folder
-
-            # if target_folder.exists() and target_folder.is_dir():
-            #     # Iterate through all files inside the sub-folder
-            #     for file_path in target_folder.iterdir():
-            #         if file_path.is_file():
-            #             # Define target path (e.g., extraction_output/train/0000_{part}_frame_000000.txt)
-            #             target_path = (
-            #                 output_dir
-            #                 / f"{int(numeric_id):04}_{part_id}_{str(file_path.name)}"
-            #             )
-
-            #             # Atomic filesystem move (Metadata update only, no disk write)
-            #             file_path.rename(target_path)
-
-            #     # Delete the now-empty target folder from output dir
-            #     target_folder.rmdir()
-            # else:
-            #     raise FileNotFoundError(
-            #         f"{target_folder} structure not found or already processed."
-            #     )
-
-        print(f"Files saved to {output_dir}")
+        print("No valid labels matched the slicing/skipping criteria.")
 
 
 def extract_frames(
@@ -488,8 +433,8 @@ def create_yaml(
 
 # UPDATE TO CLEAN AND TAKE IN ARGUMENTS
 def run_yolo_preprocessing(
-    input_path: str,
-    output_dir: str,
+    input_path: Path,
+    output_dir: Path,
     skip: int,
     val_size: float,
     random_state: int = 300,
@@ -505,7 +450,7 @@ def run_yolo_preprocessing(
 
     Parameters
     ----------
-    input_path : str
+    input_path : Path
         Path to the source CSV file containing video and label mappings.
     output_dir : Path
         Base directory path where the 'images/' and 'labels/' subfolders
@@ -548,13 +493,13 @@ def run_yolo_preprocessing(
     WIP
     """
     # Convert inputs to Path objects
-    train_path = Path(input_path).absolute()
-    output_path = Path(output_dir).absolute()
+    # train_path = Path(input_path).absolute()
+    # output_path = Path(output_dir).absolute()
     skip = int(skip)
     val_size = float(val_size)
     random_state = int(random_state)
 
-    train_df = pd.read_csv(train_path, index_col=0)
+    train_df = pd.read_csv(input_path, index_col=0)
 
     train, val = train_test_split(
         train_df,
@@ -566,7 +511,7 @@ def run_yolo_preprocessing(
     extract_labels(
         label_paths=train["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
-        output_dir=output_path,
+        output_dir=output_dir,
         split="train",
         skip=skip,
         FORCE=FORCE,
@@ -574,7 +519,7 @@ def run_yolo_preprocessing(
     extract_frames(
         video_paths=train["clip_relative_path"],
         videos_root=UNLABELLED_CLIPS_DIR,
-        output_dir=output_path,
+        output_dir=output_dir,
         split="train",
         skip=skip,
         FORCE=FORCE,
@@ -584,7 +529,7 @@ def run_yolo_preprocessing(
     extract_labels(
         label_paths=val["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
-        output_dir=output_path,
+        output_dir=output_dir,
         split="val",
         skip=skip,
         FORCE=FORCE,
@@ -592,14 +537,14 @@ def run_yolo_preprocessing(
     extract_frames(
         video_paths=val["clip_relative_path"],
         videos_root=UNLABELLED_CLIPS_DIR,
-        output_dir=output_path,
+        output_dir=output_dir,
         split="val",
         skip=skip,
         FORCE=FORCE,
     )
 
     # Create dataset.yaml
-    create_yaml(output_dir)
+    create_yaml(str(output_dir))
 
 
 def parse_args():
@@ -643,13 +588,38 @@ def parse_args():
 if __name__ == "__main__":
     print("Running preprocessing for YOLO models...")
     args = parse_args()
+
+    # 1. Define your translation dictionary mapping index numbers to raw names
+    SPLIT_MAP = {
+        0: "results_baseline.csv",
+        1: "results_expert_annotations.csv",
+        2: "results_v2_cleaned.csv",
+        3: "results_final_validation.csv",
+        4: "results_test_holdout.csv",
+        5: "results_cross_sucking_main.csv",
+        6: "results_fixed_clips.csv",
+        7: "results_ambiguous_cases.csv",
+    }
+
     run_yolo_preprocessing(
-        input_path=args.input_path,
-        output_dir=args.output_dir,
+        input_path=ROOT_DIR / args.input_path,
+        output_dir=ROOT_DIR / args.output_dir,
         skip=args.skip,
         val_size=args.val_size,
         random_state=args.random_state,
         FORCE=args.FORCE,
     )
+
+    # def folder_count(folder):
+    #     "count files in folder"
+    #     mp4_count = sum(1 for f in folder.rglob("*"))
+    #     return mp4_count
+
+    # assert folder_count(ROOT_DIR / args.output_dir / "images/train") == folder_count(
+    #     ROOT_DIR / args.output_dir / "labels/train"
+    # )
+    # assert folder_count(ROOT_DIR / args.output_dir / "images/val") == folder_count(
+    #     ROOT_DIR / args.output_dir / "labels/val"
+    # )
     print("All files created.")
     print("Preprocessing for YOLO models complete.")
