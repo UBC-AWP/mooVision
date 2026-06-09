@@ -236,25 +236,21 @@ def parse_args():
     parser.add_argument(
         "--labelled_clips_dir",
         default=LABELLED_CLIPS_DIR,
-        action="store_true",
         help="Path to annotations directory.",
     )
     parser.add_argument(
         "--source_videos_dir",
         default=SOURCE_VIDEOS_DIR,
-        action="store_false",
         help="Path to source videos directory.",
     )
     parser.add_argument(
         "--raw_index_output",
         default=RAW_INDEX_OUTPUT,
-        action="store_false",
         help="Output path for raw index file.",
     )
     parser.add_argument(
         "--processed_index_output",
         default=PROCESSED_INDEX_OUTPUT,
-        action="store_false",
         help="Output path for processed index file.",
     )
     parser.add_argument(

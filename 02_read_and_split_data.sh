@@ -8,6 +8,7 @@
 #SBATCH --time=00:20:00
 #SBATCH --output=logs/read_%j.out
 
+export PYTHONUNBUFFERED=1
 cd /scratch/st-nina-1/mooVision
 source .env_sockeye
 
