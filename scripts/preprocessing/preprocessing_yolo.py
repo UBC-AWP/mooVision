@@ -12,13 +12,14 @@ NOTE 3: Examples are not finished and need to be properly updated.
 
 from pathlib import Path
 import sys
+import io
+import os
+import tarfile
 import zipfile
-import shutil
 import concurrent.futures
 import threading
 from typing import List
 import cv2
-import re
 import argparse
 import yaml
 
@@ -208,17 +209,51 @@ def extract_labels(
                         label_batch[new_filename] = zip_ref.read(zinfo)
 
     if label_batch:
+        idx = 0
+        batch_len = len(label_batch)
         print("Scan complete.")
-        print(f"Executing batch-write for {len(label_batch)} labels...")
+        print(f"Executing batch-write for {batch_len} labels...")
 
-        for filename, text_bytes in label_batch.items():
-            target_path = final_output_dir / filename
-            with open(target_path, "wb") as f_out:
-                f_out.write(text_bytes)
+        task_id = os.environ.get(
+            "SLURM_ARRAY_TASK_ID", os.environ.get("SLURM_JOB_ID", "local_dev")
+        )
+        tar_name = f"labels_batch_{split}_{task_id}.tar"
+        tar_path = final_output_dir / tar_name
 
-        print(f"All files successfully saved to {final_output_dir}")
-    else:
-        print("No valid labels matched the slicing/skipping criteria.")
+        print(f"Creating a single memory-tarball at: {tar_path}")
+
+        # Create a single tar file with all labels
+        with tarfile.open(tar_path, "w") as tar:
+            for filename, text_bytes in label_batch.items():
+                idx += 1
+                if idx % 1000 == 0:
+                    print(f"Executing tar-write: label ({idx}/{batch_len})")
+                tarinfo = tarfile.TarInfo(name=filename)
+                tarinfo.size = len(text_bytes)
+                tar.addfile(tarinfo, io.BytesIO(text_bytes))
+
+        # Extract files from tar to output directory
+        print("Extracting txt files from tar...")
+        with tarfile.open(tar_path, "r") as tar:
+            tar.extractall(path=final_output_dir)
+
+        tar_path.unlink()
+        print(
+            f"All {len(label_batch)} files successfully exploded onto {final_output_dir}!\n"
+        )
+        print()
+
+    #     for filename, text_bytes in label_batch.items():
+    #         idx += 1
+    #         if idx % 1000 == 0:
+    #             print(f"Executing batch-write: label ({idx}/{batch_len})")
+    #         target_path = final_output_dir / filename
+    #         with open(target_path, "wb") as f_out:
+    #             f_out.write(text_bytes)
+
+    #     print(f"All files successfully saved to {final_output_dir}")
+    # else:
+    #     print("No valid labels matched the slicing/skipping criteria.")
 
 
 def extract_frames(
@@ -387,7 +422,8 @@ def extract_frames(
             print(f"{video_file.name} frames decoded.")
 
         executor.shutdown(wait=True)
-        print(f"All frames successfully saved to disk at {output_dir}")
+        print(f"All frames successfully saved to disk at {output_dir}\n")
+        print()
 
 
 def create_yaml(
@@ -501,19 +537,19 @@ def run_yolo_preprocessing(
 
     train_df = pd.read_csv(input_path, index_col=0)
 
-    # For Pipeline testing on Sockeye
-    ten_percent_df, do_not_use_df = train_test_split(
-        train_df,
-        test_size=0.9,
-        random_state=random_state,
-    )
-
     train, val = train_test_split(
-        ten_percent_df,
-        test_size=0.9,
+        train_df,
+        test_size=val_size,
         random_state=random_state,
     )
 
+    # train, val = train_test_split(
+    #     ten_percent_df,
+    #     test_size=0.9,
+    #     random_state=random_state,
+    # )
+
+    # For Pipeline testing on Sockeye
     # Extract frames and bounding box annotations for the train set
     extract_labels(
         label_paths=train["labelled_clip_relative_path"],
@@ -616,17 +652,19 @@ if __name__ == "__main__":
         random_state=args.random_state,
         FORCE=args.FORCE,
     )
+    print("Preprocessing complete. Checking file counts...")
 
-    # def folder_count(folder):
-    #     "count files in folder"
-    #     mp4_count = sum(1 for f in folder.rglob("*"))
-    #     return mp4_count
+    # Check outputs are the same length!
+    def folder_count(folder):
+        "count files in folder"
+        count = sum(1 for f in folder.rglob("*"))
+        return count
 
-    # assert folder_count(ROOT_DIR / args.output_dir / "images/train") == folder_count(
-    #     ROOT_DIR / args.output_dir / "labels/train"
-    # )
-    # assert folder_count(ROOT_DIR / args.output_dir / "images/val") == folder_count(
-    #     ROOT_DIR / args.output_dir / "labels/val"
-    # )
+    assert folder_count(ROOT_DIR / args.output_dir / "images/train") == folder_count(
+        ROOT_DIR / args.output_dir / "labels/train"
+    )
+    assert folder_count(ROOT_DIR / args.output_dir / "images/val") == folder_count(
+        ROOT_DIR / args.output_dir / "labels/val"
+    )
     print("All files created.")
     print("Preprocessing for YOLO models complete.")
