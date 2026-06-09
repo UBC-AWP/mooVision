@@ -152,16 +152,12 @@ def extract_labels(
     if Path(output_dir).exists() and not FORCE:
         print(f"Files already extracted at {Path(__file__) / Path(output_dir)}")
     else:
-        # Delete path and files if they already exist
-        if output_dir.exists() and output_dir.is_dir():
-            # Recursively deletes the directory and all contents
-            shutil.rmtree(output_dir)
 
         # Build new parent folder
         output_dir.mkdir(parents=True, exist_ok=True)
 
         #### ---- CHECK INPUT LIST IS NOT EMPTY ---- ####
-        #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####bbvbvbvbgfvgbhgfghgfvgbhjgfv
+        #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####
         n_files = len(label_paths)
         n = 0
         # Loop over zip file paths (CVAT Outputs)
@@ -382,10 +378,6 @@ def extract_frames(
     if Path(output_dir).exists() and not FORCE:
         print(f"Files already extracted at {Path(__file__) / Path(output_dir)}")
     else:
-        # Delete path if it already exists
-        if output_dir.exists() and output_dir.is_dir():
-            # Recursively deletes the directory and all contents
-            shutil.rmtree(output_dir)
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
