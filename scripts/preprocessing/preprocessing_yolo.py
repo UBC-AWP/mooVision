@@ -501,9 +501,16 @@ def run_yolo_preprocessing(
 
     train_df = pd.read_csv(input_path, index_col=0)
 
-    train, val = train_test_split(
+    # For Pipeline testing on Sockeye
+    ten_percent_df, do_not_use_df = train_test_split(
         train_df,
-        test_size=val_size,
+        test_size=0.9,
+        random_state=random_state,
+    )
+
+    train, val = train_test_split(
+        ten_percent_df,
+        test_size=0.9,
         random_state=random_state,
     )
 
