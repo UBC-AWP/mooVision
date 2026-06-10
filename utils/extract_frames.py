@@ -83,39 +83,43 @@ def extract_frames(input_path: Path=FRAMES_DIR) -> None:
             frame_idx += 1
         cap.release()
         print(f"{clip_name} -> {frame_idx} frames extracted")
+        copy_zip_content(video_name,out_dir)
         
 def copy_zip_content(video_name:str,out_dir: Path) -> None:
     clip_index_path = LOCAL_DIR / "data" / "processed" / "processed_clips_index.csv"
     index_df = pd.read_csv(clip_index_path)
 
     index_df = index_df[index_df["clip_name"] == video_name]
-    # clean_zip_path = Path(str(zip_relative_path).replace("\\", "/"))
-    # full_zip_path  = LABELLED_CLIPS_DIR / clean_zip_path
+    for _, row in index_df.iterrows():
+        zip_relative_path = row["labelled_clip_relative_path"]
+        
+        # clean_zip_path = Path(str(zip_relative_path).replace("\\", "/"))
+        full_zip_path  = LABELLED_CLIPS_DIR / zip_relative_path
 
-    # tmp_dir = out_dir / "_tmp_unzip"
-    # tmp_dir.mkdir(exist_ok=True)
+        tmp_dir = out_dir / "_tmp_unzip"
+        tmp_dir.mkdir(exist_ok=True)
 
-    # with zipfile.ZipFile(full_zip_path, "r") as zf:
-    #     zf.extractall(tmp_dir)
+        with zipfile.ZipFile(full_zip_path, "r") as zf:
+            zf.extractall(tmp_dir)
 
-    # # find obj_train_data/ inside the unzipped content
-    # obj_train_dir = tmp_dir / "obj_train_data"
-    # if not obj_train_dir.exists():
-    #     # search one level deeper in case zip has a subfolder
-    #     matches = list(tmp_dir.rglob("obj_train_data"))
-    #     obj_train_dir = matches[0] if matches else None
+        # find obj_train_data/ inside the unzipped content
+        obj_train_dir = tmp_dir / "obj_train_data"
+        if not obj_train_dir.exists():
+            # search one level deeper in case zip has a subfolder
+            matches = list(tmp_dir.rglob("obj_train_data"))
+            obj_train_dir = matches[0] if matches else None
 
-    # if obj_train_dir is None:
-    #     print(f"obj_train_data/ not found in zip: {full_zip_path.name}")
-    #     shutil.rmtree(tmp_dir)
+        if obj_train_dir is None:
+            print(f"obj_train_data/ not found in zip: {full_zip_path.name}")
+            shutil.rmtree(tmp_dir)
 
-    # # copy all frame_xxx.txt files into out_dir
-    # txt_files = list(obj_train_dir.glob("frame_*.txt"))
-    # for txt in txt_files:
-    #     shutil.copy(txt, out_dir / txt.name)
+        # copy all frame_xxx.txt files into out_dir
+        txt_files = list(obj_train_dir.glob("frame_*.txt"))
+        for txt in txt_files:
+            shutil.copy(txt, out_dir / txt.name)
 
-    # shutil.rmtree(tmp_dir)  # clean up temp unzip folder
-    # print(f"{len(txt_files)} annotation txts copied from zip")
+        shutil.rmtree(tmp_dir)  # clean up temp unzip folder
+        print(f"{len(txt_files)} annotation txts copied from zip")
 
 if __name__ == "__main__":
     extract_frames()
