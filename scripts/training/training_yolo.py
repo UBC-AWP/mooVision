@@ -124,6 +124,7 @@ def train_yolo_model(
     if weights_dir:
         print("Loading model from weights...")
         if model == 26:
+            print("Option 1: Loading YOLO26 model")
             final_model_target = Path(weights_dir) / f"yolo{model}{model_size}.pt"
             if not final_model_target.exists():
                 raise FileNotFoundError(
@@ -142,6 +143,7 @@ def train_yolo_model(
 
         else:
             final_model_target = f"yolov{model}{model_size}.pt"
+
     model = YOLO(final_model_target)
     print(f"Model loaded from: {final_model_target}")
 
