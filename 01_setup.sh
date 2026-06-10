@@ -7,6 +7,8 @@ set -e
 cd /scratch/st-nina-1/mooVision
 
 echo "=== Running One-Time Global Setup ==="
+
+# PULL LATEST CHANGES
 git pull origin arc-setup-dev
 
 # ENVIRONMENT VALIDATION & LOAD
@@ -23,7 +25,7 @@ if [ ! -f .env ]; then
 fi
 
 # DOWNLOAD YOLO MODEL WEIGHTS 
-URL="https://github.com/ultralytics/assets/releases/download/v8.3.0/${YOLO_MODEL}"
+URL="https://github.com/ultralytics/assets/releases/download/v0.0.0/${YOLO_MODEL}"
 
 echo "Checking environment..."
 
