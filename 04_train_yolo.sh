@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=96gb
 #SBATCH --time=12:00:00
-#SBATCH --output=logs/train_%j.out
-#SBATCH --error=logs/train_%j.err
+#SBATCH --output=logs/train_%A_%a.out
+#SBATCH --error=logs/train_%A_%a.err
 #SBATCH --array=0-7
 
 cd /scratch/st-nina-1/mooVision
@@ -49,7 +49,7 @@ else
         --yaml_path="$YAML_PATH" \
         --project="$TARGET_PROJECT_DIR" \
         --name="$UNIQUE_RUN_NAME" \
-        --device="0,1" \
+        --device="[0,1]" \
         --workers=8 \
         --weights_dir=$WEIGHTS_DIR \
         --model=26 \
@@ -58,7 +58,7 @@ else
 
 fi
 
-rm 
+# rm something?
 
 echo "========================================================"
 echo "SUCCESS: Split #$SPLIT_NUM Model Training Complete."
