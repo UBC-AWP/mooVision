@@ -12,6 +12,8 @@ NOTE 3: Examples are not finished and need to be properly updated.
 
 from pathlib import Path
 import sys
+import platform
+import subprocess
 import io
 import os
 import tarfile
@@ -234,8 +236,17 @@ def extract_labels(
 
         # Extract files from tar to output directory
         print("Extracting txt files from tar...")
-        with tarfile.open(tar_path, "r") as tar:
-            tar.extractall(path=final_output_dir)
+        if platform.system() != "Windows":
+            print("Exploding files securely via native system tar tool...")
+            # Force the OS to unpack the tarball directly at the storage tier
+            subprocess.run(
+                ["tar", "-xf", str(tar_path), "-C", str(final_output_dir)],
+                check=True,  # Automatically raises an error if the extraction fails
+            )
+            os.system(f"tar -xf {tar_path} -C {final_output_dir}")
+        else:
+            with tarfile.open(tar_path, "r") as tar:
+                tar.extractall(path=final_output_dir)
 
         tar_path.unlink()
         print(
