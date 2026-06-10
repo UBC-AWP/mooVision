@@ -258,9 +258,11 @@ def extract_labels(
             print("Transferring uncompressed labels from node memory to scratch...")
 
             if final_output_dir.exists():
+                print("Removing Existing Files...")
                 shutil.rmtree(final_output_dir)
 
             # Move the entire directory across storage boundaries in one fluid operation
+            print(f"Moving files from {local_working_dir} to {final_output_dir}")
             shutil.move(str(local_working_dir), str(final_output_dir))
 
         else:
