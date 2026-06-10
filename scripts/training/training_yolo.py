@@ -6,6 +6,7 @@ from ultralytics import YOLO
 from pathlib import Path
 import sys
 import argparse
+import ast
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -144,12 +145,22 @@ def train_yolo_model(
     model = YOLO(final_model_target)
     print(f"Model loaded from: {final_model_target}")
 
+    try:
+        # If passed as '[0,1]', convert it directly to a native Python list: [0, 1]
+        final_device = ast.literal_eval(args.device)
+    except (ValueError, SyntaxError):
+        # Fallback if passed without brackets (e.g., "0,1"), split by comma
+        if "," in args.device:
+            final_device = [int(x.strip()) for x in args.device.split(",")]
+        else:
+            # Single device (e.g., "0" or "cpu")
+            final_device = args.device.strip()
     # Train
     model.train(
         data=yaml_path,
         name=name,
         project=project,
-        device=device,
+        device=final_device,
         exist_ok=exist_ok,
         epochs=epochs,
         time=time,
