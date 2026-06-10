@@ -1,6 +1,7 @@
 import cv2
 import sys
 import shutil
+import cv2
 import zipfile
 import pandas as pd
 from pathlib import Path
@@ -85,41 +86,126 @@ def extract_frames(input_path: Path=FRAMES_DIR) -> None:
         print(f"{clip_name} -> {frame_idx} frames extracted")
         copy_zip_content(video_name,out_dir)
         
-def copy_zip_content(video_name:str,out_dir: Path) -> None:
-    clip_index_path = LOCAL_DIR / "data" / "processed" / "processed_clips_index.csv"
-    index_df = pd.read_csv(clip_index_path)
+        # Compile the annotated video file
+        output_video_path = out_dir / f"{clip_name}_with_bounding_boxes.mp4"
+        reconstruct_clip_with_boxes(out_dir, output_video_path, fps=30)
+        
+def copy_zip_content(video_name: str, out_dir: Path) -> None:
+    # If text files are already copied, don't repeat the work
+    if any(out_dir.glob("frame_*.txt")):
+        print("Annotation text files already exist. Skipping zip processing.")
+        return
 
+    clip_index_path = LOCAL_DIR / "data" / "processed" / "processed_clips_index.csv"
+    if not clip_index_path.exists():
+        print(f"Index file missing: {clip_index_path}")
+        return
+
+    index_df = pd.read_csv(clip_index_path)
     index_df = index_df[index_df["clip_name"] == video_name]
+    
+    if index_df.empty:
+        print(f"No index record found for video: {video_name}")
+        return
+
     for _, row in index_df.iterrows():
         zip_relative_path = row["labelled_clip_relative_path"]
         
-        # clean_zip_path = Path(str(zip_relative_path).replace("\\", "/"))
-        full_zip_path  = LABELLED_CLIPS_DIR / zip_relative_path
+        # Keep slash normalization active to protect against Windows-to-Linux path breaks
+        clean_zip_path = str(zip_relative_path).replace("\\", "/")
+        full_zip_path  = LABELLED_CLIPS_DIR / clean_zip_path
+
+        if not full_zip_path.exists():
+            print(f"Zip file path not found: {full_zip_path}")
+            continue
 
         tmp_dir = out_dir / "_tmp_unzip"
         tmp_dir.mkdir(exist_ok=True)
 
-        with zipfile.ZipFile(full_zip_path, "r") as zf:
-            zf.extractall(tmp_dir)
+        try:
+            with zipfile.ZipFile(full_zip_path, "r") as zf:
+                zf.extractall(tmp_dir)
 
-        # find obj_train_data/ inside the unzipped content
-        obj_train_dir = tmp_dir / "obj_train_data"
-        if not obj_train_dir.exists():
-            # search one level deeper in case zip has a subfolder
-            matches = list(tmp_dir.rglob("obj_train_data"))
-            obj_train_dir = matches[0] if matches else None
+            obj_train_dir = tmp_dir / "obj_train_data"
+            if not obj_train_dir.exists():
+                matches = list(tmp_dir.rglob("obj_train_data"))
+                obj_train_dir = matches[0] if matches else None
 
-        if obj_train_dir is None:
-            print(f"obj_train_data/ not found in zip: {full_zip_path.name}")
-            shutil.rmtree(tmp_dir)
+            if obj_train_dir is None:
+                print(f"obj_train_data/ not found in zip: {full_zip_path.name}")
+                continue
 
-        # copy all frame_xxx.txt files into out_dir
-        txt_files = list(obj_train_dir.glob("frame_*.txt"))
-        for txt in txt_files:
-            shutil.copy(txt, out_dir / txt.name)
+            txt_files = list(obj_train_dir.glob("frame_*.txt"))
+            for txt in txt_files:
+                shutil.copy(txt, out_dir / txt.name)
 
-        shutil.rmtree(tmp_dir)  # clean up temp unzip folder
-        print(f"{len(txt_files)} annotation txts copied from zip")
+            print(f"{len(txt_files)} annotation txts copied from zip")
 
+        except Exception as e:
+            print(f"Error processing zip file {full_zip_path.name}: {e}")
+        finally:
+            if tmp_dir.exists():
+                shutil.rmtree(tmp_dir)
+                
+def reconstruct_clip_with_boxes(clip_folder_path: Path, output_video_path: Path, fps: float) -> None:
+    """Reads frames and YOLO coordinates sequentially to compile an annotated MP4 video."""
+    frame_paths = sorted(list(clip_folder_path.glob("frame_*.jpg")))
+    
+    if not frame_paths:
+        print(f"No frames available to compile in {clip_folder_path.name}")
+        return
+
+    # Check if compiled video already exists to prevent re-rendering identical work
+    if output_video_path.exists():
+        print(f"Annotated video already exists for {clip_folder_path.name}. Skipping generation.")
+        return
+
+    first_frame = cv2.imread(str(frame_paths[0]))
+    height, width, _ = first_frame.shape
+
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(str(output_video_path), fourcc, fps, (width, height))
+
+    print(f"Compiling {len(frame_paths)} frames into annotated clip at {fps:.2f} FPS...")
+
+    for frame_path in frame_paths:
+        frame = cv2.imread(str(frame_path))
+        
+        txt_path = frame_path.with_suffix(".txt")
+        if txt_path.exists():
+            with open(txt_path, "r") as f:
+                lines = f.readlines()
+                
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) != 5:
+                    continue 
+                
+                # Parse YOLO structure
+                x_center = float(parts[1])
+                y_center = float(parts[2])
+                box_w    = float(parts[3])
+                box_h    = float(parts[4])
+
+                # Transform normalized ratios back to bounding pixel coordinates
+                xmin = int((x_center - box_w / 2) * width)
+                ymin = int((y_center - box_h / 2) * height)
+                xmax = int((x_center + box_w / 2) * width)
+                ymax = int((y_center + box_h / 2) * height)
+
+                # Clamp values securely within resolution margins
+                xmin, ymin = max(0, xmin), max(0, ymin)
+                xmax, ymax = min(width, xmax), min(height, ymax)
+
+                # Draw solid bounding rectangle and custom tracking indicator tag
+                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 0, 255), 3)
+                cv2.putText(frame, "cross-sucking", (xmin, max(15, ymin - 8)), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+        video_writer.write(frame)
+
+    video_writer.release()
+    print(f"Annotated video successfully saved to: {output_video_path.name}")
+    
 if __name__ == "__main__":
     extract_frames()
