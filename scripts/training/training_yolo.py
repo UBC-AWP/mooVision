@@ -122,7 +122,7 @@ def train_yolo_model(
     """
     # Load pretrained model
     if weights_dir:
-        print("loading model from weights...")
+        print("Loading model from weights...")
         if model == 26:
             final_model_target = Path(weights_dir) / f"yolo{model}{model_size}.pt"
             if not final_model_target.exists():
@@ -145,22 +145,12 @@ def train_yolo_model(
     model = YOLO(final_model_target)
     print(f"Model loaded from: {final_model_target}")
 
-    try:
-        # If passed as '[0,1]', convert it directly to a native Python list: [0, 1]
-        final_device = ast.literal_eval(args.device)
-    except (ValueError, SyntaxError):
-        # Fallback if passed without brackets (e.g., "0,1"), split by comma
-        if "," in args.device:
-            final_device = [int(x.strip()) for x in args.device.split(",")]
-        else:
-            # Single device (e.g., "0" or "cpu")
-            final_device = args.device.strip()
     # Train
     model.train(
         data=yaml_path,
         name=name,
         project=project,
-        device=final_device,
+        device=device,
         exist_ok=exist_ok,
         epochs=epochs,
         time=time,
@@ -281,6 +271,17 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
+    try:
+        # If passed as '[0,1]', convert it directly to a native Python list: [0, 1]
+        final_device = ast.literal_eval(args.device)
+    except (ValueError, SyntaxError):
+        # Fallback if passed without brackets (e.g., "0,1"), split by comma
+        if "," in args.device:
+            final_device = [int(x.strip()) for x in args.device.split(",")]
+        else:
+            # Single device (e.g., "0" or "cpu")
+            final_device = args.device.strip()
+
     print("Training YOLO model ...")
     train_yolo_model(
         yaml_path=args.yaml_path,
@@ -289,7 +290,7 @@ if __name__ == "__main__":
         weights_dir=args.weights_dir,
         model=args.model,
         model_size=args.model_size,
-        device=args.device,
+        device=final_device,
         workers=args.workers,
         exist_ok=args.exist_ok,
         epochs=args.epochs,
