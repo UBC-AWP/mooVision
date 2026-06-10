@@ -264,6 +264,7 @@ def extract_labels(
             shutil.move(str(local_working_dir), str(final_output_dir))
 
         else:
+            print("Exploding files securely via native system tar tool...")
             # Standard laptop execution (Mac/Linux optimized, Windows safe fallback)
             if platform.system() != "Windows":
                 subprocess.run(
