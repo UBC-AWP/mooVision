@@ -18,6 +18,7 @@ import io
 import os
 import tarfile
 import zipfile
+import shutil
 import concurrent.futures
 import threading
 from typing import List
@@ -216,11 +217,20 @@ def extract_labels(
         print("Scan complete.")
         print(f"Executing batch-write for {batch_len} labels...")
 
+        # 1. Check if running on a cluster node; fallback to scratch locally
+        on_cluster = "PBS_JOBID" in os.environ or "SLURM_JOB_ID" in os.environ
         task_id = os.environ.get(
             "SLURM_ARRAY_TASK_ID", os.environ.get("SLURM_JOB_ID", "local_dev")
         )
-        tar_name = f"labels_batch_{split}_{task_id}.tar"
-        tar_path = final_output_dir / tar_name
+
+        if on_cluster:
+            # Create an isolated, hyper-fast playground inside the node's local memory
+            local_working_dir = Path(f"/tmp/{task_id}_label_extraction")
+            local_working_dir.mkdir(parents=True, exist_ok=True)
+            tar_path = local_working_dir / f"labels_batch_{split}.tar"
+        else:
+            local_working_dir = final_output_dir
+            tar_path = final_output_dir / f"labels_batch_{split}_{task_id}.tar"
 
         print(f"Creating a single memory-tarball at: {tar_path}")
 
@@ -234,20 +244,38 @@ def extract_labels(
                 tarinfo.size = len(text_bytes)
                 tar.addfile(tarinfo, io.BytesIO(text_bytes))
 
-        # Extract files from tar to output directory
-        print("Extracting txt files from tar...")
-        if platform.system() != "Windows":
-            print("Exploding files securely via native system tar tool...")
-            # Force the OS to unpack the tarball directly at the storage tier
-            subprocess.run(
-                ["tar", "-xf", str(tar_path), "-C", str(final_output_dir)],
-                check=True,  # Automatically raises an error if the extraction fails
-            )
-        else:
-            with tarfile.open(tar_path, "r") as tar:
-                tar.extractall(path=final_output_dir)
+        if on_cluster and (platform.system() != "Windows"):
 
-        tar_path.unlink()
+            print(
+                "Exploding files securely via native system tar tool inside node RAM..."
+            )
+            subprocess.run(
+                ["tar", "-xf", str(tar_path), "-C", str(local_working_dir)], check=True
+            )
+            tar_path.unlink()  # Clean up local tar
+
+            # Push the fully exploded files to scratch in one single network operation
+            print("Transferring uncompressed labels from node memory to scratch...")
+
+            if final_output_dir.exists():
+                shutil.rmtree(final_output_dir)
+
+            # Move the entire directory across storage boundaries in one fluid operation
+            shutil.move(str(local_working_dir), str(final_output_dir))
+
+        else:
+            # Standard laptop execution (Mac/Linux optimized, Windows safe fallback)
+            if platform.system() != "Windows":
+                subprocess.run(
+                    ["tar", "-xf", str(tar_path), "-C", str(final_output_dir)],
+                    check=True,
+                )
+            else:
+                with tarfile.open(tar_path, "r") as tar:
+                    tar.extractall(path=final_output_dir)
+
+            tar_path.unlink()  # Clean up local tar file inside scratch/final directory
+
         print(
             f"All {len(label_batch)} files successfully exploded onto {final_output_dir}!\n"
         )
