@@ -394,77 +394,113 @@ def extract_frames(
     """
 
     # Output dir
-    output_dir = Path(output_dir) / "images" / split
+    final_output_dir = Path(output_dir) / "images" / split
+
     # Rewrite files on FORCE
     if Path(output_dir).exists() and not FORCE:
         print(f"Files already extracted at {Path(__file__) / Path(output_dir)}")
+        return
+
+    # Environment-Aware Working Directory Configuration
+    on_cluster = "PBS_JOBID" in os.environ or "SLURM_JOB_ID" in os.environ
+    task_id = os.environ.get(
+        "SLURM_ARRAY_TASK_ID", os.environ.get("SLURM_JOB_ID", "local_dev")
+    )
+
+    if on_cluster:
+        # Create a blazing-fast local workspace in the compute node's RAM/SSD
+        working_dir = Path(f"/tmp/{task_id}_video_extraction")
     else:
+        # On your laptop, write directly to the final destination directory
+        working_dir = final_output_dir
 
-        output_dir.mkdir(parents=True, exist_ok=True)
+    working_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Extraction workspace target configured: {working_dir}")
 
-        n_videos = len(video_paths)
+    ### OLD STUFF ###
 
-        # Initialize ThreadPoolExecutor
-        MAX_QUEUE_SIZE = 40
-        semaphore = threading.BoundedSemaphore(MAX_QUEUE_SIZE)
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+    n_videos = len(video_paths)
 
-        # Helper function to release the semaphore slot once disk write is complete
-        def safe_write(frame_path, frame_data):
-            try:
-                cv2.imwrite(frame_path, frame_data)
-            finally:
-                semaphore.release()  # Opens up a slot for the main loop to read again
+    # Initialize ThreadPoolExecutor
+    MAX_QUEUE_SIZE = 40
+    semaphore = threading.BoundedSemaphore(MAX_QUEUE_SIZE)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
-        for n, video_file in enumerate(video_paths, 1):
+    # Helper function to release the semaphore slot once disk write is complete
+    def safe_write(frame_path, frame_data):
+        try:
+            cv2.imwrite(frame_path, frame_data)
+        finally:
+            semaphore.release()  # Opens up a slot for the main loop to read again
 
-            # Standardize Path to Posix Standard
-            video_file = videos_root / video_file.replace("\\", "/")
+    for n, video_file in enumerate(video_paths, 1):
 
-            # Print working video...
-            print(f"Extracting frames from {video_file.name} ({n}/{n_videos})...")
+        # Standardize Path to Posix Standard
+        video_file = videos_root / video_file.replace("\\", "/")
 
-            # Get numeric id and part id of video clip
-            numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
-            part_str = f"part0{part_id}" if part_id else None
-            file_prefix = f"{int(numeric_id):04}_{part_str}_frame_"
+        # Print working video...
+        print(f"Extracting frames from {video_file.name} ({n}/{n_videos})...")
 
-            # Video capture
-            cap = cv2.VideoCapture(str(video_file))
+        # Get numeric id and part id of video clip
+        numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
+        part_str = f"part0{part_id}" if part_id else None
+        file_prefix = f"{int(numeric_id):04}_{part_str}_frame_"
 
-            cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+        # Video capture
+        cap = cv2.VideoCapture(str(video_file))
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
 
-            frame_idx = 0
+        frame_idx = 0
 
-            while cap.isOpened():
+        while cap.isOpened():
 
-                semaphore.acquire()
-                # Decode frame
-                ret, frame = cap.read()
-                if not ret:  # Break if decoding fails
-                    semaphore.release()
-                    break
-                    # Create Output Path
-                frame_path = output_dir / f"{file_prefix}{frame_idx:06d}.jpg"
+            semaphore.acquire()
+            # Decode frame
+            ret, frame = cap.read()
+            if not ret:  # Break if decoding fails
+                semaphore.release()
+                break
+                # Create Output Path
+            frame_path = working_dir / f"{file_prefix}{frame_idx:06d}.jpg"
 
-                executor.submit(safe_write, str(frame_path), frame)
+            executor.submit(safe_write, str(frame_path), frame)
 
-                # Fast frame skipping wihtout running the above
-                if skip > 1:
-                    for _ in range(skip - 1):
-                        if not cap.grab():
-                            break
-                    frame_idx += skip
-                else:
-                    frame_idx += 1
+            # Fast frame skipping wihtout running the above
+            if skip > 1:
+                for _ in range(skip - 1):
+                    if not cap.grab():
+                        break
+                frame_idx += skip
+            else:
+                frame_idx += 1
 
-            # release video
-            cap.release()
-            print(f"{video_file.name} frames decoded.")
+        # release video
+        cap.release()
+        print(f"{video_file.name} frames decoded.")
 
-        executor.shutdown(wait=True)
-        print(f"All frames successfully saved to disk at {output_dir}\n")
-        print()
+    # Wait for all background thread writes to finish inside /tmp
+    print("Waiting for final thread queue to clear...")
+    executor.shutdown(wait=True)
+    print(f"All frames successfully saved to disk at {working_dir}\n")
+    print()
+
+    # Synchronize from compute node memory back to Sockeye /scratch Space
+    if on_cluster:
+        print("Transferring frames from node local memory to network scratch...")
+
+        # Wipe old destination directory to avoid collisions
+        if final_output_dir.exists():
+            print(f"Cleaning out stale destination directory: {final_output_dir}")
+            shutil.rmtree(final_output_dir)
+
+        # Move the fully populated folder instantly across storage tiers
+        print(f"Moving extracted frames from {working_dir} to {final_output_dir}.")
+        shutil.move(str(working_dir), str(final_output_dir))
+        print(
+            f"Successfully transferred all frames to network scratch: {final_output_dir}"
+        )
+    else:
+        print(f"Local run complete. All frames natively verified at {final_output_dir}")
 
 
 def create_yaml(
