@@ -11,9 +11,10 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 
 def train_yolo_model(
-    yaml_path: Path,
+    yaml_path: str,
     name: str,
-    project: Path,
+    project: Path | str,
+    weights_dir: str,
     model: int,
     model_size: int,
     device: str,
@@ -49,6 +50,8 @@ def train_yolo_model(
     project : Path | str
         Output directory. This is where output of model training is stored, including model
         weights and predictions.
+    weights_dir : str
+        Path to local pretrained YOLO weights (raw weights)
     model : int
         YOLO model version. i.e. 26 for v26, 8 for v8.
     model_size : str
@@ -117,10 +120,29 @@ def train_yolo_model(
         )
     """
     # Load pretrained model
-    if model == 26:
-        model = YOLO(f"yolo{model}{model_size}.pt")
+    if weights_dir:
+        print("loading model from weights...")
+        if model == 26:
+            final_model_target = Path(weights_dir) / f"yolo{model}{model_size}.pt"
+            if not final_model_target.exists():
+                raise FileNotFoundError(
+                    f"Could not find {final_model_target}. Set model to yolo{model}{model_size}.pt in .env_sockeye and run ./01_setup.sh on the login node."
+                )
+        else:
+            final_model_target = Path(weights_dir) / f"yolov{model}{model_size}.pt"
+            if not final_model_target.exists():
+                raise FileNotFoundError(
+                    f"Could not find {final_model_target}. Set model to yolov{model}{model_size}.pt in .env_sockeye and run ./01_setup.sh on the login node."
+                )
     else:
-        model = YOLO(f"yolov{model}{model_size}.pt")
+        print("loading model...")
+        if model == 26:
+            final_model_target = f"yolo{model}{model_size}.pt"
+
+        else:
+            final_model_target = f"yolov{model}{model_size}.pt"
+    model = YOLO(final_model_target)
+    print(f"Model loaded from: {final_model_target}")
 
     # Train
     model.train(
@@ -174,6 +196,12 @@ def parse_args():
         type=str,
         default="MooVision",
         help="Output directory.",
+    )
+    parser.add_argument(
+        "--weights_dir",
+        type=str,
+        default="",
+        help="Path to local weights folder. Leave blank to auto-download from the internet.",
     )
     parser.add_argument(
         "--model",
@@ -241,11 +269,13 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+
     print("Training YOLO model ...")
     train_yolo_model(
         yaml_path=args.yaml_path,
         name=args.name,
         project=args.project,
+        weights_dir=args.weights_dir,
         model=args.model,
         model_size=args.model_size,
         device=args.device,
