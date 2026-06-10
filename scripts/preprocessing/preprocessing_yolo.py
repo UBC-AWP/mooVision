@@ -246,24 +246,50 @@ def extract_labels(
 
         if on_cluster and (platform.system() != "Windows"):
 
+            # COPY THE TAR TO SCRATCH FIRST (Single file network transfer = instant)
+            scratch_tar_path = (
+                final_output_dir.parent / f"labels_batch_{split}_{task_id}.tar"
+            )
+            final_output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Move the single tar archive from /tmp to /scratch natively
+            print("Move tar file to /scratch/...")
+            shutil.move(str(tar_path), str(scratch_tar_path))
+
+            # Wipe the local /tmp folder right away since the tar is safe on scratch
+            print("Removing tmp directory on node...")
+            shutil.rmtree(local_working_dir)
+
             print(
-                "Exploding files securely via native system tar tool inside node RAM..."
+                "Exploding files securely at the storage layer via native system tar tool..."
             )
+            # 4. Explode the tarball directly into your shared scratch directory
+            # Sockeye's native tar tool handles this at hardware block speeds!
             subprocess.run(
-                ["tar", "-xf", str(tar_path), "-C", str(local_working_dir)], check=True
+                ["tar", "-xf", str(scratch_tar_path), "-C", str(final_output_dir)],
+                check=True,
             )
-            tar_path.unlink()  # Clean up local tar
 
-            # Push the fully exploded files to scratch in one single network operation
-            print("Transferring uncompressed labels from node memory to scratch...")
+            # Clean up the temporary archive file on scratch
+            scratch_tar_path.unlink()
+            # print(
+            #     "Exploding files securely via native system tar tool inside node RAM..."
+            # )
+            # subprocess.run(
+            #     ["tar", "-xf", str(tar_path), "-C", str(local_working_dir)], check=True
+            # )
+            # tar_path.unlink()  # Clean up local tar
 
-            if final_output_dir.exists():
-                print("Removing Existing Files...")
-                shutil.rmtree(final_output_dir)
+            # # Push the fully exploded files to scratch in one single network operation
+            # print("Transferring uncompressed labels from node memory to scratch...")
 
-            # Move the entire directory across storage boundaries in one fluid operation
-            print(f"Moving files from {local_working_dir} to {final_output_dir}")
-            shutil.move(str(local_working_dir), str(final_output_dir))
+            # if final_output_dir.exists():
+            #     print("Removing Existing Files...")
+            #     shutil.rmtree(final_output_dir)
+
+            # # Move the entire directory across storage boundaries in one fluid operation
+            # print(f"Moving files from {local_working_dir} to {final_output_dir}")
+            # shutil.move(str(local_working_dir), str(final_output_dir))
 
         else:
             print("Exploding files securely via native system tar tool...")
