@@ -1,19 +1,13 @@
 #!/bin/bash
-#SBATCH --account=st-nina-1
-#SBATCH --job-name=setup
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=4gb
-#SBATCH --time=00:10:00
-#SBATCH --output=logs/setup_%j.out
 
-# module load git
+# LOCAL REPO SETUP
+set -e
 
+# Move into MooVision Project
 cd /scratch/st-nina-1/mooVision
 
 echo "=== Running One-Time Global Setup ==="
-# git pull origin arc-setup-dev
+git pull origin arc-setup-dev
 
 # ENVIRONMENT VALIDATION & LOAD
 if [ ! -f .env_sockeye ]; then
@@ -26,6 +20,30 @@ source .env_sockeye
 
 if [ ! -f .env ]; then
     ln -s .env_sockeye .env
+fi
+
+# DOWNLOAD YOLO MODEL WEIGHTS 
+URL="https://github.com/ultralytics/assets/releases/download/v8.3.0/${YOLO_MODEL}"
+
+echo "Checking environment..."
+
+# Safety Check: Prevent running this on an offline compute node
+if [ -n "$PBS_JOBID" ] || [ -n "$SLURM_JOB_ID" ]; then
+    echo "ERROR: You are running this on an offline compute node!"
+    echo "Please run this script from a Sockeye LOGIN node where internet is available."
+    exit 1
+fi
+
+# Create weights directory if it doesn't exist
+mkdir -p "$WEIGHTS_DIR"
+
+# Check if the model already exists to save bandwidth
+if [ -f "$WEIGHTS_DIR/$YOLO_MODEL" ]; then
+    echo "Model weights ($YOLO_MODEL) already exist in $WEIGHTS_DIR. Skipping download."
+else
+    echo "Downloading $YOLO_MODEL into $WEIGHTS_DIR..."
+    wget -P "$WEIGHTS_DIR" "$URL"
+    echo "Download complete!"
 fi
 
 # Run any standalone pre-checks or global asset extractions here
