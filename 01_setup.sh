@@ -10,6 +10,7 @@ echo "=== Running One-Time Global Setup ==="
 
 # PULL LATEST CHANGES
 git pull origin arc-setup-dev
+uv sync
 
 # ENVIRONMENT VALIDATION & LOAD
 if [ ! -f .env_sockeye ]; then

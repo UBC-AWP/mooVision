@@ -45,7 +45,7 @@ else
     echo "Starting fresh training initialization..."
     # Ensure your training_yolo.py script passes this project/name tag 
     # down to the Ultralytics model.train() function!
-    uv run scripts/training/training_yolo.py \
+    uv run --frozen --offline python scripts/training/training_yolo.py \
         --yaml_path="$YAML_PATH" \
         --project="$TARGET_PROJECT_DIR" \
         --name="$UNIQUE_RUN_NAME" \
