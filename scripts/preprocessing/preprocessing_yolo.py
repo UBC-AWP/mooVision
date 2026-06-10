@@ -259,6 +259,7 @@ def extract_labels(
             # Wipe the local /tmp folder right away since the tar is safe on scratch
             print("Removing tmp directory on node...")
             shutil.rmtree(local_working_dir)
+            print("Done.\n")
 
             print(
                 "Exploding files securely at the storage layer via native system tar tool..."
