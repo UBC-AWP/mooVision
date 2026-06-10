@@ -10,6 +10,7 @@ echo "=== Running One-Time Global Setup ==="
 
 # PULL LATEST CHANGES
 git pull origin arc-setup-dev
+uv python pin 3.13
 uv sync
 
 # ENVIRONMENT VALIDATION & LOAD
