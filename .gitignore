@@ -24,6 +24,7 @@ site/
 
 # --- Models ---
 *.pt
+weights/
 
 # --- Data ---
 data/
