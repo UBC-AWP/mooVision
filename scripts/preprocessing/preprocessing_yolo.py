@@ -243,7 +243,6 @@ def extract_labels(
                 ["tar", "-xf", str(tar_path), "-C", str(final_output_dir)],
                 check=True,  # Automatically raises an error if the extraction fails
             )
-            os.system(f"tar -xf {tar_path} -C {final_output_dir}")
         else:
             with tarfile.open(tar_path, "r") as tar:
                 tar.extractall(path=final_output_dir)
@@ -548,17 +547,17 @@ def run_yolo_preprocessing(
 
     train_df = pd.read_csv(input_path, index_col=0)
 
-    train, val = train_test_split(
+    use_df, do_not_use_df = train_test_split(
         train_df,
-        test_size=val_size,
+        test_size=0.9,
         random_state=random_state,
     )
 
-    # train, val = train_test_split(
-    #     ten_percent_df,
-    #     test_size=0.9,
-    #     random_state=random_state,
-    # )
+    train, val = train_test_split(
+        use_df,
+        test_size=val_size,
+        random_state=random_state,
+    )
 
     # For Pipeline testing on Sockeye
     # Extract frames and bounding box annotations for the train set
