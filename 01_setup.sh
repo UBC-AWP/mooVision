@@ -25,7 +25,7 @@ if [ ! -f .env ]; then
 fi
 
 # DOWNLOAD YOLO MODEL WEIGHTS 
-URL="https://github.com/ultralytics/assets/releases/download/v0.0.0/${YOLO_MODEL}"
+URL="https://github.com/ultralytics/assets/releases/download/v8.4.0/${YOLO_MODEL}"
 
 echo "Checking environment..."
 
