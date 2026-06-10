@@ -51,6 +51,7 @@ else
         --name="$UNIQUE_RUN_NAME" \
         --device="0" \
         --workers=8 \
+        --weights_dir=$WEIGHTS_DIR \
         --model=26 \
         --model_size=m
 fi
