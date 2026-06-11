@@ -114,6 +114,7 @@ def run_detection(
     conf_threshold: float,
     iou_threshold: float,
     min_duration: float,
+    buffer: int,
     frame_skip: int,
     show_video: bool = False,
     target_class: str = "cross-sucking",
@@ -247,7 +248,7 @@ def run_detection(
     print("Frames saved to <output_path>")
 
     # Apply Event Extraction
-    events = extract_events
+    events = extract_events(fps, buffer, frame_detections)
 
     # Build metadata — same format as baseline.py
     video_name = os.path.splitext(os.path.basename(video_path))[0]
@@ -330,6 +331,12 @@ def parse_args():
         help="Process every Nth frame (default: 1)",
     )
     parser.add_argument(
+        "--buffer",
+        type=int,
+        default=1,
+        help="Number of seconds to wait without CS until ending an event.",
+    )
+    parser.add_argument(
         "--show_video",
         type=bool,
         default=False,
@@ -354,6 +361,7 @@ if __name__ == "__main__":
         conf_threshold=args.conf_threshold,
         min_duration=args.min_duration,
         frame_skip=args.frame_skip,
+        buffer=args.buffer,
         show_video=args.show_video,
         target_class=args.target_class,
     )
