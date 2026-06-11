@@ -128,10 +128,10 @@ def main():
         to `draw_boxes_and_labels`.
     """ 
     EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
-    json_output_dir = LOCAL_DIR / "llm_experiment" / "json_outputs"
+    json_output_dir = LOCAL_DIR / "llm_experiment" / "image_json_outputs"
     json_output_dir.mkdir(parents=True, exist_ok=True)
     
-    raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
+    raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.glob("*.mp4")}
 
     for video_name, video_path in raw_videos.items():
         folder_path = EXAMPLE_VIDEOS_DIR / video_path.stem
@@ -143,7 +143,7 @@ def main():
             print(f"\nCreating folder: {folder_path}")
             extract_frames(EXAMPLE_VIDEOS_DIR)
             
-        target_images = list(folder_path.glob("*.jpg"))[:3]
+        target_images = list(folder_path.glob("*.jpg"))[:5]
             
         for image_path in target_images:
             print(f"\nPacing delay for 5 RPM limit...")
@@ -170,7 +170,7 @@ def main():
             print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
             print(response.text)
             
-            json_file_path = json_output_dir / f"response_{video_path.stem}_{image_path.stem}.json"
+            json_file_path = json_output_dir / f"{video_path.stem}_{image_path.name}.json"
             try:
                 # Parse to validate it's real JSON, then pretty-print save it
                 json_data = json.loads(response.text)
