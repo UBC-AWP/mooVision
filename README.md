@@ -95,11 +95,11 @@ After configuring you `.env` file, run the following commands from your terminal
       uv run scripts/models/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch05_20251114073451_15s.mp4"
       ```
 
-6. Load and Run YOLO model on testing set:
+6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
-   ```bash
-   #script will be done tonight for this.
-   ```
+```bash
+uv run scripts/models/yolo/yolo.py --video_path="sample_videos/cross_sucking_clip_sample/CS_0031_POSTWEAN_d1_p2_cow3_02112025_ch02-20251103001956_60818_60835.mp4" --model_path="runs/detect/MooVision/cross-sucking/weights/best.pt" --buffer=2
+```
 
 7. Evaluate results:
 
@@ -381,3 +381,19 @@ uv run python scripts/clipping.py
   
 Outputs are written to the directory configured in config.py:
 REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"
+
+## Gemini API Configuration
+
+This project requires a Gemini API key to run multimodal inference via the `google-genai` SDK.
+
+### 1. Generate Your Key
+1. Navigate to **[Google AI Studio](https://aistudio.google.com/)**.
+2. Sign in using your Google developer account.
+3. Click the **Get API Key** button in the dashboard interface.
+4. Select or create a project workspace, click **Create API Key**, and copy the string (it will start with `AIzaSy`).
+
+### 2. Configure Environment Variables
+Create a `.env` file in the root directory of your project (or open your existing one) and add your copied key variable:
+
+```env
+GEMINI_API_KEY="YOUR_COPIED_AIZASY_KEY_HERE"
