@@ -72,6 +72,9 @@ def run_testing(
         raise FileNotFoundError(f"Could not find file: {ROOT_DIR / data_path}")
     df = pd.read_csv(ROOT_DIR / data_path, index_col=0)
 
+    if df.empty:
+        raise ValueError("df is empty.")
+
     # the split label is the folder path between data/processed/ and test.csv
     # e.g. data/processed/pen_based/pen_2/test.csv  ->  pen_based/pen_2
     split_label = str(
@@ -90,13 +93,15 @@ def run_testing(
         cln_path = Path(cln_str)
         rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
         abs_path = SOURCE_VIDEOS_DIR / rel_path
+        print(abs_path)
 
         # Do not add video if path does not exist
         if not abs_path.exists():
             continue
         clean_paths.append(abs_path)
 
-    difference = len(clean_paths) - 
+    difference = len(clean_paths) - len(video_paths)
+    print(f"{difference} videos removed.")
     output_dir = ROOT_DIR / "results" / "metadata" / model_type / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
 
