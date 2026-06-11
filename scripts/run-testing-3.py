@@ -103,7 +103,8 @@ def run_testing(
         except Exception as e:
             print(f"{e}")
 
-    difference = len(clean_paths) - len(video_paths)
+    unique_video_strings = list(set(str(p) for p in clean_paths))
+    difference = len(unique_video_strings) - len(video_paths)
     print(f"{difference} videos removed.")
     output_dir = ROOT_DIR / "results" / "metadata" / model_type / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -112,7 +113,7 @@ def run_testing(
     # Read how many slots Slurm actually assigned us. Fallback to 2 if not set.
     num_workers = int(os.environ.get("SLURM_CPUS_PER_TASK", 2))
     print(
-        f"[INFO] Found {len(clean_paths)} videos. Processing using {num_workers} parallel workers..."
+        f"[INFO] Found {len(unique_video_strings)} videos. Processing using {num_workers} parallel workers..."
     )
     # === DEFINING STEP 2: THE NEW HANDOFF ===
     if model_type == "yolo":
@@ -125,7 +126,7 @@ def run_testing(
 
         # 2. Build the exact command line array to trigger your new yolo.py script
         cmd = [
-            "python",
+            sys.executable,
             "scripts/models/yolo/yolo-gpu.py",
             "--model_path",
             model_path,
