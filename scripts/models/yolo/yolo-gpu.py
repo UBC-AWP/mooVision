@@ -118,6 +118,42 @@ def run_gpu_batch_detection(
 
     os.makedirs(output_dir, exist_ok=True)
 
+    # === NEW: BULLETPROOF FILE INTEGRITY CHECK ===
+    print(
+        f"[INFO] Auditing {len(video_paths)} videos for corruption before inference..."
+    )
+    verified_video_paths = []
+
+    for path in video_paths:
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            print(f"[WARNING] Skipping {Path(path).name}: File is empty or missing.")
+            continue
+
+        # Try to briefly open the video header
+        cap = cv2.VideoCapture(path)
+        is_opened = cap.isOpened()
+        if is_opened:
+            ret, _ = cap.read()  # Try to read just the very first frame
+            if ret:
+                verified_video_paths.append(path)
+            else:
+                print(
+                    f"[CRITICAL WARNING] Skipping {Path(path).name}: Found file but cannot read frames (Corrupt video stream)."
+                )
+        else:
+            print(
+                f"[CRITICAL WARNING] Skipping {Path(path).name}: OpenCV failed to open codec stream."
+            )
+        cap.release()
+
+    print(
+        f"[INFO] Audit complete. {len(verified_video_paths)} / {len(video_paths)} videos passed integrity checks."
+    )
+
+    if not verified_video_paths:
+        print("[ERROR] No valid videos left to process. Exiting safely.")
+        return
+
     # Initialize variables tracking the generator's state
     current_video_path = None
     frame_detections = []
@@ -127,9 +163,11 @@ def run_gpu_batch_detection(
 
     # 1. Fire up the high-speed streaming engine
     # vid_stride handles frame skipping instantly in C++ while decoding
-    print(f"[INFO] Initiating streaming pipeline for {len(video_paths)} videos...")
+    print(
+        f"[INFO] Initiating streaming pipeline for {len(verified_video_paths)} videos..."
+    )
     results_generator = model.predict(
-        source=video_paths,
+        source=verified_video_paths,
         conf=conf_threshold,
         iou=iou_threshold,
         device=0,  # <--- Hard enforces Sockeye's GPU
