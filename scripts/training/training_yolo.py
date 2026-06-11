@@ -114,7 +114,10 @@ def train_yolo_model(
         )
     """
     # Load pretrained model
-    model = YOLO(f"yolov{model}{model_size}.pt")
+    if model == 26:
+        model = YOLO(f"yolo{model}{model_size}.pt")
+    else:
+        model = YOLO(f"yolov{model}{model_size}.pt")
 
     # Train
     model.train(

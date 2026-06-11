@@ -95,11 +95,11 @@ After configuring you `.env` file, run the following commands from your terminal
       uv run scripts/models/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch05_20251114073451_15s.mp4"
       ```
 
-6. Load and Run YOLO model on testing set:
+6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
-   ```bash
-   #script will be done tonight for this.
-   ```
+```bash
+uv run scripts/models/yolo/yolo.py --video_path="sample_videos/cross_sucking_clip_sample/CS_0031_POSTWEAN_d1_p2_cow3_02112025_ch02-20251103001956_60818_60835.mp4" --model_path="runs/detect/MooVision/cross-sucking/weights/best.pt" --buffer=2
+```
 
 7. Evaluate results:
 
