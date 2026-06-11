@@ -1,102 +1,29 @@
 """
-Module for running YOLO models to detect cross-sucking events and output event metadata.
+Orchestrator script for running models on testing data (raw source videos)
 
-Optimized for GPU Batched Streaming on HPC clusters (UBC Sockeye).
+NOTE: Need to add functionality for adding other arguments too! seq_NMS and yolo have different arguments, should be call the functions instead?
 """
 
-import sys
 from pathlib import Path
-import os
+import sys
 import json
 import argparse
+import subprocess
+import pandas as pd
 from ultralytics import YOLO
-import numpy as np
-import cv2
+import os
+from concurrent.futures import ProcessPoolExecutor
 
 sys.path.append(str(Path(__file__).parent.parent))
-from config import ROOT_DIR
+from config import ROOT_DIR, SOURCE_VIDEOS_DIR, LOCAL_DIR
+from scripts.models.yolo.yolo import run_detection
+from scripts.models.seq_NMS.seq_NMS import run_seq_nms_detection
 
 
-def extract_events(
-    fps: int, buffer: int, frame_detections: list[list[dict]]
-) -> list[dict]:
-    """
-    [Your exact original event extraction logic remains completely unchanged here]
-    """
-    if not frame_detections:
-        return []
-
-    max_dist = buffer * fps
-    end_frame = -1
-    start_frame = frame_detections[0][0]["frame"]
-    last_frame = start_frame
-
-    events = []
-    event_interbox = []
-    event_confs = []
-
-    for frame_dets in frame_detections:
-        current_frame = frame_dets[0]["frame"]
-        current_dist = current_frame - last_frame
-
-        if current_dist < max_dist:
-            for det in frame_dets:
-                event_confs.append(frame_dets[0]["confidence"])
-                event_interbox.append(
-                    {
-                        "frame": det["frame"],
-                        "x1": det["x1"],
-                        "y1": det["y1"],
-                        "x2": det["x2"],
-                        "y2": det["y2"],
-                    }
-                )
-            last_frame = current_frame
-
-        else:
-            end_frame = last_frame
-            events.append(
-                {
-                    "start_sec": round(start_frame / fps, 2),
-                    "end_sec": round(end_frame / fps, 2),
-                    "duration_sec": round((end_frame - start_frame) / fps, 2),
-                    "avg_confidence": round(float(np.mean(event_confs)), 3),
-                    "intersection_box": event_interbox,
-                }
-            )
-            event_interbox = []
-            event_confs = []
-            for det in frame_dets:
-                event_confs.append(frame_dets[0]["confidence"])
-                event_interbox.append(
-                    {
-                        "frame": det["frame"],
-                        "x1": det["x1"],
-                        "y1": det["y1"],
-                        "x2": det["x2"],
-                        "y2": det["y2"],
-                    }
-                )
-            start_frame = current_frame
-            last_frame = current_frame
-
-    end_frame = current_frame
-    events.append(
-        {
-            "start_sec": round(start_frame / fps, 2),
-            "end_sec": round(end_frame / fps, 2),
-            "duration_sec": round((end_frame - start_frame) / fps, 2),
-            "avg_confidence": round(float(np.mean(event_confs)), 3),
-            "intersection_box": event_interbox,
-        }
-    )
-    return events
-
-
-def run_gpu_batch_detection(
+def run_testing(
+    model_type: str,
     model_path: str,
-    video_paths: list[str],  # Accept a list of paths instead of just one!
-    output_dir: str,
+    data_path: str,
     conf_threshold: float,
     iou_threshold: float,
     min_duration: float,
@@ -105,160 +32,197 @@ def run_gpu_batch_detection(
     target_class: str = "cross-sucking",
 ):
     """
-    Optimized GPU Batch Pipeline.
-    Streams frames from multiple videos sequentially without loading full datasets into memory.
+    Run a model script on all source videos in testing set.
+
+    Loads in a test.csv at `data_path` and runs the model
+    specified at `model` on all source videos listed if they exist
+    in the data directory. Specifically, this function loops through each
+    video path in the data frame, and passes these paths the the script
+    in models/ specified as `model`. This script will run the model on
+    said video and output metadata to the data directory.
+
+    Parameters
+    ----------
+    model : str
+        Type of model to use. One of ['yolo', 'seq-NMS']
+    model_path : str
+        Path to model to use.
+    data_path : str
+        Relative Path to test.csv file inside ROOT_DIR.
+
+    Returns
+    -------
+    None
+        This function reads to disk and does not return anything.
+
+
+    Raises
+    ------
+
+
+    Examples
+    --------
+
     """
-    print(f"[INFO] Loading model onto GPU: {model_path}")
-    model = YOLO(model_path)
+    if model_type not in ["yolo", "seq-NMS"]:
+        raise ValueError("model must be one of:['yolo', 'seq-NMS']")
 
-    # Resolve target class ID
-    class_name_to_id = {v: k for k, v in model.names.items()}
-    target_id = class_name_to_id.get(target_class, 0)
-    print(f"[INFO] Targeting class: '{target_class}' (ID: {target_id})")
+    # Read in Data
+    if not (ROOT_DIR / data_path).exists():
+        raise FileNotFoundError(f"Could not find file: {ROOT_DIR / data_path}")
+    df = pd.read_csv(ROOT_DIR / data_path, index_col=0)
 
-    os.makedirs(output_dir, exist_ok=True)
+    if df.empty:
+        raise ValueError("df is empty.")
 
-    # Initialize variables tracking the generator's state
-    current_video_path = None
-    frame_detections = []
-    frame_counter = 0
-    fps = 30.0
-    total_frames = 0
-
-    # 1. Fire up the high-speed streaming engine
-    # vid_stride handles frame skipping instantly in C++ while decoding
-    print(f"[INFO] Initiating streaming pipeline for {len(video_paths)} videos...")
-    results_generator = model.predict(
-        source=video_paths,
-        conf=conf_threshold,
-        iou=iou_threshold,
-        device=0,  # <--- Hard enforces Sockeye's GPU
-        stream=True,  # <--- Generates frames lazily to preserve VRAM
-        vid_stride=frame_skip,  # <--- Native frame skip optimization
-        verbose=False,
+    # the split label is the folder path between data/processed/ and test.csv
+    # e.g. data/processed/pen_based/pen_2/test.csv  ->  pen_based/pen_2
+    split_label = str(
+        Path(data_path).parent.relative_to(ROOT_DIR / "data" / "processed")
     )
+    print(f"\nSplit Label: {split_label}")
 
-    def process_and_save_metadata(v_path, f_dets, video_fps, total_f):
-        """Helper to isolate calculations and JSON dumping when a video finishes"""
-        if not f_dets:
-            print(f"  --> No target behaviors found in: {Path(v_path).name}")
-            return
+    # Clean and Build Video Paths
+    video_paths = df["source_video_path"]
+    print("Cleaning Video Paths ...")
+    print(f"Videos to clean: {len(video_paths)}")
+    clean_paths = []
+    for video_path in video_paths:
 
-        print(f"  --> Processing metadata & events for: {Path(v_path).name}")
-        events = extract_events(video_fps, buffer, f_dets)
+        cln_str = video_path.replace("\\", "/")
+        cln_path = Path(cln_str)
+        rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
+        abs_path = SOURCE_VIDEOS_DIR / rel_path
+        print(abs_path)
 
-        video_name = Path(v_path).stem
-        metadata = {
-            "identifier": Path(v_path).name,
-            "video_path": os.path.abspath(v_path),
-            "model": model_path,
-            "conf_threshold": conf_threshold,
-            "iou_threshold": iou_threshold,
-            "min_duration_sec": min_duration,
-            "frame_skip": frame_skip,
-            "fps": video_fps,
-            "total_frames": total_f,
-            "total_duration_sec": round(total_f / video_fps, 2),
-            "cross_sucking_detected": len(events) > 0,
-            "num_events": len(events),
-            "events": events,
-        }
+        # Do not add video if path does not exist
+        try:
+            if not abs_path.exists():
+                continue
+            clean_paths.append(abs_path)
+        except Exception as e:
+            print(f"{e}")
 
-        json_path = os.path.join(output_dir, f"{video_name}_results.json")
-        with open(json_path, "w") as f:
-            json.dump(metadata, f, indent=2)
+    difference = len(clean_paths) - len(video_paths)
+    print(f"{difference} videos removed.")
+    output_dir = ROOT_DIR / "results" / "metadata" / model_type / split_label
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Consume the frame stream dynamically
-    for result in results_generator:
-        frame_orig_path = result.path  # Tracks which file this specific frame is from
-
-        # Check if the generator just shifted to a brand new video file
-        if frame_orig_path != current_video_path:
-            # Save the previous video's results if it exists
-            if current_video_path is not None:
-                process_and_save_metadata(
-                    current_video_path, frame_detections, fps, total_frames
-                )
-
-            # Switch focus to the incoming video file
-            current_video_path = frame_orig_path
-            frame_detections = []
-            frame_counter = 0
-
-            # Quickly query metadata from the file header using OpenCV
-            cap = cv2.VideoCapture(current_video_path)
-            fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            cap.release()
-
-            print(
-                f"\n[STREAMING] Now evaluating video: {Path(current_video_path).name}"
-            )
-
-        # Sync frame indexes accurately with the native stride skipping
-        frame_counter += frame_skip
-
-        # Collect target array detections for this exact frame
-        dets = []
-        for box in result.boxes:
-            if int(box.cls[0].item()) == target_id:
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
-                dets.append(
-                    {
-                        "frame": frame_counter,
-                        "x1": x1,
-                        "y1": y1,
-                        "x2": x2,
-                        "y2": y2,
-                        "confidence": float(box.conf[0].item()),
-                    }
-                )
-
-        if dets:
-            frame_detections.append(dets)
-
-    # 3. Handle the final video remaining in the pipeline upon stream closure
-    if current_video_path is not None:
-        process_and_save_metadata(
-            current_video_path, frame_detections, fps, total_frames
+    # Determine how many CPU cores to use
+    # Read how many slots Slurm actually assigned us. Fallback to 2 if not set.
+    num_workers = int(os.environ.get("SLURM_CPUS_PER_TASK", 2))
+    print(
+        f"[INFO] Found {len(clean_paths)} videos. Processing using {num_workers} parallel workers..."
+    )
+    # === DEFINING STEP 2: THE NEW HANDOFF ===
+    if model_type == "yolo":
+        print(
+            f"[INFO] Launching GPU pipeline for {len(clean_paths)} videos simultaneously..."
         )
 
-    print("\n═" * 50 + "\n[SUCCESS] Entire data batch complete on GPU!\n" + "═" * 50)
+        # 1. Convert your Path objects to a list of plain strings
+        video_path_strings = [str(p) for p in clean_paths]
+
+        # 2. Build the exact command line array to trigger your new yolo.py script
+        cmd = [
+            "python",
+            "scripts/models/yolo/yolo-gpu.py",
+            "--model_path",
+            model_path,
+            "--output_dir",
+            str(output_dir),
+            "--conf_threshold",
+            str(conf_threshold),
+            "--iou_threshold",
+            str(iou_threshold),
+            "--min_duration",
+            str(min_duration),
+            "--frame_skip",
+            str(frame_skip),
+            "--buffer",
+            str(buffer),
+            "--target_class",
+            target_class,
+            "--video_paths",  # This flag catches the list we append next
+        ] + video_path_strings  # Appends all space-separated video paths to the command
+
+        # 3. Fire off the process in the background on the GPU node
+
+        subprocess.run(cmd, check=True)
+
+    elif model_type == "seq_NMS":
+        # (Keep your old CPU multi-processing pool logic here if you still use seq_NMS!)
+        pass
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Cross-sucking detection event linking using GPU optimization."
+        description=f"Cross-sucking detection event linking using {YOLO} and basic logic or seq_NMS."
     )
     parser.add_argument(
-        "--video_paths",
+        "--data_path",
         required=True,
-        nargs="+",  # <--- Allows passing multiple space-separated paths from your orchestrator!
-        help="Space-separated paths to input video files",
+        help="Path to input video file",
     )
-    parser.add_argument("--model_path", required=True, help="YOLO weights file.")
     parser.add_argument(
-        "--output_dir", required=True, help="Directory to save metadata output."
+        "--model_path",
+        required=True,
+        help="YOLO weights file (default: runs/detect/MooVision/cross-sucking/weights/best.pt)",
     )
-    parser.add_argument("--iou_threshold", type=float, default=0)
-    parser.add_argument("--conf_threshold", type=float, default=0.1)
-    parser.add_argument("--min_duration", type=float, default=0)
-    parser.add_argument("--frame_skip", type=int, default=10)
-    parser.add_argument("--buffer", type=int, default=60)
-    parser.add_argument("--target_class", type=str, default="cross-sucking")
+    parser.add_argument(
+        "--model_type",
+        required=True,
+        help="Model type to use ('yolo' or 'seq_NMS'",
+    )
+    parser.add_argument(
+        "--iou_threshold",
+        type=float,
+        default=0,
+        help="IoU overlap threshold (default: 0)",
+    )
+    parser.add_argument(
+        "--conf_threshold",
+        type=float,
+        default=0,
+        help="YOLO detection confidence threshold (default: 0)",
+    )
+    parser.add_argument(
+        "--min_duration",
+        type=float,
+        default=0,
+        help="Minimum event duration in seconds (default: 0)",
+    )
+    parser.add_argument(
+        "--frame_skip",
+        type=int,
+        default=10,
+        help="Process every Nth frame (default: 1)",
+    )
+    parser.add_argument(
+        "--buffer",
+        type=int,
+        default=1,
+        help="Number of seconds to wait without CS until ending an event.",
+    )
+    parser.add_argument(
+        "--target_class",
+        type=str,
+        default="cross-sucking",
+        help="Target class for detection (default: cross-sucking)",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    run_gpu_batch_detection(
-        video_paths=args.video_paths,
+    run_testing(
         model_path=args.model_path,
-        output_dir=args.output_dir,
-        iou_threshold=args.iou_threshold,
+        data_path=args.data_path,
+        model_type=args.model_type,
         conf_threshold=args.conf_threshold,
+        iou_threshold=args.iou_threshold,
         min_duration=args.min_duration,
-        frame_skip=args.frame_skip,
         buffer=args.buffer,
+        frame_skip=args.frame_skip,
         target_class=args.target_class,
     )
