@@ -72,15 +72,11 @@ def run_testing(
         raise FileNotFoundError(f"Could not find file: {ROOT_DIR / data_path}")
     df = pd.read_csv(ROOT_DIR / data_path, index_col=0)
 
-    # output folder mirrors the split label so results stay organised
-    # e.g. results/metadata/yowo/pen_based/pen_2/
-    model_script = LOCAL_DIR / "scripts" / "models" / model_type / f"{model_type}.py"
-    if not model_script.exists():
-        raise FileNotFoundError(f"ERROR: could not find {model_script}")
-
     # the split label is the folder path between data/processed/ and test.csv
     # e.g. data/processed/pen_based/pen_2/test.csv  ->  pen_based/pen_2
-    split_label = str(Path(data_path).parent.relative_to(Path("data/processed")))
+    split_label = str(
+        Path(data_path).parent.relative_to(ROOT_DIR / "data" / "processed")
+    )
     print(f"\nSplit Label: {split_label}")
 
     # Clean and Build Video Paths
@@ -96,21 +92,38 @@ def run_testing(
         # Do not add video if path does not exist
         if not abs_path.exists():
             continue
-
         clean_paths.append(abs_path)
 
     output_dir = ROOT_DIR / "results" / "metadata" / model_type / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Determine how many CPU cores to use
-    # (Leave 1-2 free so your laptop doesn't completely freeze)
-    num_workers = max(1, os.cpu_count() - 2)
+    # Read how many slots Slurm actually assigned us. Fallback to 2 if not set.
+    num_workers = int(os.environ.get("SLURM_CPUS_PER_TASK", 2))
     print(
-        f"[INFO] Found {len(clean_paths)} videos. Processing using {num_workers} CPU cores in parallel..."
+        f"[INFO] Found {len(clean_paths)} videos. Processing using {num_workers} parallel workers..."
     )
 
+    def worker_initializer():
+        """Prevents each process from grabbing all threads for internal PyTorch math"""
+        import os
+
+        os.environ["OMP_NUM_THREADS"] = "1"
+        os.environ["MKL_NUM_THREADS"] = "1"
+        os.environ["OPENBLAS_NUM_THREADS"] = "1"
+        os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+        os.environ["NUMEXPR_NUM_THREADS"] = "1"
+        try:
+            import torch
+
+            torch.set_num_threads(1)
+        except ImportError:
+            pass
+
     # Spin up the parallel execution pool
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+    with ProcessPoolExecutor(
+        max_workers=num_workers, initializer=worker_initializer
+    ) as executor:
         # Submit all videos to the processing queue
         if model_type == "yolo":
 
