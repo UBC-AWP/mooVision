@@ -234,7 +234,11 @@ def main():
     """
     # Upload the video using the Files API
     EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
-    raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
+    
+    json_output_dir = LOCAL_DIR / "llm_experiment" / "video_json_outputs"
+    json_output_dir.mkdir(parents=True, exist_ok=True)
+    
+    raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.glob("*.mp4")}
     for video_name, video_path in raw_videos.items():
         print(f"Name: {video_name}, Path: {video_path}")
         
@@ -267,13 +271,16 @@ def main():
         print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
         print(response.text)
         
-        # SAFE JSON PARSING & RENDERING LAYER
+        # Save the raw JSON response to disk for record-keeping and debugging
+        json_file_path = json_output_dir / f"response_labeled_{video_path.stem}.json"
+
         try:
             parsed_json_data = json.loads(response.text)
+            with open(json_file_path, "w") as jf:
+                json.dump(parsed_json_data, jf, indent=2)
+            print(f"Saved tracking array timeline data to: {json_file_path.name}")
             
-            # Direct output path file name structure targets current execution folder
             output_clip_name = Path(f"labeled_{video_path.stem}.mp4")
-            
             draw_boxes_and_clip(
                 raw_video_path=video_path,
                 api_output_json=parsed_json_data,
@@ -281,7 +288,9 @@ def main():
             )
             
         except json.JSONDecodeError:
-            print(f"[Warning] Response for {video_name} was not valid JSON. Skipping draw step.")
+            print(f"[Warning] Response for {video_name} was not valid JSON. Writing as pure log text.")
+            with open(json_file_path.with_suffix(".txt"), "w") as tf:
+                tf.write(response.text)
 
 if __name__ == "__main__":
     main()
