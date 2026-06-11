@@ -126,28 +126,27 @@ def extract_events(
 
 
 def run_detection(
-    video_path: str,
     model_path: str,
+    video_path: str,
+    output_dir: str,
     conf_threshold: float,
     iou_threshold: float,
     min_duration: float,
     buffer: int,
     frame_skip: int,
-    show_video: bool = False,
     target_class: str = "cross-sucking",
+    show_video: bool = False,
 ) -> dict:
     """
-    Full YOLOv26 + Seq-NMS detection pipeline.
+    Full YOLOv26 + basic detection pipeline.
 
     Steps:
         1. Load fine-tuned YOLOv26 model
         2. Open video and process every Nth frame
         3. Run YOLO inference on each frame
         4. Collect all per-frame detections
-        5. Apply Seq-NMS to link detections into tubes
-        6. Suppress weak detections within tubes
-        7. Convert tubes to event windows
-        8. Save results as JSON
+        5. Convert tubes to event windows
+        6. Save results as JSON
 
     Parameters
     ----------
@@ -191,7 +190,7 @@ def run_detection(
 
     if not target_ids:
         raise ValueError(
-            f"Neither '{target_class}' nor 'cross-sucking' found in model classes: "
+            f"Neither '{target_class}' nor 'cow' found in model classes: "
             f"{list(model.names.values())}"
         )
 
@@ -212,16 +211,22 @@ def run_detection(
     frame_idx = 0
 
     print("[INFO] Processing frames...")
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Skip frames
-        if frame_idx % frame_skip != 0:
+        # Fast frame skipping without running the above
+        if frame_skip > 1:
+            for _ in range(frame_skip - 1):
+                if not cap.grab():
+                    break
+                frame_idx += 1
+                if frame_idx % 100 == 0:
+                    print(f"  ...frame {frame_idx}/{total_frames}")
+        else:
             frame_idx += 1
-            # frame_detections.append([])  # empty detection for skipped frame
-            continue
 
         # Run YOLO inference
         results = model(frame, conf=conf_threshold, verbose=False)[0]
@@ -250,10 +255,6 @@ def run_detection(
 
         if dets:
             frame_detections.append(dets)
-        frame_idx += 1
-
-        if frame_idx % 100 == 0:
-            print(f"  ...frame {frame_idx}/{total_frames}")
 
     cap.release()
     if show_video:
@@ -274,7 +275,7 @@ def run_detection(
     # Build metadata — same format as baseline.py
     print("Building Metadata...")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    output_dir = ROOT_DIR / "data/results/metadata/yolo-basic"
+    # output_dir = ROOT_DIR / "results/metadata/yolo"
     os.makedirs(output_dir, exist_ok=True)
 
     metadata = {
@@ -333,6 +334,11 @@ def parse_args():
         help="YOLO weights file (default: runs/detect/MooVision/cross-sucking/weights/best.pt)",
     )
     parser.add_argument(
+        "--outpu_dir",
+        required=True,
+        help="Directory to save metadata output.",
+    )
+    parser.add_argument(
         "--iou_threshold",
         type=float,
         default=0,
@@ -341,7 +347,7 @@ def parse_args():
     parser.add_argument(
         "--conf_threshold",
         type=float,
-        default=0,
+        default=0.1,
         help="YOLO detection confidence threshold (default: 0)",
     )
     parser.add_argument(
@@ -353,13 +359,13 @@ def parse_args():
     parser.add_argument(
         "--frame_skip",
         type=int,
-        default=1,
+        default=10,
         help="Process every Nth frame (default: 1)",
     )
     parser.add_argument(
         "--buffer",
         type=int,
-        default=1,
+        default=60,
         help="Number of seconds to wait without CS until ending an event.",
     )
     parser.add_argument(
@@ -382,6 +388,7 @@ if __name__ == "__main__":
     run_detection(
         video_path=args.video_path,
         model_path=args.model_path,
+        output_dir=args.output_dir,
         iou_threshold=args.iou_threshold,
         conf_threshold=args.conf_threshold,
         min_duration=args.min_duration,
