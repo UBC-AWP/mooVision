@@ -80,9 +80,11 @@ def run_testing(
     print(f"\nSplit Label: {split_label}")
 
     # Clean and Build Video Paths
+    video_paths = df["source_video_path"]
     print("Cleaning Video Paths ...")
+    print(f"Videos to clean: {len(video_paths)}")
     clean_paths = []
-    for video_path in df["source_video_path"]:
+    for video_path in video_paths:
 
         cln_str = video_path.replace("\\", "/")
         cln_path = Path(cln_str)
@@ -94,6 +96,7 @@ def run_testing(
             continue
         clean_paths.append(abs_path)
 
+    difference = len(clean_paths) - 
     output_dir = ROOT_DIR / "results" / "metadata" / model_type / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
 
