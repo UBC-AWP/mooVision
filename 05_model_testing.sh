@@ -9,8 +9,8 @@
 #SBATCH --cpus-per-task=4           # 4 CPU cores are plenty just to stream video files to the GPU
 #SBATCH --mem=32G                   # 32GB of system RAM to handle video streams safely
 #SBATCH --gpus=1                    # Request exactly 1 GPU (e.g., NVIDIA V100 or A100)
-#SBATCH --output=logs/train_%A_%a.out
-#SBATCH --error=logs/train_%A_%a.err
+#SBATCH --output=logs/infer_%A_%a.out
+#SBATCH --error=logs/infer_%A_%a.err
 
 cd /scratch/st-nina-1/mooVision
 source .env_sockeye
