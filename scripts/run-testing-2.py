@@ -96,9 +96,12 @@ def run_testing(
         print(abs_path)
 
         # Do not add video if path does not exist
-        if not abs_path.exists():
-            continue
-        clean_paths.append(abs_path)
+        try:
+            if not abs_path.exists():
+                continue
+            clean_paths.append(abs_path)
+        except Exception as e:
+            print(f"{e}")
 
     difference = len(clean_paths) - len(video_paths)
     print(f"{difference} videos removed.")
