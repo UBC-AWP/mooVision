@@ -17,7 +17,7 @@ source .env_sockeye
 
 
 # Ensure your orchestrator is calling the updated GPU batch version of your script!
-uv run run-testing-3.py \
+uv run scripts/run-testing-3.py \
     --model_type yolo \
     --model_path /scratch/st-nina-1/moovision/yolo_training_runs/split_1_model/weights/best.pt \
     --data_path /scratch/st-nina-1/moovision/data/processed/random/test.csv
