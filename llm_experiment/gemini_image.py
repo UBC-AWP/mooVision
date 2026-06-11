@@ -128,6 +128,9 @@ def main():
         to `draw_boxes_and_labels`.
     """ 
     EXAMPLE_VIDEOS_DIR = LOCAL_DIR / "sample_videos" / "cross_sucking_clip_sample"
+    json_output_dir = LOCAL_DIR / "llm_experiment" / "json_outputs"
+    json_output_dir.mkdir(parents=True, exist_ok=True)
+    
     raw_videos = {f.name: f for f in EXAMPLE_VIDEOS_DIR.rglob("*.mp4")}
 
     for video_name, video_path in raw_videos.items():
@@ -167,14 +170,21 @@ def main():
             print("\n--- RAW TEXT RESPONSE FROM GEMINI ---")
             print(response.text)
             
-            # SAFE JSON PARSING LAYER IN MAIN LOOP
+            json_file_path = json_output_dir / f"response_{video_path.stem}_{image_path.stem}.json"
             try:
-                parsed_json_data = json.loads(response.text)
+                # Parse to validate it's real JSON, then pretty-print save it
+                json_data = json.loads(response.text)
+                with open(json_file_path, "w") as jf:
+                    json.dump(json_data, jf, indent=2)
+                print(f"Saved tracking coordinates to: {json_file_path.name}")
                 
-                draw_boxes_and_labels(parsed_json_data, image_path, video_path)
+                # Draw boxes using the successfully parsed object
+                draw_boxes_and_labels(json_data, image_path, video_path)
                 
             except json.JSONDecodeError:
-                print(f"[Warning] Response for {video_name} was not valid JSON. Skipping draw step.")
+                print(f"[Warning] Response was not valid JSON. Saving raw text as fallback.")
+                with open(json_file_path.with_suffix(".txt"), "w") as tf:
+                    tf.write(response.text)
                 
 if __name__ == "__main__":   
     main()
