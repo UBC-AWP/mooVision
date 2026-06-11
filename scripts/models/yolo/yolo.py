@@ -334,7 +334,7 @@ def parse_args():
         help="YOLO weights file (default: runs/detect/MooVision/cross-sucking/weights/best.pt)",
     )
     parser.add_argument(
-        "--outpu_dir",
+        "--output_dir",
         required=True,
         help="Directory to save metadata output.",
     )
