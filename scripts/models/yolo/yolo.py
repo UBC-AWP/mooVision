@@ -19,7 +19,9 @@ from ultralytics import YOLO
 import numpy as np
 import cv2
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+
+from config import ROOT_DIR
 
 
 def extract_events(
@@ -57,6 +59,7 @@ def extract_events(
     max_dist = buffer * fps
     end_frame = -1
     start_frame = frame_detections[0][0]["frame"]
+    last_frame = start_frame
 
     events = []  # Cross-Sucking Events
     event_interbox = []  # Bounding Boxes
@@ -64,11 +67,11 @@ def extract_events(
 
     for frame_dets in frame_detections:
         current_frame = frame_dets[0]["frame"]
-        current_dist = current_frame - start_frame
+        current_dist = current_frame - last_frame
 
-        if current_dist <= max_dist:
+        if current_dist < max_dist:
             for det in frame_dets:
-                event_confs.append(frame_detections[52][0]["confidence"])
+                event_confs.append(frame_dets[0]["confidence"])
                 event_interbox.append(
                     {
                         "frame": det["frame"],
@@ -78,33 +81,47 @@ def extract_events(
                         "y2": det["y2"],
                     }
                 )
-            end_frame = current_frame  # Store previous frame!
+            last_frame = current_frame  # Store previous frame!
 
         else:
+            end_frame = last_frame
             events.append(
                 {
                     "start_sec": round(start_frame / fps, 2),
                     "end_sec": round(end_frame / fps, 2),
-                    "duration_sec": round(end_frame - start_frame, 2),
+                    "duration_sec": round((end_frame - start_frame) / fps, 2),
                     "avg_confidence": round(float(np.mean(event_confs)), 3),
                     "intersection_box": event_interbox,
                 }
             )
+            # Reset Boxes and add current frame
             event_interbox = []
             event_confs = []
+            for det in frame_dets:
+                event_confs.append(frame_dets[0]["confidence"])
+                event_interbox.append(
+                    {
+                        "frame": det["frame"],
+                        "x1": det["x1"],
+                        "y1": det["y1"],
+                        "x2": det["x2"],
+                        "y2": det["y2"],
+                    }
+                )
             start_frame = current_frame
+            last_frame = current_frame
 
     # End logic, add last event.
-    if (end_frame == frame_detections[-1][0]["frame"]) and (end_frame != start_frame):
-        events.append(
-            {
-                "start_sec": round(start_frame / fps, 2),
-                "end_sec": round(end_frame / fps, 2),
-                "duration_sec": round(end_frame - start_frame, 2),
-                "avg_confidence": round(float(np.mean(event_confs)), 3),
-                "intersection_box": event_interbox,
-            }
-        )
+    end_frame = current_frame
+    events.append(
+        {
+            "start_sec": round(start_frame / fps, 2),
+            "end_sec": round(end_frame / fps, 2),
+            "duration_sec": round((end_frame - start_frame) / fps, 2),
+            "avg_confidence": round(float(np.mean(event_confs)), 3),
+            "intersection_box": event_interbox,
+        }
+    )
     return events
 
 
@@ -252,7 +269,7 @@ def run_detection(
 
     # Build metadata — same format as baseline.py
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-    output_dir = "data/results/metadata/yolo-basic"
+    output_dir = ROOT_DIR / "data/results/metadata/yolo-basic"
     os.makedirs(output_dir, exist_ok=True)
 
     metadata = {
@@ -294,16 +311,16 @@ def run_detection(
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description=f"Cross-sucking detection and event linking using {YOLO} and baseline logic."
+        description=f"Cross-sucking detection event linking using {YOLO} and basic logic."
     )
     parser.add_argument(
-        "--video",
+        "--video_path",
         required=True,
         help="Path to input video file",
     )
     parser.add_argument(
-        "--model",
-        default="runs/detect/MooVision/cross-sucking/weights/best.pt",
+        "--model_path",
+        required=True,
         help="YOLO weights file (default: runs/detect/MooVision/cross-sucking/weights/best.pt)",
     )
     parser.add_argument(
@@ -338,7 +355,6 @@ def parse_args():
     )
     parser.add_argument(
         "--show_video",
-        type=bool,
         default=False,
         action="store_true",
         help="Display video during annotation, useful for running on sample videos (default: False)",
@@ -355,8 +371,8 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     run_detection(
-        video_path=args.video,
-        model_path=args.model,
+        video_path=args.video_path,
+        model_path=args.model_path,
         iou_threshold=args.iou_threshold,
         conf_threshold=args.conf_threshold,
         min_duration=args.min_duration,
