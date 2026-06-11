@@ -15,9 +15,15 @@
 cd /scratch/st-nina-1/mooVision
 source .env_sockeye
 
-
+echo "========================================================"
+echo "RUNNING MODEL ON TEST SETS"
+echo "========================================================"
 # Ensure your orchestrator is calling the updated GPU batch version of your script!
 uv run scripts/run-testing-3.py \
     --model_type yolo \
     --model_path /scratch/st-nina-1/moovision/yolo_training_runs/split_1_model/weights/best.pt \
     --data_path /scratch/st-nina-1/moovision/data/processed/random/test.csv
+
+echo "========================================================"
+echo "METADATA SUCCESSFULLY CREATED."
+echo "========================================================"
