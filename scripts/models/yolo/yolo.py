@@ -55,6 +55,8 @@ def extract_events(
                                              each entry has 'frame', 'x1', 'y1',
                                              'x2', 'y2'
     """
+    if not frame_detections:
+        return []
     # Max number of frames before separating cross-sucking events
     max_dist = buffer * fps
     end_frame = -1
