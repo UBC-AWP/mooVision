@@ -516,7 +516,7 @@ def pipeline_testing(input_path: Path, output_dir: Path, FORCE=False, run=True):
             test = df[~condition]
 
             train = train.iloc[5:13]
-            test = test.iloc[14]
+            test = test.iloc[14:16]
 
             # Save to csv
             train_test_to_csv(train, test, output_dir, FORCE)
