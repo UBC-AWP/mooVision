@@ -381,3 +381,19 @@ uv run python scripts/clipping.py
   
 Outputs are written to the directory configured in config.py:
 REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"
+
+## Gemini API Configuration
+
+This project requires a Gemini API key to run multimodal inference via the `google-genai` SDK.
+
+### 1. Generate Your Key
+1. Navigate to **[Google AI Studio](https://aistudio.google.com/)**.
+2. Sign in using your Google developer account.
+3. Click the **Get API Key** button in the dashboard interface.
+4. Select or create a project workspace, click **Create API Key**, and copy the string (it will start with `AIzaSy`).
+
+### 2. Configure Environment Variables
+Create a `.env` file in the root directory of your project (or open your existing one) and add your copied key variable:
+
+```env
+GEMINI_API_KEY="YOUR_COPIED_AIZASY_KEY_HERE"
