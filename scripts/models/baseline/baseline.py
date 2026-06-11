@@ -3,6 +3,7 @@ import json
 import os
 import cv2
 import numpy as np
+from pathlib import Path
 from ultralytics import YOLO
 
 
@@ -181,7 +182,21 @@ def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes, fra
     return events
 
 
-def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_duration, frame_skip):
+def extract_video_path(video_path):
+    """
+    Extract the video name from the full path for use in output naming.
+
+    Args:
+        video_path (str): Full path to the input video file
+    Returns:
+        list: [video_path (str), video_path (str)]
+    """
+    # enforece Path object for consistent handling
+    video_path = Path(video_path)
+    # 
+    return [video_path.joinpath(f.name) for f in video_path.glob("*.mp4")]
+
+def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_duration, frame_skip):
     """
     Full detection pipeline:
         load model → open video → detect calves per frame →
@@ -211,122 +226,125 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
 
+    video_paths = extract_video_path(video_paths)
     # Validate inputs
-    if not os.path.exists(video_path):
-        raise FileNotFoundError(f"Video file not found: {video_path}")
+    for video_path in video_paths:
+        print(video_path)
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+        
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+
+        class_name_to_id = {v: k for k, v in model.names.items()}
+        target_ids = {class_name_to_id[TARGET_CLASS_NAME]} if TARGET_CLASS_NAME in class_name_to_id else set()
+
+        if not target_ids:
+            raise ValueError(
+                f"{TARGET_CLASS_NAME} is not found in model classes: {list(model.names.values())}"
+            )
+        print(f"[INFO] Tracking class IDs: {target_ids}  ({TARGET_CLASS_NAME})")
+
+        # Opening the video
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise FileNotFoundError(f"Cannot open video: {video_path}")
+
+        fps        = cap.get(cv2.CAP_PROP_FPS)
+        width      = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height     = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        print(f"[INFO] Video: {width}x{height} @ {fps:.1f} fps | {total_frames} frames")
+
+
+        frame_flags    = []   # True/False per frame: overlap detected?
+        frame_confs    = []   # Max detection confidence in that frame
+        frame_idx      = 0
+        frame_interbox = []
+        frame_indices = []
+
+        print("[INFO] Processing frames...")
+        while True:
+            ret, frame = cap.read() # reads the next frame
+            if not ret:
+                break  # End of video
+
+            # Skip frames — only process every Nth frame
+            if frame_idx % frame_skip != 0:
+                frame_idx += 1
+                continue
+
+            # Run YOLO inference on the frame
+            results = model(frame, conf=conf_threshold, verbose=False)[0]
+
+            # Show the frame with bounding boxes drawn
+            annotated_frame = results.plot()
+            cv2.imshow("Calf Detection", annotated_frame)
+            cv2.waitKey(1)  # 1ms delay, keeps the window responsive
+
+            # Filter detections to only our target classes (cows/calves)
+            boxes   = []
+            confs   = []
+            for box in results.boxes:
+                if int(box.cls[0].item()) in target_ids:
+                    boxes.append(box.xyxy[0].tolist())
+                    confs.append(float(box.conf[0].item()))
     
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found: {model_path}")
-
-    class_name_to_id = {v: k for k, v in model.names.items()}
-    target_ids = {class_name_to_id[TARGET_CLASS_NAME]} if TARGET_CLASS_NAME in class_name_to_id else set()
-
-    if not target_ids:
-        raise ValueError(
-            f"{TARGET_CLASS_NAME} is not found in model classes: {list(model.names.values())}"
-        )
-    print(f"[INFO] Tracking class IDs: {target_ids}  ({TARGET_CLASS_NAME})")
-
-    # Opening the video
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise FileNotFoundError(f"Cannot open video: {video_path}")
-
-    fps        = cap.get(cv2.CAP_PROP_FPS)
-    width      = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height     = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print(f"[INFO] Video: {width}x{height} @ {fps:.1f} fps | {total_frames} frames")
-
-
-    frame_flags    = []   # True/False per frame: overlap detected?
-    frame_confs    = []   # Max detection confidence in that frame
-    frame_idx      = 0
-    frame_interbox = []
-    frame_indices = []
-
-    print("[INFO] Processing frames...")
-    while True:
-        ret, frame = cap.read() # reads the next frame
-        if not ret:
-            break  # End of video
-
-        # Skip frames — only process every Nth frame
-        if frame_idx % frame_skip != 0:
+            # Check for overlapping pairs
+            overlap_detected, intersection_box  = frame_has_overlap(boxes, iou_threshold)
+    
+            frame_flags.append(overlap_detected)
+            frame_confs.append(max(confs) if confs else 0.0)
+            frame_indices.append(frame_idx)
+            frame_interbox.append(intersection_box if overlap_detected else None)
             frame_idx += 1
-            continue
-
-        # Run YOLO inference on the frame
-        results = model(frame, conf=conf_threshold, verbose=False)[0]
-
-        # Show the frame with bounding boxes drawn
-        annotated_frame = results.plot()
-        cv2.imshow("Calf Detection", annotated_frame)
-        cv2.waitKey(1)  # 1ms delay, keeps the window responsive
-
-        # Filter detections to only our target classes (cows/calves)
-        boxes   = []
-        confs   = []
-        for box in results.boxes:
-            if int(box.cls[0].item()) in target_ids:
-                boxes.append(box.xyxy[0].tolist())
-                confs.append(float(box.conf[0].item()))
- 
-        # Check for overlapping pairs
-        overlap_detected, intersection_box  = frame_has_overlap(boxes, iou_threshold)
- 
-        frame_flags.append(overlap_detected)
-        frame_confs.append(max(confs) if confs else 0.0)
-        frame_indices.append(frame_idx)
-        frame_interbox.append(intersection_box if overlap_detected else None)
-        frame_idx += 1
- 
-        if frame_idx % 100 == 0:
-            print(f"  ...frame {frame_idx}/{total_frames}")
- 
-    cap.release()
- 
-    # Group flagged frames into events
-    events = extract_events(frame_flags, fps, min_duration, frame_confs, frame_interbox, frame_indices)
- 
-    # Build metadata
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
-    output_dir = "results/metadata/baseline"
-    os.makedirs(output_dir, exist_ok=True)
- 
-    metadata = {
-        "identifier":             os.path.basename(video_path),
-        "video_path":             os.path.abspath(video_path),
-        "model":                  model_path,
-        "iou_threshold":          iou_threshold,
-        "conf_threshold":         conf_threshold,
-        "min_duration_sec":       min_duration,
-        "fps":                    fps,
-        "total_frames":           total_frames,
-        "total_duration_sec":     round(total_frames / fps, 2),
-        "frame_skip":             frame_skip,
-        "cross_sucking_detected": len(events) > 0,
-        "num_events":             len(events),
-        "events":                 events,
-    }
- 
-    # Save JSON
-    json_path = os.path.join(output_dir, f"{video_name}_results.json")
-    with open(json_path, "w") as f:
-        json.dump(metadata, f, indent=2)
- 
-    # Print summary to console
-    print("\n" + "═" * 50)
-    print(f"  VIDEO:    {metadata['identifier']}")
-    print(f"  FLAGGED:  {metadata['cross_sucking_detected']}")
-    print(f"  EVENTS:   {metadata['num_events']}")
-    for i, ev in enumerate(events):
-        print(f"    Event {i+1}: {ev['start_sec']}s → {ev['end_sec']}s "
-              f"({ev['duration_sec']}s) | conf={ev['avg_confidence']}")
-    print(f"  OUTPUT:   {json_path}")
-    print("═" * 50 + "\n")
- 
-    return metadata
+    
+            if frame_idx % 100 == 0:
+                print(f"  ...frame {frame_idx}/{total_frames}")
+    
+        cap.release()
+    
+        # Group flagged frames into events
+        events = extract_events(frame_flags, fps, min_duration, frame_confs, frame_interbox, frame_indices)
+    
+        # Build metadata
+        video_name = os.path.splitext(os.path.basename(video_path))[0]
+        output_dir = "results/metadata/baseline"
+        os.makedirs(output_dir, exist_ok=True)
+    
+        metadata = {
+            "identifier":             os.path.basename(video_path),
+            "video_path":             os.path.abspath(video_path),
+            "model":                  model_path,
+            "iou_threshold":          iou_threshold,
+            "conf_threshold":         conf_threshold,
+            "min_duration_sec":       min_duration,
+            "fps":                    fps,
+            "total_frames":           total_frames,
+            "total_duration_sec":     round(total_frames / fps, 2),
+            "frame_skip":             frame_skip,
+            "cross_sucking_detected": len(events) > 0,
+            "num_events":             len(events),
+            "events":                 events,
+        }
+    
+        # Save JSON
+        json_path = os.path.join(output_dir, f"{video_name}_results.json")
+        with open(json_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+    
+        # Print summary to console
+        print("\n" + "═" * 50)
+        print(f"  VIDEO:    {metadata['identifier']}")
+        print(f"  FLAGGED:  {metadata['cross_sucking_detected']}")
+        print(f"  EVENTS:   {metadata['num_events']}")
+        for i, ev in enumerate(events):
+            print(f"    Event {i+1}: {ev['start_sec']}s → {ev['end_sec']}s "
+                f"({ev['duration_sec']}s) | conf={ev['avg_confidence']}")
+        print(f"  OUTPUT:   {json_path}")
+        print("═" * 50 + "\n")
+    
+        # return metadata
 
 
 def parse_args():
@@ -360,10 +378,11 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     run_detection(
-        video_path    = args.video,
+        video_paths    = args.video,
         model_path    = args.model,
         iou_threshold = args.iou_threshold,
         conf_threshold= args.conf_threshold,
         min_duration  = args.min_duration,
         frame_skip    = args.frame_skip,
     )
+    # extract_video_path(args.video)
