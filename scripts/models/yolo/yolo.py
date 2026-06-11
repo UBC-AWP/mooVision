@@ -262,12 +262,17 @@ def run_detection(
     print(f"[INFO] Processed {frame_idx} frames, collected detections.")
 
     # SAVE FRAMES HERE
+
     print("Frames saved to <output_path>")
 
     # Apply Event Extraction
+    print("Extracting Events from Frames...")
     events = extract_events(fps, buffer, frame_detections)
+    print("Events extracted.")
+    print()
 
     # Build metadata — same format as baseline.py
+    print("Building Metadata...")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
     output_dir = ROOT_DIR / "data/results/metadata/yolo-basic"
     os.makedirs(output_dir, exist_ok=True)
@@ -289,11 +294,15 @@ def run_detection(
     }
 
     # Save JSON
+    print()
+    print("Saving Metadata...")
     json_path = os.path.join(output_dir, f"{video_name}_results.json")
     with open(json_path, "w") as f:
         json.dump(metadata, f, indent=2)
 
     # Print summary
+    print()
+    print("METADATA SUMMARY")
     print("\n" + "═" * 50)
     print(f"  VIDEO:    {metadata['identifier']}")
     print(f"  FLAGGED:  {metadata['cross_sucking_detected']}")
