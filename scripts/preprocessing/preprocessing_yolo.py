@@ -273,24 +273,6 @@ def extract_labels(
 
             # Clean up the temporary archive file on scratch
             scratch_tar_path.unlink()
-            # print(
-            #     "Exploding files securely via native system tar tool inside node RAM..."
-            # )
-            # subprocess.run(
-            #     ["tar", "-xf", str(tar_path), "-C", str(local_working_dir)], check=True
-            # )
-            # tar_path.unlink()  # Clean up local tar
-
-            # # Push the fully exploded files to scratch in one single network operation
-            # print("Transferring uncompressed labels from node memory to scratch...")
-
-            # if final_output_dir.exists():
-            #     print("Removing Existing Files...")
-            #     shutil.rmtree(final_output_dir)
-
-            # # Move the entire directory across storage boundaries in one fluid operation
-            # print(f"Moving files from {local_working_dir} to {final_output_dir}")
-            # shutil.move(str(local_working_dir), str(final_output_dir))
 
         else:
             print("Exploding files securely via native system tar tool...")
@@ -310,18 +292,6 @@ def extract_labels(
             f"All {len(label_batch)} files successfully exploded onto {final_output_dir}!\n"
         )
         print()
-
-    #     for filename, text_bytes in label_batch.items():
-    #         idx += 1
-    #         if idx % 1000 == 0:
-    #             print(f"Executing batch-write: label ({idx}/{batch_len})")
-    #         target_path = final_output_dir / filename
-    #         with open(target_path, "wb") as f_out:
-    #             f_out.write(text_bytes)
-
-    #     print(f"All files successfully saved to {final_output_dir}")
-    # else:
-    #     print("No valid labels matched the slicing/skipping criteria.")
 
 
 def extract_frames(
