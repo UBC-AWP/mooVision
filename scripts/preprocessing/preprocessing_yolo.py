@@ -462,7 +462,7 @@ def extract_frames(
 
             executor.submit(safe_write, str(frame_path), frame)
 
-            # Fast frame skipping wihtout running the above
+            # Fast frame skipping without running the above
             if skip > 1:
                 for _ in range(skip - 1):
                     if not cap.grab():
