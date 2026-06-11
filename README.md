@@ -100,7 +100,7 @@ After configuring you `.env` file, run the following commands from your terminal
 ```bash
 uv run scripts/models/yolo/yolo.py --video_path="sample_videos/cross_sucking_clip_sample/CS_0031_POSTWEAN_d1_p2_cow3_02112025_ch02-20251103001956_60818_60835.mp4" --model_path="runs/detect/MooVision/cross-sucking/weights/best.pt" --buffer=2
 ```
-
+/Users/devon/Library/CloudStorage/OneDrive-SharedLibraries-UBC/Animal Welfare-mooVision - Documents/raw_cross_sucking_datalog/videos/Pen 2 - Group 2/POSTWEANING/Day 1/ch02_20251102092612.mp4
 7. Evaluate results:
 
    ```bash
