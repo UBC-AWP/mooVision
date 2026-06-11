@@ -1,7 +1,7 @@
 #!/bin/bash
 #!/bin/bash
 #SBATCH --account=st-nina-1-gpu          # Your specific project allocation account
-#SBATCH --job_name=model_inference
+#SBATCH --job-name=model_inference
 #SBATCH --partition=gpu             # Target Sockeye's hardware-accelerated nodes
 #SBATCH --time=06:00:00             # Time limit (HH:MM:SS) - adjust based on data size
 #SBATCH --nodes=1                   # Keep everything on 1 physical node
