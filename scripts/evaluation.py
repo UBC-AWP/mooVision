@@ -20,13 +20,18 @@ import argparse
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import sys
 
+sys.path.append(str(Path(__file__).parent.parent))
+
+from config import ROOT_DIR
 
 # ===========================================================================
 # STEP 1: LOADING DATA
 # ===========================================================================
 # These two functions load the predictions and ground truth into DataFrames
 # so the rest of the script can work with them in a consistent format.
+
 
 def load_predictions(predictions_dir: Path) -> pd.DataFrame:
     """
@@ -62,15 +67,17 @@ def load_predictions(predictions_dir: Path) -> pd.DataFrame:
         source_video_basename = metadata["identifier"]
 
         for event in metadata.get("events", []):
-            records.append({
-                "source_video_basename": source_video_basename,
-                "start_sec":            event["start_sec"],
-                "end_sec":              event["end_sec"],
-                "duration_sec":         event["duration_sec"],
-                "avg_confidence":       event["avg_confidence"],
-                "intersection_box":     event.get("intersection_box", []),
-                "fps":                  metadata["fps"],
-            })
+            records.append(
+                {
+                    "source_video_basename": source_video_basename,
+                    "start_sec": event["start_sec"],
+                    "end_sec": event["end_sec"],
+                    "duration_sec": event["duration_sec"],
+                    "avg_confidence": event["avg_confidence"],
+                    "intersection_box": event.get("intersection_box", []),
+                    "fps": metadata["fps"],
+                }
+            )
 
     return pd.DataFrame(records)
 
@@ -105,11 +112,13 @@ def load_ground_truth(path: Path) -> pd.DataFrame:
 
     # Rename timing columns to match prediction column names
     # so comparisons are straightforward
-    df = df.rename(columns={
-        "clip_start_in_source_sec": "start_sec",
-        "clip_end_in_source_sec":   "end_sec",
-        "phase":                    "weaning_stage",
-    })
+    df = df.rename(
+        columns={
+            "clip_start_in_source_sec": "start_sec",
+            "clip_end_in_source_sec": "end_sec",
+            "phase": "weaning_stage",
+        }
+    )
 
     return df
 
@@ -120,11 +129,9 @@ def load_ground_truth(path: Path) -> pd.DataFrame:
 # These three functions compute the actual evaluation metrics.
 # They are simple math functions that take numbers and return numbers.
 
+
 def compute_temporal_iou(
-    pred_start: float,
-    pred_end: float,
-    gt_start: float,
-    gt_end: float
+    pred_start: float, pred_end: float, gt_start: float, gt_end: float
 ) -> float:
     """
     Compute temporal IoU between a predicted and ground truth event window.
@@ -157,7 +164,7 @@ def compute_temporal_iou(
         Temporal IoU score between 0 and 1.
     """
     intersection_start = max(pred_start, gt_start)
-    intersection_end   = min(pred_end,   gt_end)
+    intersection_end = min(pred_end, gt_end)
     intersection = max(0.0, intersection_end - intersection_start)
 
     union = (pred_end - pred_start) + (gt_end - gt_start) - intersection
@@ -198,16 +205,13 @@ def compute_bbox_iou(box_pred: list, box_gt: list) -> float:
     intersection = inter_w * inter_h
 
     area_pred = (box_pred[2] - box_pred[0]) * (box_pred[3] - box_pred[1])
-    area_gt   = (box_gt[2]   - box_gt[0])   * (box_gt[3]   - box_gt[1])
+    area_gt = (box_gt[2] - box_gt[0]) * (box_gt[3] - box_gt[1])
     union = area_pred + area_gt - intersection
 
     return intersection / union if union > 0 else 0.0
 
 
-def compute_avg_bbox_iou_for_event(
-    pred_boxes: list,
-    gt_boxes: list
-) -> float:
+def compute_avg_bbox_iou_for_event(pred_boxes: list, gt_boxes: list) -> float:
     """
     Compute average bounding box IoU across all frames in a matched event.
 
@@ -238,7 +242,7 @@ def compute_avg_bbox_iou_for_event(
             gb = gt_by_frame[frame]
             iou = compute_bbox_iou(
                 [pb["x1"], pb["y1"], pb["x2"], pb["y2"]],
-                [gb["x1"], gb["y1"], gb["x2"], gb["y2"]]
+                [gb["x1"], gb["y1"], gb["x2"], gb["y2"]],
             )
             ious.append(iou)
 
@@ -246,10 +250,7 @@ def compute_avg_bbox_iou_for_event(
 
 
 def compute_precision_recall_f(
-    true_positives: int,
-    false_positives: int,
-    false_negatives: int,
-    beta: float = 1.0
+    true_positives: int, false_positives: int, false_negatives: int, beta: float = 1.0
 ) -> dict:
     """
     Compute precision, recall, and F-beta score.
@@ -279,22 +280,25 @@ def compute_precision_recall_f(
     """
     precision = (
         true_positives / (true_positives + false_positives)
-        if (true_positives + false_positives) > 0 else 0.0
+        if (true_positives + false_positives) > 0
+        else 0.0
     )
     recall = (
         true_positives / (true_positives + false_negatives)
-        if (true_positives + false_negatives) > 0 else 0.0
+        if (true_positives + false_negatives) > 0
+        else 0.0
     )
-    beta_sq = beta ** 2
+    beta_sq = beta**2
     f_score = (
         (1 + beta_sq) * precision * recall / (beta_sq * precision + recall)
-        if (beta_sq * precision + recall) > 0 else 0.0
+        if (beta_sq * precision + recall) > 0
+        else 0.0
     )
 
     return {
         "precision": round(precision, 4),
-        "recall":    round(recall, 4),
-        "f_score":   round(f_score, 4),
+        "recall": round(recall, 4),
+        "f_score": round(f_score, 4),
     }
 
 
@@ -305,11 +309,12 @@ def compute_precision_recall_f(
 # It loops through each video, tries to pair each predicted event with
 # a ground truth event using temporal IoU, and counts TP/FP/FN.
 
+
 def match_predictions_to_ground_truth(
     predictions: pd.DataFrame,
     ground_truth: pd.DataFrame,
     temporal_iou_threshold: float = 0.5,
-    confidence_threshold: float = 0.5
+    confidence_threshold: float = 0.5,
 ) -> dict:
     """
     Match predicted events to ground truth events using temporal IoU.
@@ -342,16 +347,14 @@ def match_predictions_to_ground_truth(
         matched_pairs, temporal_ious, bbox_ious.
     """
     # Filter out low confidence predictions
-    preds = predictions[
-        predictions["avg_confidence"] >= confidence_threshold
-    ].copy()
+    preds = predictions[predictions["avg_confidence"] >= confidence_threshold].copy()
 
-    true_positives  = 0
+    true_positives = 0
     false_positives = 0
     false_negatives = 0
-    matched_pairs   = []
-    temporal_ious   = []
-    bbox_ious       = []
+    matched_pairs = []
+    temporal_ious = []
+    bbox_ious = []
 
     # Get all unique videos across both predictions and ground truth
     all_videos = set(preds["source_video_basename"]).union(
@@ -359,18 +362,16 @@ def match_predictions_to_ground_truth(
     )
 
     for video in all_videos:
-        video_preds = preds[
-            preds["source_video_basename"] == video
-        ].to_dict("records")
+        video_preds = preds[preds["source_video_basename"] == video].to_dict("records")
 
-        video_gt = ground_truth[
-            ground_truth["source_video_basename"] == video
-        ].to_dict("records")
+        video_gt = ground_truth[ground_truth["source_video_basename"] == video].to_dict(
+            "records"
+        )
 
         matched_gt = set()  # track which GT events have been matched
 
         for pred in video_preds:
-            best_iou    = 0.0
+            best_iou = 0.0
             best_gt_idx = None
 
             # Find the best matching ground truth event
@@ -378,11 +379,10 @@ def match_predictions_to_ground_truth(
                 if gt_idx in matched_gt:
                     continue  # already matched, skip
                 t_iou = compute_temporal_iou(
-                    pred["start_sec"], pred["end_sec"],
-                    gt["start_sec"],   gt["end_sec"]
+                    pred["start_sec"], pred["end_sec"], gt["start_sec"], gt["end_sec"]
                 )
                 if t_iou > best_iou:
-                    best_iou    = t_iou
+                    best_iou = t_iou
                     best_gt_idx = gt_idx
 
             if best_iou >= temporal_iou_threshold and best_gt_idx is not None:
@@ -396,21 +396,22 @@ def match_predictions_to_ground_truth(
                 b_iou = 0.0
                 if pred.get("intersection_box") and gt_event.get("intersection_box"):
                     b_iou = compute_avg_bbox_iou_for_event(
-                        pred["intersection_box"],
-                        gt_event["intersection_box"]
+                        pred["intersection_box"], gt_event["intersection_box"]
                     )
                 bbox_ious.append(b_iou)
 
-                matched_pairs.append({
-                    "video":        video,
-                    "pred_start":   pred["start_sec"],
-                    "pred_end":     pred["end_sec"],
-                    "gt_start":     gt_event["start_sec"],
-                    "gt_end":       gt_event["end_sec"],
-                    "temporal_iou": round(best_iou, 4),
-                    "bbox_iou":     round(b_iou, 4),
-                    "confidence":   pred["avg_confidence"],
-                })
+                matched_pairs.append(
+                    {
+                        "video": video,
+                        "pred_start": pred["start_sec"],
+                        "pred_end": pred["end_sec"],
+                        "gt_start": gt_event["start_sec"],
+                        "gt_end": gt_event["end_sec"],
+                        "temporal_iou": round(best_iou, 4),
+                        "bbox_iou": round(b_iou, 4),
+                        "confidence": pred["avg_confidence"],
+                    }
+                )
             else:
                 # No good match — False Positive
                 false_positives += 1
@@ -419,12 +420,12 @@ def match_predictions_to_ground_truth(
         false_negatives += len(video_gt) - len(matched_gt)
 
     return {
-        "true_positives":  true_positives,
+        "true_positives": true_positives,
         "false_positives": false_positives,
         "false_negatives": false_negatives,
-        "matched_pairs":   matched_pairs,
-        "temporal_ious":   temporal_ious,
-        "bbox_ious":       bbox_ious,
+        "matched_pairs": matched_pairs,
+        "temporal_ious": temporal_ious,
+        "bbox_ious": bbox_ious,
     }
 
 
@@ -434,12 +435,13 @@ def match_predictions_to_ground_truth(
 # Breaks evaluation down by pen or weaning stage so the partner can ask:
 # "Does the model perform better in certain pens or weaning stages?"
 
+
 def evaluate_by_stratum(
     predictions: pd.DataFrame,
     ground_truth: pd.DataFrame,
     stratum: str,
     temporal_iou_threshold: float = 0.5,
-    confidence_threshold: float = 0.5
+    confidence_threshold: float = 0.5,
 ) -> pd.DataFrame:
     """
     Evaluate model performance broken down by a grouping variable.
@@ -461,13 +463,15 @@ def evaluate_by_stratum(
 
     for value in ground_truth[stratum].unique():
         # Filter both dataframes to just this stratum value
-        preds_subset = predictions[predictions[stratum] == value] \
-            if stratum in predictions.columns else predictions
+        preds_subset = (
+            predictions[predictions[stratum] == value]
+            if stratum in predictions.columns
+            else predictions
+        )
         gt_subset = ground_truth[ground_truth[stratum] == value]
 
         match_result = match_predictions_to_ground_truth(
-            preds_subset, gt_subset,
-            temporal_iou_threshold, confidence_threshold
+            preds_subset, gt_subset, temporal_iou_threshold, confidence_threshold
         )
 
         tp = match_result["true_positives"]
@@ -477,22 +481,28 @@ def evaluate_by_stratum(
         f1 = compute_precision_recall_f(tp, fp, fn, beta=1.0)
         f2 = compute_precision_recall_f(tp, fp, fn, beta=2.0)
 
-        results.append({
-            stratum:             value,
-            "true_positives":    tp,
-            "false_positives":   fp,
-            "false_negatives":   fn,
-            "precision":         f1["precision"],
-            "recall":            f1["recall"],
-            "f1":                f1["f_score"],
-            "f2":                f2["f_score"],
-            "avg_temporal_iou":  round(float(np.mean(
-                                     match_result["temporal_ious"])), 4)
-                                 if match_result["temporal_ious"] else 0.0,
-            "avg_bbox_iou":      round(float(np.mean(
-                                     match_result["bbox_ious"])), 4)
-                                 if match_result["bbox_ious"] else 0.0,
-        })
+        results.append(
+            {
+                stratum: value,
+                "true_positives": tp,
+                "false_positives": fp,
+                "false_negatives": fn,
+                "precision": f1["precision"],
+                "recall": f1["recall"],
+                "f1": f1["f_score"],
+                "f2": f2["f_score"],
+                "avg_temporal_iou": (
+                    round(float(np.mean(match_result["temporal_ious"])), 4)
+                    if match_result["temporal_ious"]
+                    else 0.0
+                ),
+                "avg_bbox_iou": (
+                    round(float(np.mean(match_result["bbox_ious"])), 4)
+                    if match_result["bbox_ious"]
+                    else 0.0
+                ),
+            }
+        )
 
     return pd.DataFrame(results)
 
@@ -503,12 +513,13 @@ def evaluate_by_stratum(
 # Pulls everything together into one structured report and optionally
 # saves it as a JSON file.
 
+
 def generate_evaluation_report(
     predictions: pd.DataFrame,
     ground_truth: pd.DataFrame,
     output_path: Path = None,
     temporal_iou_threshold: float = 0.5,
-    confidence_threshold: float = 0.5
+    confidence_threshold: float = 0.5,
 ) -> dict:
     """
     Generate a full evaluation report.
@@ -536,8 +547,7 @@ def generate_evaluation_report(
     """
     # --- Overall metrics ---
     match_result = match_predictions_to_ground_truth(
-        predictions, ground_truth,
-        temporal_iou_threshold, confidence_threshold
+        predictions, ground_truth, temporal_iou_threshold, confidence_threshold
     )
 
     tp = match_result["true_positives"]
@@ -549,53 +559,57 @@ def generate_evaluation_report(
 
     avg_temporal_iou = (
         round(float(np.mean(match_result["temporal_ious"])), 4)
-        if match_result["temporal_ious"] else 0.0
+        if match_result["temporal_ious"]
+        else 0.0
     )
     avg_bbox_iou = (
         round(float(np.mean(match_result["bbox_ious"])), 4)
-        if match_result["bbox_ious"] else 0.0
+        if match_result["bbox_ious"]
+        else 0.0
     )
 
     # --- Stratified metrics ---
     by_pen = evaluate_by_stratum(
-        predictions, ground_truth, "pen",
-        temporal_iou_threshold, confidence_threshold
+        predictions, ground_truth, "pen", temporal_iou_threshold, confidence_threshold
     ).to_dict("records")
 
     by_weaning_stage = evaluate_by_stratum(
-        predictions, ground_truth, "weaning_stage",
-        temporal_iou_threshold, confidence_threshold
+        predictions,
+        ground_truth,
+        "weaning_stage",
+        temporal_iou_threshold,
+        confidence_threshold,
     ).to_dict("records")
 
     # --- Build report ---
     report = {
         "thresholds": {
             "temporal_iou_threshold": temporal_iou_threshold,
-            "confidence_threshold":   confidence_threshold,
+            "confidence_threshold": confidence_threshold,
         },
         "event_level": {
-            "true_positives":  tp,
+            "true_positives": tp,
             "false_positives": fp,
             "false_negatives": fn,
-            "precision":       f1_scores["precision"],
-            "recall":          f1_scores["recall"],
-            "f1":              f1_scores["f_score"],
-            "f2":              f2_scores["f_score"],
-            "avg_bbox_iou":    avg_bbox_iou,
+            "precision": f1_scores["precision"],
+            "recall": f1_scores["recall"],
+            "f1": f1_scores["f_score"],
+            "f2": f2_scores["f_score"],
+            "avg_bbox_iou": avg_bbox_iou,
         },
         "sequence_level": {
             "avg_temporal_iou": avg_temporal_iou,
         },
-        "by_pen":           by_pen,
+        "by_pen": by_pen,
         "by_weaning_stage": by_weaning_stage,
-        "matched_pairs":    match_result["matched_pairs"],
+        "matched_pairs": match_result["matched_pairs"],
     }
 
     # --- Optionally save to disk ---
     if output_path:
-        with open(output_path, "w") as f:
+        with open(ROOT_DIR / output_path, "w") as f:
             json.dump(report, f, indent=2)
-        print(f"[INFO] Evaluation report saved to {output_path}")
+        print(f"[INFO] Evaluation report saved to {ROOT_DIR / output_path}")
 
     return report
 
@@ -612,36 +626,36 @@ if __name__ == "__main__":
         "--predictions",
         type=Path,
         required=True,
-        help="Directory containing baseline JSON prediction files."
+        help="Directory containing baseline JSON prediction files.",
     )
     parser.add_argument(
         "--ground_truth",
         type=Path,
         required=True,
-        help="Path to processed clips index CSV (ground truth)."
+        help="Path to processed clips index CSV (ground truth).",
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=None,
-        help="Optional path to save evaluation report as JSON."
+        help="Optional path to save evaluation report as JSON.",
     )
     parser.add_argument(
         "--confidence_threshold",
         type=float,
         default=0.5,
-        help="Minimum confidence score for predictions. Default 0.5."
+        help="Minimum confidence score for predictions. Default 0.5.",
     )
     parser.add_argument(
         "--temporal_iou_threshold",
         type=float,
         default=0.5,
-        help="Minimum temporal IoU to count as a match. Default 0.5."
+        help="Minimum temporal IoU to count as a match. Default 0.5.",
     )
     args = parser.parse_args()
 
-    preds = load_predictions(args.predictions)
-    gt    = load_ground_truth(args.ground_truth)
+    preds = load_predictions(ROOT_DIR / args.predictions)
+    gt = load_ground_truth(ROOT_DIR / args.ground_truth)
 
     report = generate_evaluation_report(
         predictions=preds,
