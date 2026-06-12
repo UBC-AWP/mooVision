@@ -16,6 +16,8 @@ How to run:
 """
 
 import json
+import re
+import zipfile
 import argparse
 import numpy as np
 import pandas as pd
@@ -23,6 +25,10 @@ from pathlib import Path
 import sys
 
 sys.path.append(str(Path(__file__).parent.parent))
+
+# Video dimensions — used to convert YOLO normalized coords to pixels
+VIDEO_WIDTH = 1920
+VIDEO_HEIGHT = 1080
 
 from config import ROOT_DIR
 
@@ -121,6 +127,115 @@ def load_ground_truth(path: Path) -> pd.DataFrame:
     )
 
     return df
+
+
+def load_gt_boxes_from_zip(
+    labelled_clip_relative_path: str,
+    labelled_clips_dir: Path,
+    clip_start_frame: int,
+    img_width: int = VIDEO_WIDTH,
+    img_height: int = VIDEO_HEIGHT,
+) -> list:
+    """
+    Load ground truth bounding boxes from a CVAT annotation zip file.
+
+    Each zip file contains per-frame .txt annotation files in YOLO format:
+        class_id  center_x  center_y  width  height
+    All values are normalized between 0 and 1.
+
+    This function:
+        1. Opens the zip file from labelled_clips_dir
+        2. Reads each frame_XXXXXX.txt file
+        3. Converts normalized YOLO coordinates to pixel coordinates
+        4. Offsets frame numbers by clip_start_frame so they align
+           with source video frame numbers used in predictions
+
+    Parameters
+    ----------
+    labelled_clip_relative_path : str
+        Relative path to the zip file from the ground truth CSV.
+    labelled_clips_dir : Path
+        Root directory of CVAT annotation zip files.
+    clip_start_frame : int
+        Frame number in the source video where this clip starts.
+        Used to offset clip-level frame numbers to source video frame numbers.
+    img_width : int
+        Video frame width in pixels. Default 1920.
+    img_height : int
+        Video frame height in pixels. Default 1080.
+
+    Returns
+    -------
+    list of dict
+        Per-frame ground truth boxes:
+        [{"frame": int, "x1": int, "y1": int, "x2": int, "y2": int}, ...]
+        Returns empty list if zip file not found or no annotations.
+    """
+    # Build full path to zip file
+    zip_path = labelled_clips_dir / labelled_clip_relative_path.replace("\\", "/")
+
+    if not zip_path.exists():
+        return []
+
+    gt_boxes = []
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as z:
+            # Get all .txt files in obj_train_data folder
+            txt_files = [
+                f
+                for f in z.namelist()
+                if f.startswith("obj_train_data/") and f.endswith(".txt")
+            ]
+
+            for txt_file in txt_files:
+                # Extract frame number from filename e.g. frame_000441.txt → 441
+                match = re.search(r"frame_(\d+)\.txt", txt_file)
+                if not match:
+                    continue
+
+                clip_frame_num = int(match.group(1))
+
+                # Offset to source video frame number
+                source_frame_num = clip_frame_num + clip_start_frame
+
+                # Read annotation
+                with z.open(txt_file) as f:
+                    content = f.read().decode().strip()
+                    if not content:
+                        continue
+
+                    # Parse YOLO format: class_id cx cy w h
+                    parts = content.split()
+                    if len(parts) < 5:
+                        continue
+
+                    cx = float(parts[1])
+                    cy = float(parts[2])
+                    w = float(parts[3])
+                    h = float(parts[4])
+
+                    # Convert normalized coords to pixel coords
+                    x1 = int((cx - w / 2) * img_width)
+                    y1 = int((cy - h / 2) * img_height)
+                    x2 = int((cx + w / 2) * img_width)
+                    y2 = int((cy + h / 2) * img_height)
+
+                    gt_boxes.append(
+                        {
+                            "frame": source_frame_num,
+                            "x1": x1,
+                            "y1": y1,
+                            "x2": x2,
+                            "y2": y2,
+                        }
+                    )
+
+    except Exception as e:
+        print(f"[WARN] Could not read {zip_path}: {e}")
+        return []
+
+    return gt_boxes
 
 
 # ===========================================================================
@@ -315,6 +430,8 @@ def match_predictions_to_ground_truth(
     ground_truth: pd.DataFrame,
     temporal_iou_threshold: float = 0.5,
     confidence_threshold: float = 0.5,
+    labelled_clips_dir: Path = None,
+    fps: float = 30.0,
 ) -> dict:
     """
     Match predicted events to ground truth events using temporal IoU.
@@ -339,6 +456,12 @@ def match_predictions_to_ground_truth(
         Minimum temporal IoU to count as a match. Default 0.5.
     confidence_threshold : float
         Minimum confidence score to consider a prediction. Default 0.5.
+    labelled_clips_dir : Path, optional
+        Path to CVAT annotation zip files. If provided, bbox IoU is
+        computed by loading ground truth boxes from zip files.
+    fps : float
+        Frames per second — used to convert timestamps to frame numbers.
+        Default 30.0.
 
     Returns
     -------
@@ -391,10 +514,30 @@ def match_predictions_to_ground_truth(
                 matched_gt.add(best_gt_idx)
                 temporal_ious.append(best_iou)
 
-                # Compute bbox IoU if boxes are available
+                # Compute bbox IoU using CVAT zip annotations if available
                 gt_event = video_gt[best_gt_idx]
                 b_iou = 0.0
-                if pred.get("intersection_box") and gt_event.get("intersection_box"):
+                if (
+                    pred.get("intersection_box")
+                    and labelled_clips_dir
+                    and gt_event.get("labelled_clip_relative_path")
+                ):
+                    # Convert gt start time to frame number
+                    clip_start_frame = int(gt_event["start_sec"] * fps)
+                    gt_boxes = load_gt_boxes_from_zip(
+                        labelled_clip_relative_path=gt_event[
+                            "labelled_clip_relative_path"
+                        ],
+                        labelled_clips_dir=labelled_clips_dir,
+                        clip_start_frame=clip_start_frame,
+                        img_width=VIDEO_WIDTH,
+                        img_height=VIDEO_HEIGHT,
+                    )
+                    if gt_boxes:
+                        b_iou = compute_avg_bbox_iou_for_event(
+                            pred["intersection_box"], gt_boxes
+                        )
+                elif pred.get("intersection_box") and gt_event.get("intersection_box"):
                     b_iou = compute_avg_bbox_iou_for_event(
                         pred["intersection_box"], gt_event["intersection_box"]
                     )
@@ -442,6 +585,8 @@ def evaluate_by_stratum(
     stratum: str,
     temporal_iou_threshold: float = 0.5,
     confidence_threshold: float = 0.5,
+    labelled_clips_dir: Path = None,
+    fps: float = 30.0,
 ) -> pd.DataFrame:
     """
     Evaluate model performance broken down by a grouping variable.
@@ -471,7 +616,12 @@ def evaluate_by_stratum(
         gt_subset = ground_truth[ground_truth[stratum] == value]
 
         match_result = match_predictions_to_ground_truth(
-            preds_subset, gt_subset, temporal_iou_threshold, confidence_threshold
+            preds_subset,
+            gt_subset,
+            temporal_iou_threshold,
+            confidence_threshold,
+            labelled_clips_dir=labelled_clips_dir,
+            fps=fps,
         )
 
         tp = match_result["true_positives"]
@@ -520,6 +670,8 @@ def generate_evaluation_report(
     output_path: Path = None,
     temporal_iou_threshold: float = 0.5,
     confidence_threshold: float = 0.5,
+    labelled_clips_dir: Path = None,
+    fps: float = 30.0,
 ) -> dict:
     """
     Generate a full evaluation report.
@@ -547,7 +699,12 @@ def generate_evaluation_report(
     """
     # --- Overall metrics ---
     match_result = match_predictions_to_ground_truth(
-        predictions, ground_truth, temporal_iou_threshold, confidence_threshold
+        predictions,
+        ground_truth,
+        temporal_iou_threshold,
+        confidence_threshold,
+        labelled_clips_dir=labelled_clips_dir,
+        fps=fps,
     )
 
     tp = match_result["true_positives"]
@@ -570,7 +727,13 @@ def generate_evaluation_report(
 
     # --- Stratified metrics ---
     by_pen = evaluate_by_stratum(
-        predictions, ground_truth, "pen", temporal_iou_threshold, confidence_threshold
+        predictions,
+        ground_truth,
+        "pen",
+        temporal_iou_threshold,
+        confidence_threshold,
+        labelled_clips_dir=labelled_clips_dir,
+        fps=fps,
     ).to_dict("records")
 
     by_weaning_stage = evaluate_by_stratum(
@@ -579,6 +742,8 @@ def generate_evaluation_report(
         "weaning_stage",
         temporal_iou_threshold,
         confidence_threshold,
+        labelled_clips_dir=labelled_clips_dir,
+        fps=fps,
     ).to_dict("records")
 
     # --- Build report ---
@@ -652,6 +817,18 @@ if __name__ == "__main__":
         default=0.5,
         help="Minimum temporal IoU to count as a match. Default 0.5.",
     )
+    parser.add_argument(
+        "--labelled_clips_dir",
+        type=Path,
+        default=None,
+        help="Path to CVAT annotation zip files for bbox IoU computation. Optional.",
+    )
+    parser.add_argument(
+        "--fps",
+        type=float,
+        default=30.0,
+        help="Frames per second of source videos. Default 30.0.",
+    )
     args = parser.parse_args()
 
     preds = load_predictions(ROOT_DIR / args.predictions)
@@ -663,6 +840,8 @@ if __name__ == "__main__":
         output_path=args.output,
         temporal_iou_threshold=args.temporal_iou_threshold,
         confidence_threshold=args.confidence_threshold,
+        labelled_clips_dir=args.labelled_clips_dir,
+        fps=args.fps,
     )
 
     print(json.dumps(report, indent=2))
