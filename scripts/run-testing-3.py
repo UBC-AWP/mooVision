@@ -93,7 +93,6 @@ def run_testing(
         cln_path = Path(cln_str)
         rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
         abs_path = SOURCE_VIDEOS_DIR / rel_path
-        print(abs_path)
 
         # Do not add video if path does not exist
         try:

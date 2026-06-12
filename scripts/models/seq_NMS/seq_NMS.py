@@ -14,10 +14,12 @@ overlap, this script:
 The output JSON format matches baseline.py so evaluation.py works unchanged.
  
 Usage:
-    uv run python scripts/seq_NMS.py \
-        --video path/to/video.mp4 \
-        --model runs/detect/cross-sucking/weights/best.pt \
-        --frame_skip 1
+    uv run python scripts/models/seq_NMS/seq_NMS.py \
+        --video "ROOT_DIR/raw_cross_sucking_datalog/videos/Pen 2 - Group 2/WEANING/Day 2/ch02_20251018035506.mp4" \
+        --model weights/split_1/best.pt \
+        --output_dir=results/test\
+        --frame_skip 30 \
+        --show_video
 """
 
 import sys
