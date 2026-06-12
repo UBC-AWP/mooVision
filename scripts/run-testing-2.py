@@ -6,22 +6,24 @@ NOTE: Need to add functionality for adding other arguments too! seq_NMS and yolo
 
 from pathlib import Path
 import sys
-import json
 import argparse
-import subprocess
 import pandas as pd
 from ultralytics import YOLO
-import os
-from concurrent.futures import ProcessPoolExecutor
 
 sys.path.append(str(Path(__file__).parent.parent))
 from config import ROOT_DIR, SOURCE_VIDEOS_DIR, LOCAL_DIR
-from scripts.models.yolo.yolo import run_detection
-from scripts.models.seq_NMS.seq_NMS import run_seq_nms_detection
+from scripts.models.yolo.yolo import run_models
+from scripts.models.seq_NMS.seq_NMS import (
+    run_seq_nms_detection,
+    DEFAULT_CONF_THRESHOLD,
+    DEFAULT_FRAME_SKIP,
+    DEFAULT_IOU_THRESHOLD,
+    DEFAULT_MIN_DURATION,
+    TARGET_CLASS_NAME,
+)
 
 
 def run_testing(
-    model_type: str,
     model_path: str,
     data_path: str,
     conf_threshold: float,
@@ -41,10 +43,10 @@ def run_testing(
     in models/ specified as `model`. This script will run the model on
     said video and output metadata to the data directory.
 
+    Outputs both yolo and seq-NMS metadata.
+
     Parameters
     ----------
-    model : str
-        Type of model to use. One of ['yolo', 'seq-NMS']
     model_path : str
         Path to model to use.
     data_path : str
@@ -64,9 +66,6 @@ def run_testing(
     --------
 
     """
-    if model_type not in ["yolo", "seq-NMS"]:
-        raise ValueError("model must be one of:['yolo', 'seq-NMS']")
-
     # Read in Data
     if not (ROOT_DIR / data_path).exists():
         raise FileNotFoundError(f"Could not find file: {ROOT_DIR / data_path}")
@@ -77,9 +76,7 @@ def run_testing(
 
     # the split label is the folder path between data/processed/ and test.csv
     # e.g. data/processed/pen_based/pen_2/test.csv  ->  pen_based/pen_2
-    split_label = str(
-        Path(data_path).parent.relative_to(ROOT_DIR / "data" / "processed")
-    )
+    split_label = str(Path(data_path).parent.relative_to("data/processed"))
     print(f"\nSplit Label: {split_label}")
 
     # Clean and Build Video Paths
@@ -93,7 +90,6 @@ def run_testing(
         cln_path = Path(cln_str)
         rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
         abs_path = SOURCE_VIDEOS_DIR / rel_path
-        print(abs_path)
 
         # Do not add video if path does not exist
         try:
@@ -103,81 +99,54 @@ def run_testing(
         except Exception as e:
             print(f"{e}")
 
-    difference = len(clean_paths) - len(video_paths)
+    unique_video_strings = sorted(list(set(str(p) for p in clean_paths)))
+    n_unique_paths = len(unique_video_strings)
+    n_video_paths = len(video_paths)
+
+    difference = n_unique_paths - n_video_paths
     print(f"{difference} videos removed.")
-    output_dir = ROOT_DIR / "results" / "metadata" / model_type / split_label
+
+    output_dir = ROOT_DIR / "results" / "metadata" / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine how many CPU cores to use
-    # Read how many slots Slurm actually assigned us. Fallback to 2 if not set.
-    num_workers = int(os.environ.get("SLURM_CPUS_PER_TASK", 2))
-    print(
-        f"[INFO] Found {len(clean_paths)} videos. Processing using {num_workers} parallel workers..."
-    )
+    # # Cut to 20 videos to presentation results!
+    # if n_unique_paths > 20:
+    #     unique_video_strings_short = unique_video_strings[:30]
+    # else:
+    #     unique_video_strings_short = unique_video_strings
 
-    def worker_initializer():
-        """Prevents each process from grabbing all threads for internal PyTorch math"""
-        import os
+    if not Path(model_path).exists():
+        raise FileNotFoundError(f"Could not find {model_path}.")
+    print(f"[INFO] Loading model: {model_path}")
+    model = YOLO(model_path)
 
-        os.environ["OMP_NUM_THREADS"] = "1"
-        os.environ["MKL_NUM_THREADS"] = "1"
-        os.environ["OPENBLAS_NUM_THREADS"] = "1"
-        os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
-        os.environ["NUMEXPR_NUM_THREADS"] = "1"
+    print(f"Running models on 20 unique video paths... ")
+    idx = 0
+    for n, video_str in enumerate(unique_video_strings, 1):
+        if idx == 20:
+            break
         try:
-            import torch
 
-            torch.set_num_threads(1)
-        except ImportError:
-            pass
+            path = Path(video_str)
+            print(f"Running {path.stem} {idx}/{20}")
+            run_models(
+                model=model,
+                model_path=model_path,
+                video_path=str(path),
+                output_dir=output_dir,
+                conf_threshold=conf_threshold,
+                iou_threshold=iou_threshold,
+                min_duration=min_duration,
+                buffer=buffer,
+                frame_skip=frame_skip,
+                target_class=target_class,
+                show_video=False,
+            )
+            idx += 1
 
-    # Spin up the parallel execution pool
-    with ProcessPoolExecutor(
-        max_workers=num_workers, initializer=worker_initializer
-    ) as executor:
-        # Submit all videos to the processing queue
-        if model_type == "yolo":
-
-            futures = [
-                executor.submit(
-                    run_detection,
-                    video_path=v_path,
-                    model_path=model_path,
-                    output_dir=output_dir,
-                    conf_threshold=conf_threshold,
-                    iou_threshold=iou_threshold,
-                    min_duration=min_duration,
-                    frame_skip=frame_skip,
-                    target_class=target_class,
-                    buffer=buffer,
-                    show_video=False,
-                )
-                for v_path in clean_paths
-            ]
-        elif model_type == "seq_NMS":
-            futures = [
-                executor.submit(
-                    run_seq_nms_detection,
-                    video_path=v_path,
-                    model_path=model_path,
-                    output_dir=output_dir,
-                    conf_threshold=conf_threshold,
-                    iou_threshold=iou_threshold,
-                    min_duration=min_duration,
-                    frame_skip=frame_skip,
-                    target_class=target_class,
-                    show_video=False,
-                )
-                for v_path in clean_paths
-            ]
-
-        # Monitor progress as they finish
-        for i, future in enumerate(futures):
-            try:
-                future.result()
-                print(f"[PROGRESS] Completed video {i+1}/{len(clean_paths)}")
-            except Exception as e:
-                print(f"[ERROR] Video {i+1} failed with error: {e}")
+        except Exception:
+            print(f"Skipped {path.stem}")
+            continue
 
 
 def parse_args():
@@ -195,38 +164,33 @@ def parse_args():
         help="YOLO weights file (default: runs/detect/MooVision/cross-sucking/weights/best.pt)",
     )
     parser.add_argument(
-        "--model_type",
-        required=True,
-        help="Model type to use ('yolo' or 'seq_NMS'",
-    )
-    parser.add_argument(
         "--iou_threshold",
         type=float,
-        default=0,
+        default=DEFAULT_IOU_THRESHOLD,
         help="IoU overlap threshold (default: 0)",
     )
     parser.add_argument(
         "--conf_threshold",
         type=float,
-        default=0,
+        default=DEFAULT_CONF_THRESHOLD,
         help="YOLO detection confidence threshold (default: 0)",
     )
     parser.add_argument(
         "--min_duration",
         type=float,
-        default=0,
+        default=DEFAULT_MIN_DURATION,
         help="Minimum event duration in seconds (default: 0)",
     )
     parser.add_argument(
         "--frame_skip",
         type=int,
-        default=10,
+        default=DEFAULT_FRAME_SKIP,
         help="Process every Nth frame (default: 1)",
     )
     parser.add_argument(
         "--buffer",
         type=int,
-        default=1,
+        default=30,
         help="Number of seconds to wait without CS until ending an event.",
     )
     parser.add_argument(
@@ -243,7 +207,6 @@ if __name__ == "__main__":
     run_testing(
         model_path=args.model_path,
         data_path=args.data_path,
-        model_type=args.model_type,
         conf_threshold=args.conf_threshold,
         iou_threshold=args.iou_threshold,
         min_duration=args.min_duration,

@@ -26,6 +26,7 @@ dependencies = [
     # On your laptop (Mac/Windows), pull down the native mainstream version
     "torch; sys_platform == 'darwin'",
     "torchvision; sys_platform == 'darwin'",
+    "pi-heif>=1.4.0",
 ]
 
 [dependency-groups]
