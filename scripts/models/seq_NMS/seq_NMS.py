@@ -37,11 +37,11 @@ from config import ROOT_DIR
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_CONF_THRESHOLD = 0.25  # Lower than baseline since fine-tuned model
-# is more specific — catches more real events
-DEFAULT_IOU_THRESHOLD = 0.5  # Minimum spatial IoU to link boxes across frames
+DEFAULT_CONF_THRESHOLD = 0.15  # Lower than baseline since fine-tuned model
+# is more specific — catches more real events is good.
+DEFAULT_IOU_THRESHOLD = 0.3  # Minimum spatial IoU to link boxes across frames
 DEFAULT_MIN_DURATION = 1.0  # Minimum tube length in seconds to keep as event
-DEFAULT_FRAME_SKIP = 10  # Process every Nth frame
+DEFAULT_FRAME_SKIP = 30  # Process every Nth frame
 TARGET_CLASS_NAME = "cross-sucking"  # Class name from fine-tuned model
 # Change to "cow" if using pretrained weights
 
@@ -407,7 +407,7 @@ def run_seq_nms_detection(
             frame_idx += 1
 
         # Run YOLO inference
-        results = model(frame, conf=conf_threshold, verbose=False)[0]
+        results = model(frame, imgsz=640, conf=conf_threshold, verbose=False)[0]
 
         # Show annotated frame
         if show_video:
@@ -443,6 +443,7 @@ def run_seq_nms_detection(
 
     print(f"[INFO] Processed {frame_idx} frames, collected detections.")
 
+    print("Tracking Cross Sucking EVents Across Frames")
     # Apply Seq-NMS
     print("[INFO] Building tubes with Seq-NMS...")
     tubes = build_tubes(frame_detections, iou_threshold)
@@ -457,6 +458,7 @@ def run_seq_nms_detection(
     print(f"[INFO] {len(events)} events after filtering by min duration.")
 
     # Build metadata — same format as baseline.py
+    print("Building Metadata...")
     video_name = os.path.splitext(os.path.basename(video_path))[0]
     # output_dir = ROOT_DIR / "results/metadata/seq_nms"
     os.makedirs(output_dir, exist_ok=True)
@@ -478,11 +480,14 @@ def run_seq_nms_detection(
     }
 
     # Save JSON
+    print()
+    print("Saving Metadata...")
     json_path = os.path.join(output_dir, f"{video_name}_results.json")
     with open(json_path, "w") as f:
         json.dump(metadata, f, indent=2)
 
     # Print summary
+    print()
     print("\n" + "═" * 50)
     print(f"  VIDEO:    {metadata['identifier']}")
     print(f"  FLAGGED:  {metadata['cross_sucking_detected']}")
