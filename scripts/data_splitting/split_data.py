@@ -92,7 +92,7 @@ def train_test_to_csv(
     else:
         val_path.parent.mkdir(parents=True, exist_ok=True)
         train.to_csv(val_path, index=False)
-        print(f"Validatioon set saved to {val_path}")
+        print(f"Validation set saved to {val_path}")
 
     # Save test to csv
     if test_path.exists() and not FORCE:
@@ -100,7 +100,7 @@ def train_test_to_csv(
     else:
         test_path.parent.mkdir(parents=True, exist_ok=True)
         test.to_csv(test_path, index=False)
-        print(f"Test set saved to {test_path}")
+        print(f"Test set saved to {test_path}\n")
 
 
 def random_shuffle_split(
@@ -210,11 +210,13 @@ def random_shuffle_split(
     )
 
     # Match clips to source video split
+
     train_df = df[df["source_video_basename"].isin(train_sources)]
     val_df = df[df["source_video_basename"].isin(val_sources)]
     test_df = df[df["source_video_basename"].isin(test_sources)]
 
     # Save to csv
+    print("\nSaving Random Split...")
     train_test_to_csv(train_df, val_df, test_df, target_output_dir, FORCE)
 
 
@@ -307,7 +309,7 @@ def time_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=T
         raise ValueError(f"Specified column 'day' not found in data index.")
 
     # Time level split - train on day 1 and 2
-    train_df = df["day" != 3]
+    train_df = df[df["day"] != 3]
 
     # Validate on majority of day 3
     val_df = df.loc[  # 23% of time
@@ -322,6 +324,7 @@ def time_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=T
     ]
 
     # Save to csv
+    print("\nSaving Time-Based Split...")
     train_test_to_csv(train_df, val_df, test_df, target_output_dir, FORCE)
 
 
@@ -425,6 +428,7 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
             f"You need at least 3 unique pens to rotate Train, Val, and Test assignments."
         )
 
+    print("\nSaving Pen-Based Splits...")
     for test_idx in range(total_pens):
         # Calculate indices using modulo to wrap around the ring smoothly
         val_idx = (test_idx + 1) % total_pens
@@ -435,7 +439,7 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
 
         # All other pens that aren't currently Test or Val go to Train
         train_pens = [
-            pen
+            int(pen)
             for idx, pen in enumerate(unique_pens)
             if idx != test_idx and idx != val_idx
         ]
@@ -454,11 +458,12 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
             FORCE,
         )
 
-        print(f"Generated Profile {test_idx}:")
-        print(f"  -> Save Directory: {target_output_dir / f"pen_{test_idx}"}")
+        print(f"Generated Profile {test_pen}:")
+        print(f"  -> Save Directory: {target_output_dir / f"pen_{test_pen}"}")
         print(f"  -> Train Pens:     {train_pens}")
         print(f"  -> Validation Pen: [{val_pen}]")
         print(f"  -> Testing Pen:    [{test_pen}]\n")
+        print()
 
     print(
         f"All {total_pens} rotation profiles successfully written to {target_output_dir}"
@@ -556,6 +561,7 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute
     unique_periods = sorted(df["phase"].dropna().unique())
     total_periods = len(unique_periods)
 
+    print("\nSaving Period-Based Splits...")
     for test_idx in range(total_periods):
         # Calculate validation index by wrapping around the list smoothly using modulo (%)
         val_idx = (test_idx + 1) % total_periods
@@ -577,7 +583,7 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute
         test_df = df[df["phase"] == test_period]
 
         # Fixed f-string quotes by using single quotes internally
-        profile_save_dir = target_output_dir / f"profile_{test_period}"
+        profile_save_dir = target_output_dir / f"{test_period}"
 
         # Save to csv with all three distinct sets
         train_test_to_csv(train_df, val_df, test_df, profile_save_dir, FORCE)
@@ -587,6 +593,7 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute
         print(f"  -> Training Period:  {train_periods}")
         print(f"  -> Validation Period: [{val_period}]")
         print(f"  -> Testing Period:    [{test_period}]\n")
+        print()
 
 
 def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True):
@@ -632,6 +639,7 @@ def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True
     test = test.iloc[17:19]  # 2 videos
 
     # Save to csv
+    print("\nSaving Demo Splits...")
     train_test_to_csv(train, val, test, output_dir, FORCE)
 
 
@@ -645,6 +653,7 @@ def parse_args():
     parser.add_argument(
         "--output_dir",
         default=OUTPUT_DIR,
+        type=Path,
         help=f"Output directory for train/test splits (default: {OUTPUT_DIR})",
     )
     parser.add_argument(
