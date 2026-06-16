@@ -607,7 +607,6 @@ def run_yolo_preprocessing(
         train_df = pd.read_csv(Path(ROOT_DIR) / train_path, index_col=0)
         val_df = pd.read_csv(Path(ROOT_DIR) / val_path, index_col=0)
     else:
-        # Convert inputs to Path objects
         skip = int(skip)
         output_dir = str(ROOT_DIR / output_path)
         # Read in data
@@ -679,15 +678,20 @@ def run_yolo_preprocessing(
 
     print("Processing complete. Checking file counts...")
 
-    # Check outputs are the same length!
-    def local_folder_count(folder):
-        "count files in folder"
-        return sum(1 for _ in folder.rglob("*")) if folder.exists() else 0
-
-    train_img_count = local_folder_count(working_directory / "images" / "train")
-    train_lbl_count = local_folder_count(working_directory / "labels" / "train")
-    val_img_count = local_folder_count(working_directory / "images" / "val")
-    val_lbl_count = local_folder_count(working_directory / "labels" / "val")
+    train_img_count = sum(
+        1
+        for f in (working_directory / "images" / "train").glob("*")
+        if f.suffix.lower() in [".jpg", ".jpeg", ".png"]
+    )
+    train_lbl_count = sum(
+        1 for f in (working_directory / "labels" / "train").glob("*.txt")
+    )
+    val_img_count = sum(
+        1
+        for f in (working_directory / "images" / "val").glob("*")
+        if f.suffix.lower() in [".jpg", ".jpeg", ".png"]
+    )
+    val_lbl_count = sum(1 for f in (working_directory / "labels" / "val").glob("*.txt"))
 
     print(
         f"\nVerification Counts (Local NVMe):\n - Train Images: {train_img_count} | Labels: {train_lbl_count}"

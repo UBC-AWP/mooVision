@@ -11,8 +11,8 @@
 #SBATCH --error=logs/preprocess_%A_%a.err
 
 # ─── JOB ARRAY SPECIFICATION ──────────────────────────────────────────
-# Spawns 8 independent worker tasks simultaneously (Task IDs 0 to 7)
-#SBATCH --array=0-7
+# Spawns 8 independent worker tasks simultaneously (Task IDs 0 to 8)
+#SBATCH --array=0-8
 
 export PYTHONUNBUFFERED=1
 cd /scratch/st-nina-1/mooVision
