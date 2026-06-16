@@ -436,9 +436,6 @@ def extract_frames(
         # Standardize Path to Posix Standard
         video_file = videos_root / video_file.replace("\\", "/")
 
-        # Print working video...
-        print(f"Extracting frames from video ({n}/{n_videos})...")
-
         # Get numeric id and part id of video clip
         numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
         part_str = f"part0{part_id}" if part_id else None
@@ -448,8 +445,13 @@ def extract_frames(
         cap = cv2.VideoCapture(str(video_file))
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
 
-        frame_idx = 0
+        # Print working video...
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        print(
+            f"Extracting frames from video ({n}/{n_videos}); total frames = {total_frames}..."
+        )
 
+        frame_idx = 0
         while cap.isOpened():
 
             semaphore.acquire()
@@ -614,12 +616,29 @@ def run_yolo_preprocessing(
         val_df = pd.read_csv(str(ROOT_DIR / val_path), index_col=0)
 
     # Automatically resolve the fastest local playground available
-    # If on Sockeye, it uses $LOCAL_SCRATCH. If on a laptop, it falls back to output_dir
-    node_local_storage = os.environ.get("LOCAL_SCRATCH", output_dir)
+    # If on Sockeye, it uses $SLURM_TMPDIR. If on a laptop, it falls back to output_dir
+    node_local_storage = os.environ.get("SLURM_TMPDIR", output_dir)
+    task_id = os.environ.get("SLURM_ARRAY_TASK_ID", "local_dev")
     on_cluster = "PBS_JOBID" in os.environ or "SLURM_JOB_ID" in os.environ
 
-    # Build a unique subfolder path for this specific job execution
-    # task_id = os.environ.get("SLURM_JOB_ID", "local_dev")
+    if on_cluster:
+        if (
+            node_local_storage == output_dir
+            or "scratch" in str(node_local_storage).lower()
+        ):
+            print(
+                f"WARNING: Shared storage detected! Isolating paths manually via task ID: {task_id}"
+            )
+            base_local_dir = (
+                Path(node_local_storage)
+                / "data"
+                / "training"
+                / f"job_array_{task_id}_yolo_build"
+            )
+    else:
+        # If safely inside an isolated Sockeye NVMe ($SLURM_TMPDIR), a clean static name is safe!
+        print(f"Success: True Node-Local Storage engaged at: {node_local_storage}")
+        base_local_dir = Path(node_local_storage)
 
     # "dataset" Matches the internal name when archiving - see create_yaml
     base_local_dir = Path(node_local_storage)
