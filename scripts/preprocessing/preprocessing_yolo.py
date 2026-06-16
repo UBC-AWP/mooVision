@@ -603,8 +603,8 @@ def run_yolo_preprocessing(
     skip = int(skip)
     output_dir = str(ROOT_DIR / output_path)
     # Read in data
-    train_df = pd.read_csv(ROOT_DIR / train_path, index_col=0)
-    val_df = pd.read_csv(ROOT_DIR / val_path, index_col=0)
+    train_df = pd.read_csv(str(ROOT_DIR / train_path), index_col=0)
+    val_df = pd.read_csv(str(ROOT_DIR / val_path), index_col=0)
 
     # Automatically resolve the fastest local playground available
     # If on Sockeye, it uses $LOCAL_SCRATCH. If on a laptop, it falls back to output_dir
