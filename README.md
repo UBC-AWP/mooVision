@@ -66,13 +66,18 @@ After configuring you `.env` file, run the following commands from your terminal
 2. Split Data into train and test splits.
 
    ```bash
-   uv run scripts/data_splitting/data_splitting.py --FORCE
+   uv run scripts/data_splitting/split_data.py --FORCE
    ```
 
 3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set)
 
    ```bash
-   uv run scripts/preprocessing/preprocessing_yolo.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/training/pipeline_testing/yolo_format" --skip=10 --FORCE
+   uv run scripts/preprocessing/preprocessing_yolo.py \
+   --train_path="data/processed/pipeline_demo/train.csv" \
+   --val_path="data/processed/pipeline_demo/val.csv" \
+   --output_path="data/training/pipeline_demo/" \
+   --skip=10 \
+   --FORCE
    ```
 
 4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
