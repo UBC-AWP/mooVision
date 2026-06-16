@@ -34,7 +34,7 @@ echo "========================================================"
 # 3. PIPELINE EXECUTION VIA UV
 # uv automatically synchronization virtual environment settings and steps down
 uv run scripts/preprocessing/preprocessing_yolo.py \
-    --train_path="$INPUT_PATH" \
+    --train_path="$TRAIN_PATH" \
     --val_path="$VAL_PATH" \
     --output_path="$OUTPUT_PATH" \
     --skip=${SKIP} \
