@@ -39,6 +39,7 @@ def extract_labels(
     label_paths: List[str],
     working_dir: Path,
     labels_root: Path,
+    frame_registry: dict,
     split: str,
     skip: int,
     FORCE: bool = False,
@@ -62,11 +63,19 @@ def extract_labels(
     Parameters
     ----------
     labels_path : List[Path]
-        List of relative paths to label outputs of cross-sucking events.
+        List of relative paths to zipped folders containing bounding box
+        annotations for each cross-sucking event.
     working_dir : Path
-        Path to output directory. Points to node's local temp workspace on Sockeye.
+        Path to output directory. Points to node's local temp workspace on
+        Sockeye.
     labels_root : Path
-        Path to root directory of label outputs of cross-sucking events.
+        Path to root directory containing zipped folders containing bounding
+        box annotations for each cross-sucking event.
+    frame_registry : dict
+        A dictionary of sets of frames that have been saved for each video.
+        Keys are the unique numeric ID and part ID of each video. Used to
+        ensure corruption during video reading does not break frame matches
+        between labels and videos.
     split : str
         One of `train`, `val`. Dictates which split folder, train/ or val/, the
         labels should be extracted to.
@@ -186,19 +195,17 @@ def extract_labels(
 
         # Get numeric id and part id of labelled output
         numeric_id, part_id = parse_labelled_name(str(input_path.name))
+        video_key = (int(numeric_id), part_id)
+
         part_id_str = f"part0{part_id}" if part_id else None
         file_prefix = f"{int(numeric_id):04}_{part_id_str}_"
-
         target_folder = "obj_train_data"
 
         # Extracting labels
         with zipfile.ZipFile(input_path, "r") as zip_ref:
-
             for zinfo in zip_ref.infolist():
                 filename = zinfo.filename
-
                 if filename.startswith(target_folder) and filename.endswith(".txt"):
-
                     pure_name = filename.split("/")[-1]
 
                     try:
@@ -209,8 +216,17 @@ def extract_labels(
                         )
 
                     if frame_num % skip == 0:
-                        new_filename = f"{file_prefix}{pure_name}"
 
+                        # Check video exist in our frame registry
+                        # Check video loop successfully extract this specific frame number
+                        if frame_registry is not None:
+                            if (
+                                video_key not in frame_registry
+                                or frame_num not in frame_registry[video_key]
+                            ):
+                                continue  # Drop label safely if the frame isn't on disk
+
+                        new_filename = f"{file_prefix}{pure_name}"
                         # Ready text directly into RAM dictionary
                         label_batch[new_filename] = zip_ref.read(zinfo)
 
@@ -346,8 +362,10 @@ def extract_frames(
 
     Returns
     -------
-    None :
-        This function reads to disk and does not return anything.
+    dict[set] :
+        This function returns a dictionary of sets of saved frames for each
+        video in videos. This is passed to extract_labels to act as a dynamic
+        shield forensuring frame and label matches.
 
 
     Raises
@@ -431,13 +449,20 @@ def extract_frames(
             semaphore.release()  # Opens up a slot for the main loop to read again
 
     n_frames = 0
+    saved_frames_registry = {}
     for n, video_file in enumerate(video_paths, 1):
 
         # Standardize Path to Posix Standard
         video_file = videos_root / video_file.replace("\\", "/")
 
-        # Get numeric id and part id of video clip
+        # Get numeric id and part id of video clip, create lookup key
         numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
+        video_key = (int(numeric_id), part_id)
+
+        # Initialize the inner set for this specific video file
+        saved_frames_registry[video_key] = set()
+
+        # File Naming
         part_str = f"part0{part_id}" if part_id else None
         file_prefix = f"{int(numeric_id):04}_{part_str}_frame_"
 
@@ -451,29 +476,42 @@ def extract_frames(
             f"Extracting frames from video ({n}/{n_videos}); total frames = {total_frames}..."
         )
 
-        frame_idx = 0
+        frame_pointer = 0
+
         while cap.isOpened():
 
             semaphore.acquire()
             # Decode frame
             ret, frame = cap.read()
-            if not ret:  # Break if decoding fails
+            if not ret:  # Break on video corruption
                 semaphore.release()
                 break
-                # Create Output Path
-            frame_path = final_output_dir / f"{file_prefix}{frame_idx:06d}.jpg"
 
-            executor.submit(safe_write, str(frame_path), frame)
-            n_frames += 1
+            # Match your label filtering math exactly
+            if frame_pointer % skip == 0:
+                frame_path = final_output_dir / f"{file_prefix}{frame_pointer:06d}.jpg"
+                executor.submit(safe_write, str(frame_path), frame)
+
+                saved_frames_registry[video_key].add(frame_pointer)
+                n_frames += 1
 
             # Fast frame skipping without running the above
+            # 2. Handle fast-forwarding frame drops safely
             if skip > 1:
+                video_ended_early = False
                 for _ in range(skip - 1):
                     if not cap.grab():
+                        video_ended_early = True
                         break
-                frame_idx += skip
+
+                if video_ended_early:
+                    break  # Completely break outer loop if video file terminates mid-stream
+
+                # Advance pointer by the exact math stride
+                frame_pointer += skip
             else:
-                frame_idx += 1
+                # If skip is 1, we just advance step-by-step
+                frame_pointer += 1
 
         # release video
         cap.release()
@@ -485,6 +523,8 @@ def extract_frames(
     executor.shutdown(wait=True)
     print(f"\n{n_frames} frames successfully saved to disk at {final_output_dir}\n")
     print()
+
+    return saved_frames_registry
 
     # ----- OLD WORKFLOW -----
 
@@ -653,18 +693,20 @@ def run_yolo_preprocessing(
     print("\n\n=========================")
     print("Preprocessing Train Split")
     print("=========================\n")
-    extract_labels(
-        label_paths=train_df["labelled_clip_relative_path"],
-        labels_root=LABELLED_CLIPS_DIR,
+
+    train_registry = extract_frames(
+        video_paths=train_df["clip_relative_path"],
+        videos_root=UNLABELLED_CLIPS_DIR,
         working_dir=working_directory,
         split="train",
         skip=skip,
         FORCE=FORCE,
     )
-    extract_frames(
-        video_paths=train_df["clip_relative_path"],
-        videos_root=UNLABELLED_CLIPS_DIR,
+    extract_labels(
+        label_paths=train_df["labelled_clip_relative_path"],
+        labels_root=LABELLED_CLIPS_DIR,
         working_dir=working_directory,
+        frame_registry=train_registry,
         split="train",
         skip=skip,
         FORCE=FORCE,
@@ -674,18 +716,19 @@ def run_yolo_preprocessing(
     print("\n\n=========================")
     print("Preprocessing Validation Split")
     print("=========================\n")
-    extract_labels(
-        label_paths=val_df["labelled_clip_relative_path"],
-        labels_root=LABELLED_CLIPS_DIR,
+    val_registry = extract_frames(
+        video_paths=val_df["clip_relative_path"],
+        videos_root=UNLABELLED_CLIPS_DIR,
         working_dir=working_directory,
         split="val",
         skip=skip,
         FORCE=FORCE,
     )
-    extract_frames(
-        video_paths=val_df["clip_relative_path"],
-        videos_root=UNLABELLED_CLIPS_DIR,
+    extract_labels(
+        label_paths=val_df["labelled_clip_relative_path"],
+        labels_root=LABELLED_CLIPS_DIR,
         working_dir=working_directory,
+        frame_registry=val_registry,
         split="val",
         skip=skip,
         FORCE=FORCE,
