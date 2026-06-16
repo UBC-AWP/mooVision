@@ -612,10 +612,10 @@ def run_yolo_preprocessing(
     on_cluster = "PBS_JOBID" in os.environ or "SLURM_JOB_ID" in os.environ
 
     # Build a unique subfolder path for this specific job execution
-    task_id = os.environ.get("SLURM_JOB_ID", "local_dev")
+    # task_id = os.environ.get("SLURM_JOB_ID", "local_dev")
 
     # "dataset" Matches the internal name when archiving - see create_yaml
-    base_local_dir = Path(node_local_storage) / f"{task_id}_yolo_build"
+    base_local_dir = Path(node_local_storage)
     working_directory = base_local_dir / "dataset"
 
     # 3. Create the directories safely
@@ -701,7 +701,9 @@ def run_yolo_preprocessing(
         # 3. Ship the single archive file to /scratch (Instantaneous network transaction)
         cluster_scratch_path = Path(output_dir)
         cluster_scratch_path.mkdir(parents=True, exist_ok=True)
-        final_scratch_target = cluster_scratch_path / f"dataset_{task_id}.tar"
+        final_scratch_target = (
+            cluster_scratch_path / "dataset.tar"
+        )  # f"dataset_{task_id}.tar"
 
         print(
             f"Transferring clean tar archive to network scratch storage: {final_scratch_target}"
@@ -731,6 +733,7 @@ def parse_args():
     parser.add_argument(
         "--output_path",
         type=str,
+        required=True,
         help="Output directory for train/val splits.)",
     )
     parser.add_argument(
