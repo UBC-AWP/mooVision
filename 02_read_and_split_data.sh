@@ -17,7 +17,7 @@ echo "READING DATA FILE AND SPLITTING TO TRAIN/TEST SETS"
 echo "========================================================"
 
 uv run scripts/data_reading/read_all_clips_index.py --FORCE
-uv run scripts/data_splitting/data_splitting.py --FORCE
+uv run scripts/data_splitting/split_data.py --FORCE
 
 echo "========================================================"
 echo "SUCCESS: DATA SPLITS CREATED."

@@ -20,20 +20,23 @@ source .env_sockeye
 
 # Extract the specific paths for THIS parallel task instance
 # (We pull from the arrays we defined in .env_sockeye)
-INPUT_PATH="${PREPROCESS_YOLO_INPUT_PATHS[$SLURM_ARRAY_TASK_ID]}"
-OUTPUT_DIR="${PREPROCESS_YOLO_OUTPUT_DIRS[$SLURM_ARRAY_TASK_ID]}"
+TRAIN_PATH="${YOLO_TRAIN_PATHS[$SLURM_ARRAY_TASK_ID]}"
+VAL_PATH="${YOLO_VAL_PATHS[$SLURM_ARRAY_TASK_ID]}"
+OUTPUT_PATH="${PREPROCESS_YOLO_OUTPUT_DIRS[$SLURM_ARRAY_TASK_ID]}"
 
 echo "========================================================"
 echo "Sockeye Array Engine Active" : EXECUTING Split Task $SLURM_ARRAY_TASK_ID
-echo "Reading From CSV   : $INPUT_PATH"
-echo "Writing Out To     : $OUTPUT_DIR"
+echo "Reading Training data From CSV     : $TRAIN_PATH"
+echo "Reading Validation data From CSV   : $TRAIN_PATH"
+echo "Writing Out To                     : $OUTPUT_PATH"
 echo "========================================================"
 
 # 3. PIPELINE EXECUTION VIA UV
 # uv automatically synchronization virtual environment settings and steps down
 uv run scripts/preprocessing/preprocessing_yolo.py \
-    --input_path="$INPUT_PATH" \
-    --output_dir="$OUTPUT_DIR" \
+    --train_path="$INPUT_PATH" \
+    --val_path="$VAL_PATH" \
+    --output_path="$OUTPUT_PATH" \
     --skip=${SKIP} \
     --FORCE 
 
