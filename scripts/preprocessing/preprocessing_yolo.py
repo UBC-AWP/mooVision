@@ -180,6 +180,7 @@ def extract_labels(
     n_files = len(validated_paths)
 
     # Loop over zip file paths (CVAT Outputs)
+    print("\n--- Extracting Annotation Labels ---\n")
     for n, input_path in enumerate(validated_paths, start=1):
         print(f"Extracting files from {input_path.name} ({n}/{n_files} )...")
 
@@ -213,12 +214,11 @@ def extract_labels(
                         # Ready text directly into RAM dictionary
                         label_batch[new_filename] = zip_ref.read(zinfo)
 
+    print("\nExtraction complete.\n")
     if label_batch:
         idx = 0
         batch_len = len(label_batch)
-        print("Scan complete.")
-        print(f"Executing batch-write for {batch_len} labels.")
-        print(f"Writing {batch_len} labels to local storage...")
+        print(f"--- Executing batch-write for {batch_len} annotation labels ---\n")
         # Create an isolated, hyper-fast playground inside the node's local memory
         for filename, text_bytes in label_batch.items():
             idx += 1
@@ -228,7 +228,7 @@ def extract_labels(
             with open(file_path, "wb") as f:
                 f.write(text_bytes)
 
-        print(f"All labels saved at: {final_output_dir}")
+        print(f"\nAll labels saved at: {final_output_dir}")
 
         # ----- OLD WORKFLOW -----
 
@@ -402,18 +402,18 @@ def extract_frames(
                 skip=2
             )
     """
+    print("\n\n--- Extracting Video Frames---\n")
 
     # Output dir
     final_output_dir = working_dir / "images" / split
 
     # Rewrite files on FORCE
     if Path(final_output_dir).exists() and not FORCE:
-        print(f"Files already extracted at {Path(__file__) / Path(final_output_dir)}")
+        print(f"\nFiles already extracted at {Path(__file__) / Path(final_output_dir)}")
         return
 
     # Extraction directory
     final_output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Extraction workspace target configured: {final_output_dir}")
 
     # Track total files
     n_videos = len(video_paths)
@@ -430,13 +430,14 @@ def extract_frames(
         finally:
             semaphore.release()  # Opens up a slot for the main loop to read again
 
+    n_frames = 0
     for n, video_file in enumerate(video_paths, 1):
 
         # Standardize Path to Posix Standard
         video_file = videos_root / video_file.replace("\\", "/")
 
         # Print working video...
-        print(f"Extracting frames from {video_file.name} ({n}/{n_videos})...")
+        print(f"Extracting frames from video ({n}/{n_videos})...")
 
         # Get numeric id and part id of video clip
         numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
@@ -461,6 +462,7 @@ def extract_frames(
             frame_path = final_output_dir / f"{file_prefix}{frame_idx:06d}.jpg"
 
             executor.submit(safe_write, str(frame_path), frame)
+            n_frames += 1
 
             # Fast frame skipping without running the above
             if skip > 1:
@@ -473,12 +475,13 @@ def extract_frames(
 
         # release video
         cap.release()
-        print(f"{video_file.name} frames decoded.")
+
+    print("\nExtraction Complete.")
 
     # Wait for all background thread writes to finish inside /tmp
     print("Waiting for final thread queue to clear...")
     executor.shutdown(wait=True)
-    print(f"All frames successfully saved to disk at {final_output_dir}\n")
+    print(f"\n{n_frames} frames successfully saved to disk at {final_output_dir}\n")
     print()
 
     # ----- OLD WORKFLOW -----
@@ -621,7 +624,9 @@ def run_yolo_preprocessing(
 
     # For Pipeline testing on Sockeye
     # Extract frames and bounding box annotations for the train set
-    print("\n--- Processing Train Split ---")
+    print("\n\n=========================")
+    print("Preprocessing Train Split")
+    print("=========================\n")
     extract_labels(
         label_paths=train_df["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
@@ -640,7 +645,9 @@ def run_yolo_preprocessing(
     )
 
     # Extract frames and bounding box annotations for the val set
-    print("\n--- Processing Validation Split ---")
+    print("\n\n=========================")
+    print("Preprocessing Validation Split")
+    print("=========================\n")
     extract_labels(
         label_paths=val_df["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
@@ -741,7 +748,11 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    print("Running preprocessing for YOLO models...")
+    print("\n=================================")
+    print("PREPROCESSING")
+    print("=================================\n")
+
+    print("\nRunning preprocessing for YOLO models...\n")
     args = parse_args()
 
     run_yolo_preprocessing(
@@ -751,5 +762,3 @@ if __name__ == "__main__":
         skip=args.skip,
         FORCE=args.FORCE,
     )
-
-    print("Preprocessing for YOLO models complete.")

@@ -13,7 +13,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 from config import ROOT_DIR
 
 PROCESSED_INDEX = ROOT_DIR / "data/processed/processed_clips_index.csv"
-OUTPUT_DIR = ROOT_DIR / "data/processed"
+OUTPUT_DIR = ROOT_DIR / "data" / "processed"
 
 
 def train_test_to_csv(
@@ -72,6 +72,12 @@ def train_test_to_csv(
         # Save to disk (overwriting any older runs)
         train_test_to_csv(train_df, test_df, output_dir=out_path, FORCE=True)
     """
+    if train.empty:
+        raise ValueError("Training set is an empty df.")
+    if val.empty:
+        raise ValueError("Validation set is an empty df.")
+    if test.empty:
+        raise ValueError("Testing set is an empty df.")
 
     # Output paths
     train_path = output_dir / "train.csv"
@@ -91,7 +97,7 @@ def train_test_to_csv(
         print(f"{val_path} already exists.")
     else:
         val_path.parent.mkdir(parents=True, exist_ok=True)
-        train.to_csv(val_path, index=False)
+        val.to_csv(val_path, index=False)
         print(f"Validation set saved to {val_path}")
 
     # Save test to csv
@@ -454,7 +460,7 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
             train_df,
             val_df,
             test_df,
-            target_output_dir / f"pen_{test_idx}",
+            target_output_dir / f"pen_{test_pen}",
             FORCE,
         )
 
@@ -630,13 +636,13 @@ def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True
 
     # Match clips to source video split
     condition = df["source_video_basename"].isin(train)
-    train = df[condition]
-    test = df[~condition]
+    train_df = df[condition]
+    test_df = df[~condition]
 
-    # Take small, esily downloadable dataset.
-    train = train.iloc[10:13]  # 3 videos
-    val = train.iloc[14:16]  # 2 videos
-    test = test.iloc[17:19]  # 2 videos
+    # Take small, easily downloadable dataset.
+    train = train_df.iloc[10:13]  # 3 videos
+    val = train_df.iloc[14:16]  # 2 videos
+    test = test_df.iloc[17:19]  # 2 videos
 
     # Save to csv
     print("\nSaving Demo Splits...")
