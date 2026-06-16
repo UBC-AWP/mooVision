@@ -725,9 +725,10 @@ def read_data_from_index_file(
             paths = get_label_paths(labels_dir=labels_dir)
             label_paths = match_label_paths(df_filtered, label_paths=paths)
             df_labels = add_label_paths(df=df_filtered, label_paths=label_paths)
-            df_labels_validated = validate_data(df_labels, processed_schema)
-            df_processed = filter_label_paths(df_labels_validated)
-            save_data(df=df_processed, path=processed_output)
+            df_processed = filter_label_paths(df_labels)
+            df_labels_validated = validate_data(df_processed, processed_schema)
+
+            save_data(df=df_labels_validated, path=processed_output)
 
 
 def parse_args():
