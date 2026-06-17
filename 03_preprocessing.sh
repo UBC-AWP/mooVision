@@ -26,9 +26,9 @@ OUTPUT_PATH="${YOLO_OUTPUT_DIRS[$SLURM_ARRAY_TASK_ID]}"
 
 echo "========================================================"
 echo "Sockeye Array Engine Active" : EXECUTING Split Task $SLURM_ARRAY_TASK_ID
-echo "Reading Training data From CSV     : $TRAIN_PATH"
-echo "Reading Validation data From CSV   : $TRAIN_PATH"
-echo "Writing Out To                     : $OUTPUT_PATH"
+echo "Reading Training data From CSV     : $ROOT_DIR/$TRAIN_PATH"
+echo "Reading Validation data From CSV   : $ROOT_DIR/$TRAIN_PATH"
+echo "Writing Out To                     : $ROOT_DIR/$OUTPUT_PATH"
 echo "========================================================"
 
 # 3. PIPELINE EXECUTION VIA UV
