@@ -22,7 +22,7 @@ source .env_sockeye
 # (We pull from the arrays we defined in .env_sockeye)
 TRAIN_PATH="${YOLO_TRAIN_PATHS[$SLURM_ARRAY_TASK_ID]}"
 VAL_PATH="${YOLO_VAL_PATHS[$SLURM_ARRAY_TASK_ID]}"
-OUTPUT_PATH="${PREPROCESS_YOLO_OUTPUT_DIRS[$SLURM_ARRAY_TASK_ID]}"
+OUTPUT_PATH="${YOLO_OUTPUT_DIRS[$SLURM_ARRAY_TASK_ID]}"
 
 echo "========================================================"
 echo "Sockeye Array Engine Active" : EXECUTING Split Task $SLURM_ARRAY_TASK_ID
