@@ -2,20 +2,19 @@
 #SBATCH --account=st-nina-1-gpu
 #SBATCH --job-name=model_inference
 #SBATCH --partition=gpu
-#SBATCH --time=06:00:00
+#SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --gpus=1
-#SBATCH --array=0-207
+#SBATCH --array=0-79
 #SBATCH --output=logs/infer_%A_%a.out
 #SBATCH --error=logs/infer_%A_%a.err
 
 # ── Map flat index → (model+test pair, chunk) ────────────────────────────────
-PAIR_IDX=$(( SLURM_ARRAY_TASK_ID / 26 ))
-CHUNK_IDX=$(( SLURM_ARRAY_TASK_ID % 26 ))
-OFFSET=$(( CHUNK_IDX * 20 ))
+PAIR_IDX=$(( SLURM_ARRAY_TASK_ID / 10 ))
+CHUNK_IDX=$(( SLURM_ARRAY_TASK_ID % 10 ))
 
 # ── Model+test pairs (split_1 = random, split_2 = day_based, etc.) ───────────
 MODEL_NAMES=(
@@ -44,7 +43,7 @@ MODEL_PATH="/scratch/st-nina-1/moovision/yolo_training_runs/${MODEL_NAMES[$PAIR_
 DATA_PATH="${DATA_SPLITS[$PAIR_IDX]}"
 
 echo "========================================================"
-echo "TASK ${SLURM_ARRAY_TASK_ID}: pair=${PAIR_IDX} chunk=${CHUNK_IDX} offset=${OFFSET}"
+echo "TASK ${SLURM_ARRAY_TASK_ID}: pair=${PAIR_IDX} chunk=${CHUNK_IDX} chunk_pct=0.10"
 echo "  MODEL: ${MODEL_PATH}"
 echo "  DATA:  ${DATA_PATH}"
 echo "========================================================"
@@ -56,7 +55,8 @@ source .env_sockeye
 uv run scripts/run-testing-2.py \
     --model_path "$MODEL_PATH" \
     --data_path "$DATA_PATH" \
-    --offset "$OFFSET"
+    --chunk "$CHUNK_IDX" \
+    --chunk_pct 0.10
 
 echo "========================================================"
 echo "TASK ${SLURM_ARRAY_TASK_ID} COMPLETE."
