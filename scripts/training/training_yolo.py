@@ -7,32 +7,23 @@ from pathlib import Path
 import sys
 import argparse
 import ast
-
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
-import os
-import tarfile
-from pathlib import Path
-
-
 import os
 import subprocess
 import shutil
 import yaml
-from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+from config import ROOT_DIR
 
 
-def setup_node_dataset(scratch_tar_path: str, base_name: str = "dataset") -> Path:
+def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
     """
     Extracts and isolates datasets to process-specific node directories,
     preventing file collisions if multiple tasks run on the same node.
     Dynamically configures unique absolute routing paths inside the local YAML file.
     """
-    tar_path = Path(scratch_tar_path)
-    if not tar_path.exists():
-        raise FileNotFoundError(f"Dataset archive missing at: {tar_path}")
-
-    # 1. GENERATE AN ABSOLUTE ISOLATION SIGNATURE PER ARRAY TASK
+    # GENERATE AN ABSOLUTE ISOLATION SIGNATURE PER ARRAY TASK
     # This ensures that even if Task 1 and Task 2 share the same physical server node,
     # they write to completely separated folders on the NVMe storage drive.
     slurm_job_id = os.environ.get("SLURM_JOB_ID", "local_dev")
@@ -42,52 +33,58 @@ def setup_node_dataset(scratch_tar_path: str, base_name: str = "dataset") -> Pat
     on_cluster = "PBS_JOBID" in os.environ or "SLURM_JOB_ID" in os.environ
 
     if on_cluster:
-        if tmp_dir_env:
+
+        tar_path = Path(dataset)
+        if not tar_path.exists():
+            raise FileNotFoundError(f"Dataset archive missing at: {tar_path}")
+
+        if not tmp_dir_env:
+            raise ValueError("Could not find SLURM_TMPDIR.")
             # FIXED: Combined both Job ID and Task ID to guarantee absolute isolation
             # across different jobs and task arrays sharing the same node.
             # e.g., /localscratch/11740177/job_11740177_task_1_dataset
-            isolated_node_dir = (
-                Path(tmp_dir_env)
-                / f"job_{slurm_job_id}_task_{slurm_task_id}_{base_name}"
-            )
-        else:
-            raise ValueError("Could not find SLURM_TMPDIR.")
+        isolated_node_dir = (
+            Path(tmp_dir_env) / f"job_{slurm_job_id}_task_{slurm_task_id}_{base_name}"
+        )
+
+        # ISOLATED NATIVE C TAR EXTRACTION
+        # If this specific task has already successfully extracted its partition, skip to avoid overhead
+        if not (isolated_node_dir.exists() and any(isolated_node_dir.iterdir())):
+            isolated_node_dir.mkdir(parents=True, exist_ok=True)
+            print(f"[INFO] Task {slurm_task_id} Staging Area: {isolated_node_dir}")
+            print(f"[INFO] Extracting archive via native system tar utility...")
+
+            try:
+                # --strip-components=1 strips the top-level folder 'dataset/' from the tarball
+                # and unrolls everything straight into our task-isolated directory
+                subprocess.run(
+                    [
+                        "tar",
+                        "-xf",
+                        str(tar_path),
+                        "--strip-components=1",
+                        "-C",
+                        str(isolated_node_dir),
+                    ],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+            except subprocess.CalledProcessError as e:
+                if isolated_node_dir.exists():
+                    shutil.rmtree(isolated_node_dir)
+                error_msg = (
+                    e.stderr.decode().strip() if e.stderr else "I/O System Error"
+                )
+                raise RuntimeError(
+                    f"[ERROR] Native tar extraction failed for task {slurm_task_id}: {error_msg}"
+                )
     else:
         # Laptop fallback strategy
-        isolated_node_dir = tar_path.parent / "dataset"
+        data_path = ROOT_DIR / dataset
+        isolated_node_dir = data_path.parent
 
-    # 2. ISOLATED NATIVE C TAR EXTRACTION
-    # If this specific task has already successfully extracted its partition, skip to avoid overhead
-    if not (isolated_node_dir.exists() and any(isolated_node_dir.iterdir())):
-        isolated_node_dir.mkdir(parents=True, exist_ok=True)
-        print(f"[INFO] Task {slurm_task_id} Staging Area: {isolated_node_dir}")
-        print(f"[INFO] Extracting archive via native system tar utility...")
-
-        try:
-            # --strip-components=1 strips the top-level folder 'dataset/' from the tarball
-            # and unrolls everything straight into our task-isolated directory
-            subprocess.run(
-                [
-                    "tar",
-                    "-xf",
-                    str(tar_path),
-                    "--strip-components=1",
-                    "-C",
-                    str(isolated_node_dir),
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-            )
-        except subprocess.CalledProcessError as e:
-            if isolated_node_dir.exists():
-                shutil.rmtree(isolated_node_dir)
-            error_msg = e.stderr.decode().strip() if e.stderr else "I/O System Error"
-            raise RuntimeError(
-                f"[ERROR] Native tar extraction failed for task {slurm_task_id}: {error_msg}"
-            )
-
-    # 3. CONFIGURE INDEPENDENT PATHS IN THE LOCAL YAML FILE
+    # CONFIGURE INDEPENDENT PATHS IN THE LOCAL YAML FILE
     # The config file sits inside each task's isolated local folder footprint,
     # meaning tasks will never read or overwrite each other's paths.
     local_yaml_path = isolated_node_dir / "dataset.yaml"
@@ -107,14 +104,17 @@ def setup_node_dataset(scratch_tar_path: str, base_name: str = "dataset") -> Pat
     with open(local_yaml_path, "w") as f:
         yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
 
-    print(
-        f"[SUCCESS] Task {slurm_task_id} absolute dataset path locked to: {config_data['path']}"
-    )
+    if on_cluster:
+        print(
+            f"[SUCCESS] Task {slurm_task_id} absolute dataset path locked to: {config_data['path']}"
+        )
+    else:
+        print(f"[SUCCESS] Absolute dataset path locked to: {config_data['path']}")
     return local_yaml_path
 
 
 def train_yolo_model(
-    tar_path: str,
+    yaml_path: str,
     name: str,
     project: Path | str,
     weights_dir: str,
@@ -222,7 +222,7 @@ def train_yolo_model(
             project="MooVision",
         )
     """
-    # Load pretrained model
+    # Loads pretrained model
     if weights_dir:
         print("Loading model from weights...")
         if model == 26:
@@ -239,7 +239,7 @@ def train_yolo_model(
                     f"Could not find {final_model_target}. Set model to yolov{model}{model_size}.pt in .env_sockeye and run ./01_setup.sh on the login node."
                 )
     else:
-        print("loading model...")
+        print("loading model from internet...")
         if model == 26:
             final_model_target = f"yolo{model}{model_size}.pt"
 
@@ -251,7 +251,7 @@ def train_yolo_model(
 
     # Train
     model.train(
-        data=tar_path,
+        data=yaml_path,
         name=name,
         project=project,
         device=device,
@@ -274,8 +274,9 @@ def train_yolo_model(
 def parse_args():
     parser = argparse.ArgumentParser(description="Training for YOLO models.")
     parser.add_argument(
-        "--tar_path",
+        "--dataset",
         type=str,
+        required=True,
         help="Path to data file.",
     )
     parser.add_argument(
@@ -386,9 +387,15 @@ if __name__ == "__main__":
             # Single device (e.g., "0" or "cpu")
             final_device = args.device.strip()
 
+    print("\nUnpacking tar file into dataset...\n")
+    node_yaml_config = setup_node_dataset(
+        dataset=args.dataset,
+    )
+    print(f"\nData set unpacked at {node_yaml_config.parent}")
+
     print("Training YOLO model ...")
     train_yolo_model(
-        tar_path=args.tar_path,
+        yaml_path=str(node_yaml_config),
         name=args.name,
         project=args.project,
         weights_dir=args.weights_dir,
