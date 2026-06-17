@@ -32,6 +32,7 @@ def run_testing(
     buffer: int,
     frame_skip: int,
     target_class: str = "cross-sucking",
+    offset: int = 0,
 ):
     """
     Run a model script on all source videos in testing set.
@@ -122,9 +123,7 @@ def run_testing(
 
     print(f"Running models on 20 unique video paths... ")
     idx = 0
-    for n, video_str in enumerate(unique_video_strings, 1):
-        if idx == 20:
-            break
+    for n, video_str in enumerate(unique_video_strings[offset : offset + 20], 1):
         try:
 
             path = Path(video_str)
@@ -198,6 +197,12 @@ def parse_args():
         type=str,
         default="cross-sucking",
         help="Target class for detection (default: cross-sucking)",
+    )
+    parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="Starting index into the video list (for parallel chunking)"
     )
     return parser.parse_args()
 
