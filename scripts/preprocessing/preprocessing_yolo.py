@@ -693,15 +693,18 @@ def run_yolo_preprocessing(
                 / "training"
                 / f"job_array_{task_id}_yolo_build"
             )
+        else:
+            # If safely inside an isolated Sockeye NVMe ($SLURM_TMPDIR), a clean static name is safe!
+            base_local_dir = (
+                Path(node_local_storage)
+                / "data"
+                / "training"
+                / f"job_array_{task_id}_yolo_build"
+            )
+            print(f"Success: True Node-Local Storage engaged at: {base_local_dir}")
     else:
-        # If safely inside an isolated Sockeye NVMe ($SLURM_TMPDIR), a clean static name is safe!
-        base_local_dir = (
-            Path(node_local_storage)
-            / "data"
-            / "training"
-            / f"job_array_{task_id}_yolo_build"
-        )
-        print(f"Success: True Node-Local Storage engaged at: {base_local_dir}")
+        print("Working on local node.")
+        base_local_dir = Path(node_local_storage)
 
     # "dataset" Matches the internal name when archiving - see create_yaml
     working_directory = base_local_dir / "dataset"
