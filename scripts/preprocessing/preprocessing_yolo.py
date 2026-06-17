@@ -43,7 +43,7 @@ def extract_labels(
     split: str,
     skip: int,
     FORCE: bool = False,
-) -> None:
+) -> dict:
     """
     Extract labels from annotated data.
 
@@ -89,8 +89,10 @@ def extract_labels(
 
     Returns
     -------
-    None :
-        This function reads to disk and does not return anything.
+    dict[set] :
+        This function returns a dictionary of sets of saved labels for each
+        video in videos. This is used via set subtraction to remove any video
+        frames which do not have an associated label.
 
     Raises
     ------
@@ -186,6 +188,7 @@ def extract_labels(
         validated_paths.append(clean_path)
 
     label_batch = {}
+    saved_labels_registry = {}
     n_files = len(validated_paths)
 
     # Loop over zip file paths (CVAT Outputs)
@@ -197,6 +200,8 @@ def extract_labels(
         numeric_id, part_id = parse_labelled_name(str(input_path.name))
         video_key = (int(numeric_id), part_id)
 
+        saved_labels_registry[video_key] = set()
+
         part_id_str = f"part0{part_id}" if part_id else None
         file_prefix = f"{int(numeric_id):04}_{part_id_str}_"
         target_folder = "obj_train_data"
@@ -205,7 +210,11 @@ def extract_labels(
         with zipfile.ZipFile(input_path, "r") as zip_ref:
             for zinfo in zip_ref.infolist():
                 filename = zinfo.filename
+
+                # Labels are .txt files starting with target_folder; e.g. 'obj_train_data/frame_000001.txt'
                 if filename.startswith(target_folder) and filename.endswith(".txt"):
+
+                    # Pure frame name is 'frame_000001.txt'
                     pure_name = filename.split("/")[-1]
 
                     try:
@@ -215,10 +224,10 @@ def extract_labels(
                             f"ValueError: Incorrect naming conventions for {filename} in {input_path.name}"
                         )
 
+                    # Take only frames we want
                     if frame_num % skip == 0:
 
-                        # Check video exist in our frame registry
-                        # Check video loop successfully extract this specific frame number
+                        # Check corresponding video loop successfully extracted this specific frame number
                         if frame_registry is not None:
                             if (
                                 video_key not in frame_registry
@@ -226,9 +235,16 @@ def extract_labels(
                             ):
                                 continue  # Drop label safely if the frame isn't on disk
 
+                        # File names are: '0001_None_frame_000001.txt'
                         new_filename = f"{file_prefix}{pure_name}"
-                        # Ready text directly into RAM dictionary
+
+                        # Read text directly into RAM dictionary
                         label_batch[new_filename] = zip_ref.read(zinfo)
+
+                        # Log frame
+                        saved_labels_registry[video_key].add(frame_num)
+
+        print(f"Labels Saved: {len(saved_labels_registry[video_key])}")
 
     print("\nExtraction complete.\n")
     if label_batch:
@@ -246,81 +262,83 @@ def extract_labels(
 
         print(f"\nAll labels saved at: {final_output_dir}")
 
-        # ----- OLD WORKFLOW -----
+    return saved_labels_registry
 
-        # if on_cluster:
-        #     # Create an isolated, hyper-fast playground inside the node's local memory
-        #     local_working_dir = Path(f"/tmp/{task_id}_label_extraction")
-        #     local_working_dir.mkdir(parents=True, exist_ok=True)
-        #     tar_path = local_working_dir / f"labels_batch_{split}.tar"
-        # else:
-        #     local_working_dir = final_output_dir
-        #     tar_path = final_output_dir / f"labels_batch_{split}_{task_id}.tar"
+    # ----- OLD WORKFLOW -----
 
-        # print(f"Creating a single memory-tarball at: {tar_path}")
+    # if on_cluster:
+    #     # Create an isolated, hyper-fast playground inside the node's local memory
+    #     local_working_dir = Path(f"/tmp/{task_id}_label_extraction")
+    #     local_working_dir.mkdir(parents=True, exist_ok=True)
+    #     tar_path = local_working_dir / f"labels_batch_{split}.tar"
+    # else:
+    #     local_working_dir = final_output_dir
+    #     tar_path = final_output_dir / f"labels_batch_{split}_{task_id}.tar"
 
-        # # Create a single tar file with all labels
-        # with tarfile.open(tar_path, "w") as tar:
-        #     for filename, text_bytes in label_batch.items():
-        #         idx += 1
-        #         if idx % 1000 == 0:
-        #             print(f"Executing tar-write: label ({idx}/{batch_len})")
-        #         tarinfo = tarfile.TarInfo(name=filename)
-        #         tarinfo.size = len(text_bytes)
-        #         tar.addfile(tarinfo, io.BytesIO(text_bytes))
+    # print(f"Creating a single memory-tarball at: {tar_path}")
 
-        # if on_cluster and (platform.system() != "Windows"):
-        #     print("Working on cluster.")
+    # # Create a single tar file with all labels
+    # with tarfile.open(tar_path, "w") as tar:
+    #     for filename, text_bytes in label_batch.items():
+    #         idx += 1
+    #         if idx % 1000 == 0:
+    #             print(f"Executing tar-write: label ({idx}/{batch_len})")
+    #         tarinfo = tarfile.TarInfo(name=filename)
+    #         tarinfo.size = len(text_bytes)
+    #         tar.addfile(tarinfo, io.BytesIO(text_bytes))
 
-        #     # COPY THE TAR TO SCRATCH FIRST (Single file network transfer = instant)
-        #     scratch_tar_path = (
-        #         final_output_dir.parent / f"labels_batch_{split}_{task_id}.tar"
-        #     )
-        #     final_output_dir.mkdir(parents=True, exist_ok=True)
+    # if on_cluster and (platform.system() != "Windows"):
+    #     print("Working on cluster.")
 
-        #     # Move the single tar archive from /tmp to /scratch natively
-        #     print("Move tar file to /scratch/...")
-        #     shutil.move(str(tar_path), str(scratch_tar_path))
+    #     # COPY THE TAR TO SCRATCH FIRST (Single file network transfer = instant)
+    #     scratch_tar_path = (
+    #         final_output_dir.parent / f"labels_batch_{split}_{task_id}.tar"
+    #     )
+    #     final_output_dir.mkdir(parents=True, exist_ok=True)
 
-        #     # Wipe the local /tmp folder right away since the tar is safe on scratch
-        #     print("Removing tmp directory on node...")
-        #     shutil.rmtree(local_working_dir)
-        #     print("Done.\n")
+    #     # Move the single tar archive from /tmp to /scratch natively
+    #     print("Move tar file to /scratch/...")
+    #     shutil.move(str(tar_path), str(scratch_tar_path))
 
-        #     # ---- DO NOT UNPACK FILES ON SCRATCH, TRANSFER TO TRAINING NODE AND UNPACK THERE ----
+    #     # Wipe the local /tmp folder right away since the tar is safe on scratch
+    #     print("Removing tmp directory on node...")
+    #     shutil.rmtree(local_working_dir)
+    #     print("Done.\n")
 
-        #     # print(
-        #     #     "Exploding files securely at the storage layer via native system tar tool..."
-        #     # )
-        #     # # 4. Explode the tarball directly into your shared scratch directory
-        #     # # Sockeye's native tar tool handles this at hardware block speeds!
-        #     # subprocess.run(
-        #     #     ["tar", "-xf", str(scratch_tar_path), "-C", str(final_output_dir)],
-        #     #     check=True,
-        #     # )
+    #     # ---- DO NOT UNPACK FILES ON SCRATCH, TRANSFER TO TRAINING NODE AND UNPACK THERE ----
 
-        #     # Clean up the temporary archive file on scratch
-        #     scratch_tar_path.unlink()
+    #     # print(
+    #     #     "Exploding files securely at the storage layer via native system tar tool..."
+    #     # )
+    #     # # 4. Explode the tarball directly into your shared scratch directory
+    #     # # Sockeye's native tar tool handles this at hardware block speeds!
+    #     # subprocess.run(
+    #     #     ["tar", "-xf", str(scratch_tar_path), "-C", str(final_output_dir)],
+    #     #     check=True,
+    #     # )
 
-        # else:
-        #     print("Working locally.")
-        #     print("Exploding files securely via native system tar tool...")
-        #     # Standard laptop execution (Mac/Linux optimized, Windows safe fallback)
-        #     if platform.system() != "Windows":
-        #         subprocess.run(
-        #             ["tar", "-xf", str(tar_path), "-C", str(final_output_dir)],
-        #             check=True,
-        #         )
-        #     else:
-        #         with tarfile.open(tar_path, "r") as tar:
-        #             tar.extractall(path=final_output_dir)
+    #     # Clean up the temporary archive file on scratch
+    #     scratch_tar_path.unlink()
 
-        #     tar_path.unlink()  # Clean up local tar file inside scratch/final directory
+    # else:
+    #     print("Working locally.")
+    #     print("Exploding files securely via native system tar tool...")
+    #     # Standard laptop execution (Mac/Linux optimized, Windows safe fallback)
+    #     if platform.system() != "Windows":
+    #         subprocess.run(
+    #             ["tar", "-xf", str(tar_path), "-C", str(final_output_dir)],
+    #             check=True,
+    #         )
+    #     else:
+    #         with tarfile.open(tar_path, "r") as tar:
+    #             tar.extractall(path=final_output_dir)
 
-        # print(
-        #     f"All {len(label_batch)} files successfully loaded to {final_output_dir}!\n"
-        # )
-        # print()
+    #     tar_path.unlink()  # Clean up local tar file inside scratch/final directory
+
+    # print(
+    #     f"All {len(label_batch)} files successfully loaded to {final_output_dir}!\n"
+    # )
+    # print()
 
 
 def extract_frames(
@@ -702,7 +720,7 @@ def run_yolo_preprocessing(
         skip=skip,
         FORCE=FORCE,
     )
-    extract_labels(
+    train_label_registry = extract_labels(
         label_paths=train_df["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
         working_dir=working_directory,
@@ -711,6 +729,22 @@ def run_yolo_preprocessing(
         skip=skip,
         FORCE=FORCE,
     )
+
+    # Prune trailing video frames that don't have matching labels
+    print("\nPurging orphaned training images with no corresponding labels...")
+    train_img_dir = working_directory / "images" / "train"
+    for video_key, frame_set in train_registry.items():
+        label_set = train_label_registry.get(video_key, set())
+        # Find frames that have an image but NO matching label
+        orphaned_frames = frame_set - label_set
+
+        if orphaned_frames:
+            part_str = f"part0{video_key[1]}" if video_key[1] else None
+            file_prefix = f"{int(video_key[0]):04}_{part_str}_frame_"
+            for orphan_frame in orphaned_frames:
+                orphan_path = train_img_dir / f"{file_prefix}{orphan_frame:06d}.jpg"
+                if orphan_path.exists():
+                    orphan_path.unlink()  # Physically drop the unannotated trailing image
 
     # Extract frames and bounding box annotations for the val set
     print("\n\n=========================")
@@ -724,7 +758,7 @@ def run_yolo_preprocessing(
         skip=skip,
         FORCE=FORCE,
     )
-    extract_labels(
+    val_label_registry = extract_labels(
         label_paths=val_df["labelled_clip_relative_path"],
         labels_root=LABELLED_CLIPS_DIR,
         working_dir=working_directory,
@@ -733,6 +767,21 @@ def run_yolo_preprocessing(
         skip=skip,
         FORCE=FORCE,
     )
+
+    # Prune trailing validation video frames
+    print("\nPurging orphaned validation images with no corresponding labels...")
+    val_img_dir = working_directory / "images" / "val"
+    for video_key, frame_set in val_registry.items():
+        label_set = val_label_registry.get(video_key, set())
+        orphaned_frames = frame_set - label_set
+
+        if orphaned_frames:
+            part_str = f"part0{video_key[1]}" if video_key[1] else None
+            file_prefix = f"{int(video_key[0]):04}_{part_str}_frame_"
+            for orphan_frame in orphaned_frames:
+                orphan_path = val_img_dir / f"{file_prefix}{orphan_frame:06d}.jpg"
+                if orphan_path.exists():
+                    orphan_path.unlink()
 
     # Create dataset.yaml
     print("\n--- Creating YAML file ---")
