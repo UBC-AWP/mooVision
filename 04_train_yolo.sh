@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=96gb
-#SBATCH --time=12:00:00
+#SBATCH --time=02:00:00
 #SBATCH --output=logs/train_%A_%a.out
 #SBATCH --error=logs/train_%A_%a.err
 #SBATCH --array=0-8
@@ -49,7 +49,7 @@ uv run --frozen --offline python scripts/training/training_yolo.py \
     --model_size=m \
     --batch=64 \
     --epochs=100 \
-    --patience=50 
+    --patience=40 
 
 # # 3. Handle Resume Checkpoint Logic vs Fresh Start
 # if [ -f "$CHECKPOINT_PATH" ]; then
