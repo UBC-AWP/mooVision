@@ -49,7 +49,7 @@ def run_testing(
 
     Parameters
     ----------
-   model_path : str
+    model_path : str
         Path to YOLO weights file (e.g. best.pt).
     data_path : str
         Relative path to test.csv inside ROOT_DIR
@@ -100,7 +100,7 @@ def run_testing(
         iou_threshold=0.5,
         min_duration=1.0,
         buffer=30,
-        rame_skip=10,
+        frame_skip=10,
         )
 
     """
