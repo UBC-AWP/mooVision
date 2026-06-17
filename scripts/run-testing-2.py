@@ -165,8 +165,9 @@ def run_testing(
         try:
 
             path = Path(video_str)
-            json_path = output_dir / f"{path.stem}_results.json"
-            if json_path.exists() and not overwrite:
+            yolo_json = output_dir / "yolo" / f"{path.stem}_results.json"
+            seq_nms_json = output_dir / "seq-nms" / f"{path.stem}_results.json"
+            if yolo_json.exists() and seq_nms_json.exists() and not overwrite:
                 print(f"Skipping {path.stem} — already processed.")
                 idx += 1
                 continue

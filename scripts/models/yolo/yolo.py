@@ -229,7 +229,7 @@ def build_metadata(
 ):
     # Build metadata — same format as baseline.py
     print("Building Metadata...")
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    video_name = Path(video_path).stem
     # output_dir = ROOT_DIR / "results/metadata/yolo"
     os.makedirs(output_dir, exist_ok=True)
 
