@@ -83,7 +83,7 @@ After configuring you `.env` file, run the following commands from your terminal
 4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
 
    ```bash
-   uv run scripts/training/training_yolo.py --yaml_path="data/training/pipeline_testing/yolo_format/dataset.yaml" --device="..."
+   uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --device="..."
    ```
 
 5. Run baseline on testing set:
