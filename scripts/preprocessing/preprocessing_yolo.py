@@ -695,11 +695,15 @@ def run_yolo_preprocessing(
             )
     else:
         # If safely inside an isolated Sockeye NVMe ($SLURM_TMPDIR), a clean static name is safe!
-        print(f"Success: True Node-Local Storage engaged at: {node_local_storage}")
-        base_local_dir = Path(node_local_storage)
+        base_local_dir = (
+            Path(node_local_storage)
+            / "data"
+            / "training"
+            / f"job_array_{task_id}_yolo_build"
+        )
+        print(f"Success: True Node-Local Storage engaged at: {base_local_dir}")
 
     # "dataset" Matches the internal name when archiving - see create_yaml
-    base_local_dir = Path(node_local_storage)
     working_directory = base_local_dir / "dataset"
 
     # 3. Create the directories safely
@@ -828,7 +832,7 @@ def run_yolo_preprocessing(
             # Packages 'dataset/' as the single root directory inside the archive
             tar.add(str(working_directory), arcname="dataset")
 
-        # 3. Ship the single archive file to /scratch (Instantaneous network transaction)
+        # Ship the single archive file to /scratch (Instantaneous network transaction)
         cluster_scratch_path = Path(output_dir)
         cluster_scratch_path.mkdir(parents=True, exist_ok=True)
         final_scratch_target = (
