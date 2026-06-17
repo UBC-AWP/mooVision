@@ -305,3 +305,161 @@ class TestComputeAvgBboxIouForEvent:
         assert compute_avg_bbox_iou_for_event(pred, gt, frame_tolerance=2) == pytest.approx(0.0)
         # With tolerance=5 → match
         assert compute_avg_bbox_iou_for_event(pred, gt, frame_tolerance=5) == pytest.approx(1.0)
+
+ 
+# ===========================================================================
+# compute_precision_recall_f
+# ===========================================================================
+ 
+class TestComputePrecisionRecallF:
+ 
+    def test_perfect_predictions(self):
+        result = compute_precision_recall_f(tp=5, fp=0, fn=0)
+        assert result["precision"] == pytest.approx(1.0)
+        assert result["recall"]    == pytest.approx(1.0)
+        assert result["f_score"]   == pytest.approx(1.0)
+ 
+    def test_all_false_positives(self):
+        result = compute_precision_recall_f(tp=0, fp=5, fn=0)
+        assert result["precision"] == pytest.approx(0.0)
+        assert result["recall"]    == pytest.approx(0.0)
+        assert result["f_score"]   == pytest.approx(0.0)
+ 
+    def test_all_false_negatives(self):
+        result = compute_precision_recall_f(tp=0, fp=0, fn=5)
+        assert result["precision"] == pytest.approx(0.0)
+        assert result["recall"]    == pytest.approx(0.0)
+        assert result["f_score"]   == pytest.approx(0.0)
+ 
+    def test_zero_counts(self):
+        result = compute_precision_recall_f(tp=0, fp=0, fn=0)
+        assert result["precision"] == pytest.approx(0.0)
+        assert result["recall"]    == pytest.approx(0.0)
+        assert result["f_score"]   == pytest.approx(0.0)
+ 
+    def test_known_values(self):
+        # tp=3, fp=1, fn=2  → precision=3/4=0.75, recall=3/5=0.6
+        # F1 = 2*0.75*0.6/(0.75+0.6) = 0.9/1.35 ≈ 0.6667
+        result = compute_precision_recall_f(tp=3, fp=1, fn=2, beta=1.0)
+        assert result["precision"] == pytest.approx(0.75,   rel=1e-3)
+        assert result["recall"]    == pytest.approx(0.6,    rel=1e-3)
+        assert result["f_score"]   == pytest.approx(2/3,    rel=1e-3)
+ 
+    def test_f2_weights_recall_more(self):
+        # High recall, low precision scenario
+        result_f1 = compute_precision_recall_f(tp=8, fp=8, fn=2, beta=1.0)
+        result_f2 = compute_precision_recall_f(tp=8, fp=8, fn=2, beta=2.0)
+        # F2 should be higher than F1 when recall > precision
+        assert result_f2["f_score"] > result_f1["f_score"]
+ 
+    def test_rounding_to_4_decimal_places(self):
+        result = compute_precision_recall_f(tp=1, fp=2, fn=3)
+        for key in ("precision", "recall", "f_score"):
+            val = result[key]
+            assert val == round(val, 4)
+ 
+    def test_return_keys(self):
+        result = compute_precision_recall_f(tp=1, fp=1, fn=1)
+        assert set(result.keys()) == {"precision", "recall", "f_score"}
+ 
+ 
+# ===========================================================================
+# match_predictions_to_ground_truth
+# ===========================================================================
+ 
+class TestMatchPredictionsToGroundTruth:
+ 
+    def test_perfect_match_single_event(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert result["true_positives"]  == 1
+        assert result["false_positives"] == 0
+        assert result["false_negatives"] == 0
+ 
+    def test_no_overlap_is_fp_and_fn(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 3.0}])
+        gt    = make_ground_truth_df([{"start_sec": 10.0, "end_sec": 15.0}])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert result["true_positives"]  == 0
+        assert result["false_positives"] == 1
+        assert result["false_negatives"] == 1
+ 
+    def test_below_confidence_threshold_is_ignored(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0, "avg_confidence": 0.3}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        result = match_predictions_to_ground_truth(preds, gt, confidence_threshold=0.5)
+        assert result["true_positives"]  == 0
+        assert result["false_positives"] == 0
+        assert result["false_negatives"] == 1
+ 
+    def test_below_temporal_iou_threshold_is_fp(self):
+        # Small overlap that won't reach 0.5 IoU
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 2.0}])
+        gt    = make_ground_truth_df([{"start_sec": 1.5, "end_sec": 10.0}])
+        result = match_predictions_to_ground_truth(preds, gt, temporal_iou_threshold=0.5)
+        assert result["true_positives"]  == 0
+        assert result["false_positives"] == 1
+        assert result["false_negatives"] == 1
+ 
+    def test_gt_matched_only_once(self):
+        # Two predictions overlap same GT event → only first should match
+        preds = make_predictions_df([
+            {"start_sec": 0.0, "end_sec": 5.0},
+            {"start_sec": 0.5, "end_sec": 5.5},
+        ])
+        gt = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert result["true_positives"]  == 1
+        assert result["false_positives"] == 1
+        assert result["false_negatives"] == 0
+ 
+    def test_multiple_videos_independent(self):
+        preds = make_predictions_df([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0},
+            {"source_video_basename": "v2.mp4", "start_sec": 0.0, "end_sec": 5.0},
+        ])
+        gt = make_ground_truth_df([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0},
+            {"source_video_basename": "v2.mp4", "start_sec": 0.0, "end_sec": 5.0},
+        ])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert result["true_positives"]  == 2
+        assert result["false_positives"] == 0
+        assert result["false_negatives"] == 0
+ 
+    def test_no_predictions_all_fn(self):
+        preds = make_predictions_df([])
+        gt    = make_ground_truth_df([
+            {"start_sec": 0.0, "end_sec": 5.0},
+            {"start_sec": 10.0, "end_sec": 15.0},
+        ])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert result["true_positives"]  == 0
+        assert result["false_positives"] == 0
+        assert result["false_negatives"] == 2
+ 
+    def test_no_ground_truth_all_fp(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert result["true_positives"]  == 0
+        assert result["false_positives"] == 1
+        assert result["false_negatives"] == 0
+ 
+    def test_matched_pairs_populated(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert len(result["matched_pairs"]) == 1
+        pair = result["matched_pairs"][0]
+        assert "temporal_iou" in pair
+        assert "bbox_iou"     in pair
+        assert pair["temporal_iou"] == pytest.approx(1.0)
+ 
+    def test_temporal_ious_list_length_equals_tp(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        result = match_predictions_to_ground_truth(preds, gt)
+        assert len(result["temporal_ious"]) == result["true_positives"]
+ 
