@@ -16,6 +16,9 @@
 PAIR_IDX=$(( SLURM_ARRAY_TASK_ID / 10 ))
 CHUNK_IDX=$(( SLURM_ARRAY_TASK_ID % 10 ))
 
+# ── Set overwrite behaviour ───────────────────────────────────────────────────
+OVERWRITE=${OVERWRITE:-false}
+
 # ── Model+test pairs (split_1 = random, split_2 = day_based, etc.) ───────────
 MODEL_NAMES=(
     "split_1_model"
@@ -52,11 +55,17 @@ cd /scratch/st-nina-1/mooVision
 mkdir -p logs
 source .env_sockeye
 
+OVERWRITE_FLAG=""
+if [ "$OVERWRITE" = "true" ]; then
+    OVERWRITE_FLAG="--overwrite"
+fi
+
 uv run scripts/run-testing-2.py \
     --model_path "$MODEL_PATH" \
     --data_path "$DATA_PATH" \
     --chunk "$CHUNK_IDX" \
-    --chunk_pct 0.10
+    --chunk_pct 0.10 \
+    $OVERWRITE_FLAG
 
 echo "========================================================"
 echo "TASK ${SLURM_ARRAY_TASK_ID} COMPLETE."
