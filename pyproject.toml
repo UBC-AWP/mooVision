@@ -26,7 +26,7 @@ dependencies = [
     "torch; sys_platform == 'darwin'",
     "torchvision; sys_platform == 'darwin'",
     "pi-heif>=1.4.0",
-    "opencv-python>=4.13.0.92",
+    "opencv-python-headless>=4.13.0.92",
 ]
 
 [dependency-groups]
@@ -49,8 +49,4 @@ torch = [
 ]
 torchvision = [
   { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
-]
-[project.optional-dependencies]
-cluster = [
-    "opencv-python-headless>=4.13.0.92", # Headless engine for Sockeye compute nodes
 ]
