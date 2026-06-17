@@ -11,7 +11,7 @@ echo "=== Running One-Time Global Setup ==="
 # PULL LATEST CHANGES
 git pull origin arc-setup-dev
 uv python pin 3.12
-uv sync --extra cluster --override "opencv-python>=4.13.0.92"
+uv sync
 
 # ENVIRONMENT VALIDATION & LOAD
 if [ ! -f .env_sockeye ]; then
