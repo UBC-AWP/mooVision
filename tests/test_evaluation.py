@@ -240,3 +240,68 @@ class TestComputeBboxIou:
         # Both should be 1.0 since smaller box is fully inside larger
         assert iou_ab == 1.0
         assert iou_ba == 1.0
+
+ 
+# ===========================================================================
+# compute_avg_bbox_iou_for_event
+# ===========================================================================
+ 
+class TestComputeAvgBboxIouForEvent:
+ 
+    def _box(self, frame, x1=0, y1=0, x2=100, y2=100):
+        return {"frame": frame, "x1": x1, "y1": y1, "x2": x2, "y2": y2}
+ 
+    def test_single_exact_match(self):
+        pred = [self._box(10)]
+        gt   = [self._box(10)]
+        assert compute_avg_bbox_iou_for_event(pred, gt) == pytest.approx(1.0)
+ 
+    def test_empty_pred_returns_zero(self):
+        assert compute_avg_bbox_iou_for_event([], [self._box(10)]) == pytest.approx(0.0)
+ 
+    def test_empty_gt_returns_zero(self):
+        assert compute_avg_bbox_iou_for_event([self._box(10)], []) == pytest.approx(0.0)
+ 
+    def test_both_empty_returns_zero(self):
+        assert compute_avg_bbox_iou_for_event([], []) == pytest.approx(0.0)
+ 
+    def test_nearest_frame_match_within_tolerance(self):
+        pred = [self._box(10)]
+        gt   = [self._box(15)]  # 5 frames away, within default tolerance 10
+        result = compute_avg_bbox_iou_for_event(pred, gt)
+        assert result == pytest.approx(1.0)
+ 
+    def test_frame_beyond_tolerance_not_matched(self):
+        pred = [self._box(10)]
+        gt   = [self._box(25)]  # 15 frames away, beyond tolerance 10
+        result = compute_avg_bbox_iou_for_event(pred, gt)
+        assert result == pytest.approx(0.0)
+ 
+    def test_gt_frame_matched_only_once(self):
+        # Two pred frames both close to same GT frame — GT used only once
+        pred = [self._box(10), self._box(11)]
+        gt   = [self._box(10)]
+        result = compute_avg_bbox_iou_for_event(pred, gt)
+        # Only one match → mean of one IoU = 1.0
+        assert result == pytest.approx(1.0)
+ 
+    def test_multiple_frames_averaged(self):
+        # Frame 0: perfect overlap (IoU=1.0), Frame 1: no overlap (IoU=0.0)
+        pred = [
+            self._box(0, 0, 0, 100, 100),
+            self._box(1, 0, 0, 100, 100),
+        ]
+        gt = [
+            self._box(0, 0, 0, 100, 100),   # perfect match
+            self._box(1, 200, 200, 300, 300),  # no overlap
+        ]
+        result = compute_avg_bbox_iou_for_event(pred, gt)
+        assert result == pytest.approx(0.5)
+ 
+    def test_custom_tolerance(self):
+        pred = [self._box(10)]
+        gt   = [self._box(13)]  # 3 frames away
+        # With tolerance=2 → no match
+        assert compute_avg_bbox_iou_for_event(pred, gt, frame_tolerance=2) == pytest.approx(0.0)
+        # With tolerance=5 → match
+        assert compute_avg_bbox_iou_for_event(pred, gt, frame_tolerance=5) == pytest.approx(1.0)
