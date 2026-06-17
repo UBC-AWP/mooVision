@@ -733,6 +733,7 @@ def run_yolo_preprocessing(
     # Prune trailing video frames that don't have matching labels
     print("\nPurging orphaned training images with no corresponding labels...")
     train_img_dir = working_directory / "images" / "train"
+    train_frames_dropped = 0
     for video_key, frame_set in train_registry.items():
         label_set = train_label_registry.get(video_key, set())
         # Find frames that have an image but NO matching label
@@ -745,6 +746,8 @@ def run_yolo_preprocessing(
                 orphan_path = train_img_dir / f"{file_prefix}{orphan_frame:06d}.jpg"
                 if orphan_path.exists():
                     orphan_path.unlink()  # Physically drop the unannotated trailing image
+                    train_frames_dropped += 1
+    print(f"Dropped {train_frames_dropped} frames.")
 
     # Extract frames and bounding box annotations for the val set
     print("\n\n=========================")
@@ -771,6 +774,7 @@ def run_yolo_preprocessing(
     # Prune trailing validation video frames
     print("\nPurging orphaned validation images with no corresponding labels...")
     val_img_dir = working_directory / "images" / "val"
+    val_frames_dropped = 0
     for video_key, frame_set in val_registry.items():
         label_set = val_label_registry.get(video_key, set())
         orphaned_frames = frame_set - label_set
@@ -782,6 +786,9 @@ def run_yolo_preprocessing(
                 orphan_path = val_img_dir / f"{file_prefix}{orphan_frame:06d}.jpg"
                 if orphan_path.exists():
                     orphan_path.unlink()
+                    val_frames_dropped += 1
+
+    print(f"Dropped {val_frames_dropped} frames.")
 
     # Create dataset.yaml
     print("\n--- Creating YAML file ---")
