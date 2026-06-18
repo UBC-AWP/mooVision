@@ -6,14 +6,24 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32gb
-#SBATCH --time=02:00:00
+#SBATCH --mem=96gb
+#SBATCH --time=12:00:00
 #SBATCH --output=logs/train_%A_%a.out
 #SBATCH --error=logs/train_%A_%a.err
 #SBATCH --array=0-8
 
 cd /scratch/st-nina-1/mooVision
 source .env_sockeye
+
+# Force uv to use instant Symlinks instead of copying data over the network
+export UV_LINK_MODE="symlink"
+
+# Redirect the cache to the compute node's high-speed local NVMe workspace
+export UV_CACHE_DIR="$SLURM_TMPDIR/uv_cache"
+mkdir -p "$UV_CACHE_DIR"
+
+# Now run your sync -- it will finish almost instantly
+uv sync --extra cluster
 
 # Identify the unique dataset YAML config for this specific thread
 TAR_PATH="${YOLO_TAR_FILES[$SLURM_ARRAY_TASK_ID]}"

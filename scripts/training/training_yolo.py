@@ -34,18 +34,21 @@ def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
 
     if on_cluster:
 
+        print("Working on Cluster, searching for tar path...")
         tar_path = Path(dataset)
         if not tar_path.exists():
             raise FileNotFoundError(f"Dataset archive missing at: {tar_path}")
 
-        if not tmp_dir_env:
-            raise ValueError("Could not find SLURM_TMPDIR.")
-            # FIXED: Combined both Job ID and Task ID to guarantee absolute isolation
+        if tmp_dir_env:
+            # Combined both Job ID and Task ID to guarantee absolute isolation
             # across different jobs and task arrays sharing the same node.
             # e.g., /localscratch/11740177/job_11740177_task_1_dataset
-        isolated_node_dir = (
-            Path(tmp_dir_env) / f"job_{slurm_job_id}_task_{slurm_task_id}_{base_name}"
-        )
+            isolated_node_dir = (
+                Path(tmp_dir_env)
+                / f"job_{slurm_job_id}_task_{slurm_task_id}_{base_name}"
+            )
+        else:
+            raise ValueError("Could not find SLURM_TMPDIR.")
 
         # ISOLATED NATIVE C TAR EXTRACTION
         # If this specific task has already successfully extracted its partition, skip to avoid overhead
@@ -263,7 +266,7 @@ def train_yolo_model(
         imgsz=img_size,
         save=save,
         rect=rect,
-        workers=8,
+        workers=workers,
         cache=False,
         **kwargs,
     )
@@ -289,7 +292,7 @@ def parse_args():
         "--workers",
         type=int,
         default=8,
-        help="Device to grain on '0' for GPU, 'cpu' for cpu, 'cuda' for CUDA, 'mps' for mac gpu.",
+        help="Number of data loader workers.",
     )
     parser.add_argument(
         "--name",

@@ -10,8 +10,6 @@ echo "=== Running One-Time Global Setup ==="
 
 # PULL LATEST CHANGES
 git pull origin arc-setup-dev
-uv python pin 3.12
-uv sync
 
 # ENVIRONMENT VALIDATION & LOAD
 if [ ! -f .env_sockeye ]; then
@@ -25,6 +23,10 @@ source .env_sockeye
 if [ ! -f .env ]; then
     ln -s .env_sockeye .env
 fi
+
+# Sync environment
+uv python pin 3.12
+uv sync
 
 # DOWNLOAD YOLO MODEL WEIGHTS 
 URL="https://github.com/ultralytics/assets/releases/download/v8.4.0/${YOLO_MODEL}"
