@@ -82,6 +82,87 @@ def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
                 raise RuntimeError(
                     f"[ERROR] Native tar extraction failed for task {slurm_task_id}: {error_msg}"
                 )
+
+        # ────────────────────────────────────────────────────────────────
+        # ADDED: POST-EXTRACTION VALIDATION CHECKS
+        # ────────────────────────────────────────────────────────────────
+        print(
+            f"[INFO] Task {slurm_task_id}: Commencing dataset integrity validation..."
+        )
+
+        # Step A: Dynamically check for standard YOLO data splits
+        valid_splits = [
+            d.name
+            for d in isolated_node_dir.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and d.name in ["train", "val"]
+        ]
+
+        if not valid_splits:
+            if isolated_node_dir.exists():
+                shutil.rmtree(isolated_node_dir)
+            raise RuntimeError(
+                f"[ERROR] Validation Failed: No valid YOLO folders ('train'/'val') found inside "
+                f"{isolated_node_dir}. Verify if '--strip-components=1' fits your archive structure."
+            )
+
+        # Step B: Traverse each found data split to audit structural files
+        for split in valid_splits:
+            img_dir = isolated_node_dir / "images" / split
+            lbl_dir = isolated_node_dir / "labels" / split
+
+            if not img_dir.exists() or not lbl_dir.exists():
+                if isolated_node_dir.exists():
+                    shutil.rmtree(isolated_node_dir)
+                raise FileNotFoundError(
+                    f"[ERROR] Structural Mismatch in split [{split.upper()}]. "
+                    f"Expected both branches to exist:\n  - {img_dir}\n  - {lbl_dir}"
+                )
+
+            # Map unique stems (filenames without extensions) while dropping hidden OS assets
+            image_stems = {
+                f.stem
+                for f in img_dir.iterdir()
+                if f.is_file() and not f.name.startswith(".")
+            }
+            label_stems = {
+                f.stem
+                for f in lbl_dir.iterdir()
+                if f.is_file() and not f.name.startswith(".")
+            }
+
+            num_images = len(image_stems)
+            num_labels = len(label_stems)
+
+            # Step C: Catch empty directory states (indicates quota block or corrupted extraction)
+            if num_images == 0:
+                if isolated_node_dir.exists():
+                    shutil.rmtree(isolated_node_dir)
+                raise ValueError(
+                    f"[ERROR] Integrity Failure: Image directory for split [{split.upper()}] is completely empty."
+                )
+
+            # Step D: Alert or flag on image vs bounding-box count variance
+            if num_images != num_labels:
+                print(
+                    f"[WARNING] File count discrepancy in split [{split.upper()}]: "
+                    f"Found {num_images} images but {num_labels} labels."
+                )
+
+                # Check for images missing corresponding annotation labels
+                orphaned_images = image_stems - label_stems
+                if orphaned_images:
+                    print(
+                        f"First 5 images missing a matching .txt label file: {list(orphaned_images)[:5]}"
+                    )
+
+            print(
+                f"[SUCCESS] Split [{split.upper()}] checked: {num_images} images and {num_labels} labels verified."
+            )
+
+        print(
+            f"[SUCCESS] Dataset structure validation completely passed for Task {slurm_task_id}."
+        )
+        # ────────────────────────────────────────────────────────────────
     else:
         # Laptop fallback strategy
         data_path = ROOT_DIR / dataset
