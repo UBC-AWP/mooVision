@@ -12,8 +12,8 @@
 #SBATCH --error=logs/train_%A_%a.err
 #SBATCH --array=0-8
 
-cd /scratch/st-nina-1/mooVision
 export PYTHONUNBUFFERED=1
+cd /scratch/st-nina-1/mooVision
 source .env_sockeye
 
 # Identify the unique dataset YAML config for this specific thread
@@ -34,6 +34,17 @@ echo "Isolated Run Name    : $UNIQUE_RUN_NAME"
 echo "Compute Node Assigned: $SLURM_NODENAME"
 echo "========================================================"
 
+# --- Fix Read-Only & Permission Warnings (Job ID + Array Safe) ---
+# Format will look like: .../.config/ultralytics_job_123456_task_1
+export YOLO_CONFIG_DIR="${USER_SCRATCH}/.config/ultralytics_job_${SLURM_JOB_ID}_task_${SLURM_ARRAY_TASK_ID}"
+export YOLOV8_CONFIG_DIR="${USER_SCRATCH}/.config/ultralytics_job_${SLURM_JOB_ID}_task_${SLURM_ARRAY_TASK_ID}"
+
+# Isolate Matplotlib and Font caches perfectly as well
+export MPLCONFIGDIR="${USER_SCRATCH}/.config/matplotlib_job_${SLURM_JOB_ID}_task_${SLURM_ARRAY_TASK_ID}"
+export FONTCONFIG_PATH="${USER_SCRATCH}/.config/font_job_${SLURM_JOB_ID}_task_${SLURM_ARRAY_TASK_ID}"
+
+# Dynamically generate the unique structure before Python boots up
+mkdir -p "$YOLO_CONFIG_DIR" "$MPLCONFIGDIR" "$FONTCONFIG_PATH"
 mkdir -p "$TARGET_PROJECT_DIR"
 
 echo "Starting fresh training initialization..."
