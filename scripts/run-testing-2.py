@@ -16,11 +16,12 @@ from scripts.models.yolo.yolo import run_models
 from scripts.models.seq_NMS.seq_NMS import (
     run_seq_nms_detection,
     DEFAULT_CONF_THRESHOLD,
-    DEFAULT_FRAME_SKIP,
     DEFAULT_IOU_THRESHOLD,
     DEFAULT_MIN_DURATION,
     TARGET_CLASS_NAME,
 )
+
+DEFAULT_FRAME_SKIP = 10
 
 
 def run_testing(
@@ -32,38 +33,76 @@ def run_testing(
     buffer: int,
     frame_skip: int,
     target_class: str = "cross-sucking",
+    chunk: int = 0,
+    chunk_pct: float = 0.1,
+    overwrite: bool = False,
 ):
     """
     Run a model script on all source videos in testing set.
 
-    Loads in a test.csv at `data_path` and runs the model
-    specified at `model` on all source videos listed if they exist
-    in the data directory. Specifically, this function loops through each
-    video path in the data frame, and passes these paths the the script
-    in models/ specified as `model`. This script will run the model on
-    said video and output metadata to the data directory.
+    Loads a test.csv at `data_path`, cleans video paths, and runs both
+    the YOLO and seq-NMS models on each video. Supports chunked parallel
+    execution via `chunk` and `chunk_pct` for use with SLURM array jobs.
+    Skips videos that already have a results JSON by default — pass
+    `--overwrite` to reprocess all videos regardless.
 
     Outputs both yolo and seq-NMS metadata.
 
     Parameters
     ----------
     model_path : str
-        Path to model to use.
+        Path to YOLO weights file (e.g. best.pt).
     data_path : str
-        Relative Path to test.csv file inside ROOT_DIR.
+        Relative path to test.csv inside ROOT_DIR
+        (e.g. data/processed/random/test.csv).
+    conf_threshold : float
+        Minimum YOLO detection confidence to keep a box.
+    iou_threshold : float
+        Minimum IoU overlap threshold.
+    min_duration : float
+        Minimum event duration in seconds.
+    buffer : int
+        Seconds to wait without detection before ending an event.
+    frame_skip : int
+        Process every Nth frame (1 = every frame).
+    target_class : str
+        Target class name for detection (default: 'cross-sucking').
+    chunk : int
+        Which chunk to process (0-indexed). -1 runs all videos.
+        Default is 0 (first 10% chunk). Used by SLURM array jobs to
+        parallelise across subsets of the video list.
+    chunk_pct : float
+        Fraction of total videos per chunk (default: 0.10 = 10%).
+        Combined with `chunk` to determine which videos this job processes.
+    overwrite : bool
+        If False (default), skip videos that already have a results JSON.
+        If True, reprocess and overwrite existing results. Use --overwrite
+        when rerunning after parameter changes or pipeline fixes.
 
     Returns
     -------
     None
         This function reads to disk and does not return anything.
 
-
     Raises
     ------
-
+    FileNotFoundError
+        If the test.csv at `data_path` does not exist under ROOT_DIR.
+        If the model weights file at `model_path` does not exist.
+    ValueError
+        If the test.csv is empty after loading.
 
     Examples
     --------
+    run_testing(
+        model_path="/scratch/st-nina-1/moovision/yolo_training_runs/split_1_model/weights/best.pt",
+        data_path="data/processed/random/test.csv",
+        conf_threshold=0.25,
+        iou_threshold=0.5,
+        min_duration=1.0,
+        buffer=30,
+        frame_skip=10,
+        )
 
     """
     # Read in Data
@@ -85,7 +124,6 @@ def run_testing(
     print(f"Videos to clean: {len(video_paths)}")
     clean_paths = []
     for video_path in video_paths:
-
         cln_str = video_path.replace("\\", "/")
         cln_path = Path(cln_str)
         rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
@@ -109,26 +147,33 @@ def run_testing(
     output_dir = ROOT_DIR / "results" / "metadata" / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # # Cut to 20 videos to presentation results!
-    # if n_unique_paths > 20:
-    #     unique_video_strings_short = unique_video_strings[:30]
-    # else:
-    #     unique_video_strings_short = unique_video_strings
-
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Could not find {model_path}.")
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
 
-    print(f"Running models on 20 unique video paths... ")
     idx = 0
-    for n, video_str in enumerate(unique_video_strings, 1):
-        if idx == 20:
-            break
+    if chunk == -1:
+        selected = unique_video_strings
+        print(f"Running models on all {len(selected)} videos...")
+    else:
+        chunk_size = max(1, int(len(unique_video_strings) * chunk_pct))
+        start = chunk * chunk_size
+        selected = unique_video_strings[start : start + chunk_size]
+        print(f"Running models on chunk {chunk} ({chunk_pct*100:.0f}%): videos {start}–{start + len(selected)} of {n_unique_paths}...")
+    
+    for n, video_str in enumerate(selected, 1):
         try:
 
             path = Path(video_str)
-            print(f"Running {path.stem} {idx}/{20}")
+            yolo_json = output_dir / "yolo" / f"{path.stem}_results.json"
+            seq_nms_json = output_dir / "seq-nms" / f"{path.stem}_results.json"
+            if yolo_json.exists() and seq_nms_json.exists() and not overwrite:
+                print(f"Skipping {path.stem} — already processed.")
+                idx += 1
+                continue
+
+            print(f"Running {path.stem} {idx}/{len(selected)}")
             run_models(
                 model=model,
                 model_path=model_path,
@@ -199,6 +244,24 @@ def parse_args():
         default="cross-sucking",
         help="Target class for detection (default: cross-sucking)",
     )
+    parser.add_argument(
+        "--chunk",
+        type=int,
+        default=0,
+        help="Which chunk to process (0-indexed). -1 runs all videos."
+    )
+    parser.add_argument(
+        "--chunk_pct",
+        type=float,
+        default=0.10,
+        help="Percentage of videos per chunk (default: 0.10 = 10%%)"
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help="Overwrite existing results. If not set, skips already processed videos."
+    )
     return parser.parse_args()
 
 
@@ -213,4 +276,7 @@ if __name__ == "__main__":
         buffer=args.buffer,
         frame_skip=args.frame_skip,
         target_class=args.target_class,
+        chunk=args.chunk,
+        chunk_pct=args.chunk_pct,
+        overwrite=args.overwrite,
     )

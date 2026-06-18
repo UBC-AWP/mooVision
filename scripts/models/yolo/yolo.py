@@ -20,6 +20,7 @@ import argparse
 from ultralytics import YOLO
 import numpy as np
 import cv2
+import torch
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
@@ -29,6 +30,8 @@ from scripts.models.seq_NMS.seq_NMS import (
     suppress_weak_detections,
     tubes_to_events,
 )
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def extract_events(
@@ -178,7 +181,12 @@ def collect_frames(
 
         # Run YOLO inference
         results = model(
-            frame, stream=False, imgsz=640, conf=conf_threshold, verbose=False
+            frame, 
+            stream=False, 
+            imgsz=640, 
+            conf=conf_threshold, 
+            verbose=False, 
+            device=device
         )[0]
 
         # Show annotated frame
@@ -229,7 +237,7 @@ def build_metadata(
 ):
     # Build metadata — same format as baseline.py
     print("Building Metadata...")
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    video_name = Path(video_path).stem
     # output_dir = ROOT_DIR / "results/metadata/yolo"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -379,17 +387,13 @@ def run_models(
 
     print()
 
-    n = 0
-    for events in [basic_events, seq_nms_events]:
-        if n == 0:
-            output_dir = Path(output_dir) / "yolo"
-        elif n == 1:
-            output_dir = Path(output_dir) / "seq-nms"
+    for events, subdir in [(basic_events, "yolo"), (seq_nms_events, "seq-nms")]:
+        out = Path(output_dir) / subdir
         print("building metadata...")
         build_metadata(
             video_path=video_path,
             model_path=model_path,
-            output_dir=output_dir,
+            output_dir=out,
             conf_threshold=conf_threshold,
             iou_threshold=iou_threshold,
             min_duration=min_duration,
@@ -398,7 +402,6 @@ def run_models(
             total_frames=total_frames,
             events=events,
         )
-        n += 1
 
 
 def parse_args():

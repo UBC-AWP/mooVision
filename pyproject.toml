@@ -27,6 +27,7 @@ dependencies = [
     "torchvision; sys_platform == 'darwin'",
     "pi-heif>=1.4.0",
     "opencv-python-headless>=4.13.0.92",
+    "torch>=2.5.1",
 ]
 
 [dependency-groups]
