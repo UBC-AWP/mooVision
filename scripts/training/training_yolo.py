@@ -83,32 +83,45 @@ def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
                     f"[ERROR] Native tar extraction failed for task {slurm_task_id}: {error_msg}"
                 )
 
-        # ────────────────────────────────────────────────────────────────
-        # ADDED: POST-EXTRACTION VALIDATION CHECKS
-        # ────────────────────────────────────────────────────────────────
+        # POST-EXTRACTION VALIDATION CHECKS
         print(
             f"[INFO] Task {slurm_task_id}: Commencing dataset integrity validation..."
         )
 
-        # Step A: Dynamically check for standard YOLO data splits
-        valid_splits = [
+        # Dynamically check for standard YOLO data splits: images and labels
+        valid_folders = [
             d.name
             for d in isolated_node_dir.iterdir()
-            if d.is_dir() and not d.name.startswith(".") and d.name in ["train", "val"]
+            if d.is_dir()
+            and not d.name.startswith(".")
+            and d.name in ["images", "labels"]
         ]
 
-        if not valid_splits:
+        # Should return "images" and "labels", else clean for next run.
+        if not valid_folders:
             if isolated_node_dir.exists():
                 shutil.rmtree(isolated_node_dir)
             raise RuntimeError(
-                f"[ERROR] Validation Failed: No valid YOLO folders ('train'/'val') found inside "
+                f"[ERROR] Validation Failed: No valid YOLO folders ('images'/'labels') found inside "
                 f"{isolated_node_dir}. Verify if '--strip-components=1' fits your archive structure."
             )
 
+        # Path(tmp_dir_env) / f"job_{slurm_job_id}_task_{slurm_task_id}_{base_name}" / "images" or "labels"
+        img_root_dir = isolated_node_dir / valid_folders[0]
+        lbl_root_dir = isolated_node_dir / valid_folders[1]
+
+        # Should return "train" and "val"
+        valid_splits = [
+            s.name
+            for s in img_root_dir.iterdir()
+            if s.is_dir() and not s.name.startswith(".") and s.name in ["train", "val"]
+        ]
         # Step B: Traverse each found data split to audit structural files
         for split in valid_splits:
-            img_dir = isolated_node_dir / "images" / split
-            lbl_dir = isolated_node_dir / "labels" / split
+
+            # ... / images / train or val
+            img_dir = img_root_dir / split
+            lbl_dir = lbl_root_dir / split
 
             if not img_dir.exists() or not lbl_dir.exists():
                 if isolated_node_dir.exists():
