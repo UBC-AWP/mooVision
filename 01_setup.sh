@@ -42,6 +42,8 @@ fi
 
 # Create weights directory if it doesn't exist
 mkdir -p "$WEIGHTS_DIR"
+# Create Ultralytics Config dirs
+mkdir -p "$YOLO_CONFIG_DIR" "$MPLCONFIGDIR" "$FONTCONFIG_PATH"
 
 # Check if the model already exists to save bandwidth
 if [ -f "$WEIGHTS_DIR/$YOLO_MODEL" ]; then
