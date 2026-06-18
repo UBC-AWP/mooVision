@@ -16,11 +16,12 @@ from scripts.models.yolo.yolo import run_models
 from scripts.models.seq_NMS.seq_NMS import (
     run_seq_nms_detection,
     DEFAULT_CONF_THRESHOLD,
-    DEFAULT_FRAME_SKIP,
     DEFAULT_IOU_THRESHOLD,
     DEFAULT_MIN_DURATION,
     TARGET_CLASS_NAME,
 )
+
+DEFAULT_FRAME_SKIP = 10
 
 
 def run_testing(

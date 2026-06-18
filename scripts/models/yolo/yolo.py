@@ -20,6 +20,7 @@ import argparse
 from ultralytics import YOLO
 import numpy as np
 import cv2
+import torch
 
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
@@ -29,6 +30,8 @@ from scripts.models.seq_NMS.seq_NMS import (
     suppress_weak_detections,
     tubes_to_events,
 )
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def extract_events(
@@ -178,7 +181,12 @@ def collect_frames(
 
         # Run YOLO inference
         results = model(
-            frame, stream=False, imgsz=640, conf=conf_threshold, verbose=False
+            frame, 
+            stream=False, 
+            imgsz=640, 
+            conf=conf_threshold, 
+            verbose=False, 
+            device=device
         )[0]
 
         # Show annotated frame

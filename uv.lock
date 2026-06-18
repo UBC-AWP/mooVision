@@ -1517,7 +1517,7 @@ dependencies = [
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
     { name = "numpy" },
-    { name = "opencv-python" },
+    { name = "opencv-python-headless" },
     { name = "pandas" },
     { name = "pandera" },
     { name = "pi-heif" },
@@ -1525,15 +1525,10 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "scikit-learn" },
     { name = "torch", version = "2.5.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
-    { name = "torch", version = "2.12.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.12.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
     { name = "torchvision", version = "0.20.1+cu121", source = { registry = "https://download.pytorch.org/whl/cu121" }, marker = "sys_platform == 'linux'" },
     { name = "torchvision", version = "0.27.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin'" },
     { name = "ultralytics" },
-]
-
-[package.optional-dependencies]
-cluster = [
-    { name = "opencv-python-headless" },
 ]
 
 [package.dev-dependencies]
@@ -1553,8 +1548,7 @@ requires-dist = [
     { name = "mkdocs-material", specifier = ">=9.7.6" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=1.0.4" },
     { name = "numpy", specifier = ">=2.4.4" },
-    { name = "opencv-python", specifier = ">=4.13.0.92" },
-    { name = "opencv-python-headless", marker = "extra == 'cluster'", specifier = ">=4.13.0.92" },
+    { name = "opencv-python-headless", specifier = ">=4.13.0.92" },
     { name = "pandas", specifier = ">=3.0.2" },
     { name = "pandera", specifier = ">=0.31.1" },
     { name = "pi-heif", specifier = ">=1.4.0" },
@@ -1562,12 +1556,13 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "torch", marker = "sys_platform == 'darwin'" },
+    { name = "torch", marker = "sys_platform != 'linux'", specifier = ">=2.5.1" },
     { name = "torch", marker = "sys_platform == 'linux'", specifier = "==2.5.1", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "torch", marker = "sys_platform == 'linux'", specifier = ">=2.5.1", index = "https://download.pytorch.org/whl/cu121" },
     { name = "torchvision", marker = "sys_platform == 'darwin'" },
     { name = "torchvision", marker = "sys_platform == 'linux'", specifier = "==0.20.1", index = "https://download.pytorch.org/whl/cu121" },
     { name = "ultralytics", specifier = ">=8.4.51" },
 ]
-provides-extras = ["cluster"]
 
 [package.metadata.requires-dev]
 dev = [
