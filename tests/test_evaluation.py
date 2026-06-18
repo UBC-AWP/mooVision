@@ -462,4 +462,238 @@ class TestMatchPredictionsToGroundTruth:
         gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
         result = match_predictions_to_ground_truth(preds, gt)
         assert len(result["temporal_ious"]) == result["true_positives"]
+
+
+# ===========================================================================
+# load_gt_boxes_from_zip
+# ===========================================================================
+ 
+class TestLoadGtBoxesFromZip:
+ 
+    def _write_zip(self, tmp_path: Path, annotations: dict) -> Path:
+        zip_bytes = make_cvat_zip(annotations)
+        zip_file = tmp_path / "labels.zip"
+        zip_file.write_bytes(zip_bytes)
+        return zip_file
+ 
+    def test_basic_single_frame(self, tmp_path):
+        # YOLO: class cx cy w h  (normalized, 1920x1080)
+        # cx=0.5 cy=0.5 w=0.5 h=0.5 → x1=480, y1=270, x2=1440, y2=810
+        zip_file = self._write_zip(tmp_path, {
+            "obj_train_data/frame_000010.txt": "0 0.5 0.5 0.5 0.5"
+        })
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="labels.zip",
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=0,
+        )
+        assert len(boxes) == 1
+        b = boxes[0]
+        assert b["frame"] == 10
+        assert b["x1"] == int((0.5 - 0.25) * VIDEO_WIDTH)
+        assert b["y1"] == int((0.5 - 0.25) * VIDEO_HEIGHT)
+        assert b["x2"] == int((0.5 + 0.25) * VIDEO_WIDTH)
+        assert b["y2"] == int((0.5 + 0.25) * VIDEO_HEIGHT)
+ 
+    def test_clip_start_frame_offset_applied(self, tmp_path):
+        zip_file = self._write_zip(tmp_path, {
+            "obj_train_data/frame_000005.txt": "0 0.5 0.5 0.5 0.5"
+        })
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="labels.zip",
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=100,
+        )
+        assert boxes[0]["frame"] == 105  # 5 + 100
+ 
+    def test_missing_zip_returns_empty_list(self, tmp_path):
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="nonexistent.zip",
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=0,
+        )
+        assert boxes == []
+ 
+    def test_empty_txt_file_skipped(self, tmp_path):
+        zip_file = self._write_zip(tmp_path, {
+            "obj_train_data/frame_000001.txt": ""
+        })
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="labels.zip",
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=0,
+        )
+        assert boxes == []
+ 
+    def test_malformed_txt_skipped(self, tmp_path):
+        zip_file = self._write_zip(tmp_path, {
+            "obj_train_data/frame_000001.txt": "0 0.5"  # too few parts
+        })
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="labels.zip",
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=0,
+        )
+        assert boxes == []
+ 
+    def test_non_annotation_files_ignored(self, tmp_path):
+        zip_file = self._write_zip(tmp_path, {
+            "obj_train_data/frame_000001.txt": "0 0.5 0.5 0.5 0.5",
+            "README.md":                       "This is a readme",
+            "obj_train_data/classes.txt":      "cross_sucking",
+        })
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="labels.zip",
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=0,
+        )
+        assert len(boxes) == 1
+ 
+    def test_multiple_frames_all_loaded(self, tmp_path):
+        zip_file = self._write_zip(tmp_path, {
+            "obj_train_data/frame_000001.txt": "0 0.5 0.5 0.5 0.5",
+            "obj_train_data/frame_000002.txt": "0 0.3 0.3 0.2 0.2",
+            "obj_train_data/frame_000003.txt": "0 0.7 0.7 0.3 0.3",
+        })
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="labels.zip",
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=0,
+        )
+        assert len(boxes) == 3
+ 
+    def test_backslash_path_normalised(self, tmp_path):
+        zip_bytes = make_cvat_zip({"obj_train_data/frame_000001.txt": "0 0.5 0.5 0.5 0.5"})
+        (tmp_path / "labels.zip").write_bytes(zip_bytes)
+        # Simulate Windows-style path with backslashes
+        boxes = load_gt_boxes_from_zip(
+            labelled_clip_relative_path="labels.zip".replace("/", "\\"),
+            labelled_clips_dir=tmp_path,
+            clip_start_frame=0,
+        )
+        assert len(boxes) == 1
+ 
+ 
+# ===========================================================================
+# load_predictions
+# ===========================================================================
+ 
+class TestLoadPredictions:
+ 
+    def _write_json(self, tmp_path: Path, data: dict, filename: str = "preds.json") -> Path:
+        p = tmp_path / filename
+        p.write_text(json.dumps(data))
+        return p
+ 
+    def _base_metadata(self, identifier="video.mp4", fps=30.0, events=None):
+        return {
+            "identifier": identifier,
+            "fps": fps,
+            "events": events or [],
+        }
+ 
+    def test_basic_load(self, tmp_path):
+        self._write_json(tmp_path, self._base_metadata(
+            events=[{
+                "start_sec": 1.0,
+                "end_sec": 4.0,
+                "duration_sec": 3.0,
+                "avg_confidence": 0.8,
+                "intersection_box": [],
+            }]
+        ))
+        df = load_predictions(tmp_path)
+        assert len(df) == 1
+        assert df.iloc[0]["source_video_basename"] == "video.mp4"
+        assert df.iloc[0]["start_sec"] == 1.0
+        assert df.iloc[0]["avg_confidence"] == 0.8
+ 
+    def test_empty_directory_returns_empty_df(self, tmp_path):
+        df = load_predictions(tmp_path)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 0
+ 
+    def test_multiple_json_files_combined(self, tmp_path):
+        self._write_json(tmp_path, self._base_metadata("v1.mp4", events=[{
+            "start_sec": 0.0, "end_sec": 5.0, "duration_sec": 5.0,
+            "avg_confidence": 0.9, "intersection_box": [],
+        }]), "v1.json")
+        self._write_json(tmp_path, self._base_metadata("v2.mp4", events=[{
+            "start_sec": 10.0, "end_sec": 15.0, "duration_sec": 5.0,
+            "avg_confidence": 0.7, "intersection_box": [],
+        }]), "v2.json")
+        df = load_predictions(tmp_path)
+        assert len(df) == 2
+        assert set(df["source_video_basename"]) == {"v1.mp4", "v2.mp4"}
+ 
+    def test_no_events_key_returns_empty(self, tmp_path):
+        self._write_json(tmp_path, {"identifier": "video.mp4", "fps": 30.0})
+        df = load_predictions(tmp_path)
+        assert len(df) == 0
+ 
+    def test_intersection_box_defaults_to_empty_list(self, tmp_path):
+        self._write_json(tmp_path, self._base_metadata(events=[{
+            "start_sec": 0.0, "end_sec": 5.0, "duration_sec": 5.0,
+            "avg_confidence": 0.9,
+            # no "intersection_box" key
+        }]))
+        df = load_predictions(tmp_path)
+        assert df.iloc[0]["intersection_box"] == []
+ 
+    def test_required_columns_present(self, tmp_path):
+        self._write_json(tmp_path, self._base_metadata(events=[{
+            "start_sec": 0.0, "end_sec": 5.0, "duration_sec": 5.0,
+            "avg_confidence": 0.9, "intersection_box": [],
+        }]))
+        df = load_predictions(tmp_path)
+        for col in ("source_video_basename", "start_sec", "end_sec",
+                    "duration_sec", "avg_confidence", "intersection_box", "fps"):
+            assert col in df.columns
+ 
+ 
+# ===========================================================================
+# load_ground_truth
+# ===========================================================================
+ 
+class TestLoadGroundTruth:
+ 
+    def _write_csv(self, tmp_path: Path, rows: list[dict]) -> Path:
+        p = tmp_path / "gt.csv"
+        pd.DataFrame(rows).to_csv(p, index=False)
+        return p
+ 
+    def test_basic_load_and_column_rename(self, tmp_path):
+        p = self._write_csv(tmp_path, [{
+            "source_video_basename": "video.mp4",
+            "clip_start_in_source_sec": 1.0,
+            "clip_end_in_source_sec": 6.0,
+            "phase": "PREWEAN",
+            "pen": 2,
+            "day": 1,
+            "labelled_clip_relative_path": "zip/file.zip",
+        }])
+        df = load_ground_truth(p)
+        assert "start_sec"     in df.columns
+        assert "end_sec"       in df.columns
+        assert "weaning_stage" in df.columns
+        assert "clip_start_in_source_sec" not in df.columns
+        assert df.iloc[0]["start_sec"] == 1.0
+        assert df.iloc[0]["weaning_stage"] == "PREWEAN"
+ 
+    def test_returns_dataframe(self, tmp_path):
+        p = self._write_csv(tmp_path, [])
+        df = load_ground_truth(p)
+        assert isinstance(df, pd.DataFrame)
+ 
+    def test_multiple_rows(self, tmp_path):
+        p = self._write_csv(tmp_path, [
+            {"source_video_basename": "v1.mp4", "clip_start_in_source_sec": 0.0,
+             "clip_end_in_source_sec": 5.0, "phase": "PREWEAN", "pen": 2, "day": 1,
+             "labelled_clip_relative_path": "a.zip"},
+            {"source_video_basename": "v2.mp4", "clip_start_in_source_sec": 10.0,
+             "clip_end_in_source_sec": 20.0, "phase": "WEAN", "pen": 3, "day": 2,
+             "labelled_clip_relative_path": "b.zip"},
+        ])
+        df = load_ground_truth(p)
+        assert len(df) == 2
  
