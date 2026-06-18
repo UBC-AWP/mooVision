@@ -385,7 +385,7 @@ def run_models(
         build_metadata(
             video_path=video_path,
             model_path=model_path,
-            output_dir=output_dir,
+            output_dir=out,
             conf_threshold=conf_threshold,
             iou_threshold=iou_threshold,
             min_duration=min_duration,
