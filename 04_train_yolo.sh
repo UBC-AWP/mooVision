@@ -59,7 +59,7 @@ uv run --frozen --offline python scripts/training/training_yolo.py \
     --weights_dir=$WEIGHTS_DIR \
     --model=26 \
     --model_size=m \
-    --batch=64 \
+    --batch=128 \
     --epochs=100 \
     --patience=40 
 
