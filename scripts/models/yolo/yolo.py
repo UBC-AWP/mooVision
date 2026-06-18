@@ -229,7 +229,7 @@ def build_metadata(
 ):
     # Build metadata — same format as baseline.py
     print("Building Metadata...")
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    video_name = Path(video_path).stem
     # output_dir = ROOT_DIR / "results/metadata/yolo"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -379,12 +379,8 @@ def run_models(
 
     print()
 
-    n = 0
-    for events in [basic_events, seq_nms_events]:
-        if n == 0:
-            output_dir = Path(output_dir) / "yolo"
-        elif n == 1:
-            output_dir = Path(output_dir) / "seq-nms"
+    for events, subdir in [(basic_events, "yolo"), (seq_nms_events, "seq-nms")]:
+        out = Path(output_dir) / subdir
         print("building metadata...")
         build_metadata(
             video_path=video_path,
@@ -398,7 +394,6 @@ def run_models(
             total_frames=total_frames,
             events=events,
         )
-        n += 1
 
 
 def parse_args():
