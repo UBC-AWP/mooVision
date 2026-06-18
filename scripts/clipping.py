@@ -311,8 +311,13 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
                 boxed_path = out_folder / f"{base_name}_boxed.mp4"
                 if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
                     print(f"saved boxed to {boxed_path.name}")
-
-            print(f"saved to {out_path.name}")
+                    if out_path.exists():
+                        out_path.unlink()
+                else:
+                    print(f"Warning: Failed to annotate {out_path.name}, keeping unboxed version.")
+            else:
+                print(f"saved unboxed to {out_path.name}")
+                
             success += 1
             total_success += 1
 

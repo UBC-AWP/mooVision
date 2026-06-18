@@ -3,14 +3,18 @@ import json
 import os
 import cv2
 import numpy as np
+import pandas as pd
 from pathlib import Path
 from ultralytics import YOLO
+import sys
+sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
+from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR
 
 
 DEFAULT_MODEL = "yolo26x.pt"    
-DEFAULT_IOU_THRESHOLD = 0.1     # Minimum IoU to consider two boxes "overlapping"
-DEFAULT_MIN_DURATION = 1       # Minimum seconds of continuous overlap to flag an event
-DEFAULT_CONF_THRESHOLD = 0.5       # Minimum YOLO detection confidence to keep a box
+DEFAULT_IOU_THRESHOLD = 0.1    # Minimum IoU to consider two boxes "overlapping"
+DEFAULT_MIN_DURATION = 0.5       # Minimum seconds of continuous overlap to flag an event
+DEFAULT_CONF_THRESHOLD = 0.5      # Minimum YOLO detection confidence to keep a box
 TARGET_CLASS_NAME = "cow"
 DEFAULT_FRAME_SKIP = 1
 
@@ -222,13 +226,20 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
         FileNotFoundError: If video or model file cannot be found
         ValueError: If target class is not in model
     """
+    video_paths = read__10(video_paths)
     # Download and loading the model
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
 
-    video_paths = extract_video_path(video_paths)
+    # video_paths = extract_video_path(video_paths)
     # Validate inputs
     for video_path in video_paths:
+        expected_metadata_file = BASELINE_METADATA_DIR / f"{video_path.stem}_results.json"
+        
+        if expected_metadata_file.is_file():
+            print(f"Metadata already exists for {video_path.name}. Skipping detection.")
+            continue
+        
         print(video_path)
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Video file not found: {video_path}")
@@ -279,8 +290,8 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
 
             # Show the frame with bounding boxes drawn
             annotated_frame = results.plot()
-            cv2.imshow("Calf Detection", annotated_frame)
-            cv2.waitKey(1)  # 1ms delay, keeps the window responsive
+            # cv2.imshow("Calf Detection", annotated_frame)
+            # cv2.waitKey(1)  # 1ms delay, keeps the window responsive
 
             # Filter detections to only our target classes (cows/calves)
             boxes   = []
@@ -344,9 +355,28 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
         print(f"  OUTPUT:   {json_path}")
         print("═" * 50 + "\n")
     
-        # return metadata
+def read__10(data_path):
+    # Read the file and immediately slice it to the first 10 rows
+    df = pd.read_csv(data_path, index_col=0)
+    df = df.drop_duplicates(subset=["source_video_path"])
+    # df = df.head(10)
+    df = df.iloc[10:20]
+    if df.empty:
+        raise ValueError("df is empty.")
+    
+    video_paths = df["source_video_path"]
 
+    clean_paths = []
+    for video_path in video_paths:
 
+        cln_str = video_path.replace("\\", "/")
+        cln_path = Path(cln_str)
+        rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
+        abs_path = SOURCE_VIDEOS_DIR / rel_path
+        
+        clean_paths.append(abs_path)
+    return clean_paths
+    
 def parse_args():
     parser = argparse.ArgumentParser(
         description=f"Baseline cross-sucking detector using {DEFAULT_MODEL} bounding box overlap."
@@ -386,3 +416,4 @@ if __name__ == "__main__":
         frame_skip    = args.frame_skip,
     )
     # extract_video_path(args.video)
+    
