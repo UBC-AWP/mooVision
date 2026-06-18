@@ -2,7 +2,7 @@
 #SBATCH --account=st-nina-1-gpu
 #SBATCH --job-name=yolo_training
 #SBATCH --partition=gpu
-#SBATCH --gpus=2
+#SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -54,7 +54,7 @@ uv run --frozen --offline python scripts/training/training_yolo.py \
     --dataset="$TAR_PATH" \
     --project="$TARGET_PROJECT_DIR" \
     --name="$UNIQUE_RUN_NAME" \
-    --device="[0,1]" \
+    --device="0" \
     --workers=8 \
     --weights_dir=$WEIGHTS_DIR \
     --model=26 \
