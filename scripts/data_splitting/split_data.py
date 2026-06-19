@@ -10,9 +10,8 @@ from sklearn.model_selection import train_test_split
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from config import ROOT_DIR
+from config import ROOT_DIR, PROCESSED_INDEX
 
-PROCESSED_INDEX = ROOT_DIR / "data/processed/processed_clips_index.csv"
 OUTPUT_DIR = ROOT_DIR / "data" / "processed"
 
 
@@ -222,7 +221,8 @@ def random_shuffle_split(
     test_df = df[df["source_video_basename"].isin(test_sources)]
 
     # Save to csv
-    print("\nSaving Random Split...")
+    print("\n--------------------------------\n")
+    print("--- Saving Random Split ---\n")
     train_test_to_csv(train_df, val_df, test_df, target_output_dir, FORCE)
 
 
@@ -330,7 +330,8 @@ def time_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=T
     ]
 
     # Save to csv
-    print("\nSaving Time-Based Split...")
+    print("\n--------------------------------\n")
+    print("--- Saving Time-Based Split ---\n")
     train_test_to_csv(train_df, val_df, test_df, target_output_dir, FORCE)
 
 
@@ -434,7 +435,8 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
             f"You need at least 3 unique pens to rotate Train, Val, and Test assignments."
         )
 
-    print("\nSaving Pen-Based Splits...")
+    print("\n--------------------------------\n")
+    print("--- Saving Pen-Based Splits ---\n")
     for test_idx in range(total_pens):
         # Calculate indices using modulo to wrap around the ring smoothly
         val_idx = (test_idx + 1) % total_pens
@@ -456,6 +458,12 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
         test_df = df[df["pen"] == test_pen]
 
         # Save to csv
+        print(f"Generated Profile {test_pen}:")
+        print(f"  -> Save Directory: {target_output_dir / f"pen_{test_pen}"}")
+        print(f"  -> Train Pens:     {train_pens}")
+        print(f"  -> Validation Pen: [{val_pen}]")
+        print(f"  -> Testing Pen:    [{test_pen}]\n")
+
         train_test_to_csv(
             train_df,
             val_df,
@@ -464,11 +472,6 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
             FORCE,
         )
 
-        print(f"Generated Profile {test_pen}:")
-        print(f"  -> Save Directory: {target_output_dir / f"pen_{test_pen}"}")
-        print(f"  -> Train Pens:     {train_pens}")
-        print(f"  -> Validation Pen: [{val_pen}]")
-        print(f"  -> Testing Pen:    [{test_pen}]\n")
         print()
 
     print(
@@ -567,7 +570,8 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute
     unique_periods = sorted(df["phase"].dropna().unique())
     total_periods = len(unique_periods)
 
-    print("\nSaving Period-Based Splits...")
+    print("\n--------------------------------\n")
+    print("--- Saving Period-Based Splits ---\n")
     for test_idx in range(total_periods):
         # Calculate validation index by wrapping around the list smoothly using modulo (%)
         val_idx = (test_idx + 1) % total_periods
@@ -591,14 +595,15 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute
         # Fixed f-string quotes by using single quotes internally
         profile_save_dir = target_output_dir / f"{test_period}"
 
-        # Save to csv with all three distinct sets
-        train_test_to_csv(train_df, val_df, test_df, profile_save_dir, FORCE)
-
         print(f"Generated Profile {test_period}:")
         print(f"  -> Save Directory:   {profile_save_dir}")
         print(f"  -> Training Period:  {train_periods}")
         print(f"  -> Validation Period: [{val_period}]")
         print(f"  -> Testing Period:    [{test_period}]\n")
+
+        # Save to csv with all three distinct sets
+        train_test_to_csv(train_df, val_df, test_df, profile_save_dir, FORCE)
+
         print()
 
 
@@ -645,7 +650,8 @@ def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True
     test = test_df.iloc[17:19]  # 2 videos
 
     # Save to csv
-    print("\nSaving Demo Splits...")
+    print("\n--------------------------------\n")
+    print("--- Saving Demo Splits ---\n")
     train_test_to_csv(train, val, test, output_dir, FORCE)
 
 

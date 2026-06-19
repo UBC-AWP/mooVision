@@ -207,10 +207,11 @@ def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
         )
     else:
         print(f"[SUCCESS] Absolute dataset path locked to: {config_data['path']}")
-    return local_yaml_path
+    return local_yaml_path, on_cluster
 
 
 def train_yolo_model(
+    on_cluster: bool,
     yaml_path: str,
     name: str,
     project: Path | str,
@@ -347,24 +348,44 @@ def train_yolo_model(
     model = YOLO(final_model_target)
     print(f"Model loaded from: {final_model_target}")
 
-    # Train
-    model.train(
-        data=yaml_path,
-        name=name,
-        project=project,
-        device=device,
-        exist_ok=exist_ok,
-        epochs=epochs,
-        time=time,
-        patience=patience,
-        batch=batch,
-        imgsz=img_size,
-        save=save,
-        rect=rect,
-        workers=workers,
-        cache=cache,
-        **kwargs,
-    )
+    if on_cluster:
+        # Path to save in root dir defined in sockeye scripts.
+        model.train(
+            data=yaml_path,
+            name=name,
+            project=project,
+            device=device,
+            exist_ok=exist_ok,
+            epochs=epochs,
+            time=time,
+            patience=patience,
+            batch=batch,
+            imgsz=img_size,
+            save=save,
+            rect=rect,
+            workers=workers,
+            cache=cache,
+            **kwargs,
+        )
+    else:
+        # Save project to root dir
+        model.train(
+            data=yaml_path,
+            name=name,
+            project=ROOT_DIR / "data" / "yolo_training_runs" / project,
+            device=device,
+            exist_ok=exist_ok,
+            epochs=epochs,
+            time=time,
+            patience=patience,
+            batch=batch,
+            imgsz=img_size,
+            save=save,
+            rect=rect,
+            workers=workers,
+            cache=cache,
+            **kwargs,
+        )
 
     # return model, results
 
@@ -492,13 +513,14 @@ if __name__ == "__main__":
             final_device = args.device.strip()
 
     print("\nUnpacking tar file into dataset...\n")
-    node_yaml_config = setup_node_dataset(
+    node_yaml_config, on_cluster = setup_node_dataset(
         dataset=args.dataset,
     )
     print(f"\nData set unpacked at {node_yaml_config.parent}")
 
     print("Training YOLO model ...")
     train_yolo_model(
+        on_cluster=on_cluster,
         yaml_path=str(node_yaml_config),
         name=args.name,
         project=args.project,
@@ -519,4 +541,3 @@ if __name__ == "__main__":
     )
 
     print("Training complete!")
-    print("Best model saved to: runs/detect/MooVision/cross-sucking/weights/best.pt")
