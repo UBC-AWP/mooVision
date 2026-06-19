@@ -219,14 +219,15 @@ def train_yolo_model(
     model_size: int,
     device: str,
     workers: int,
-    exist_ok: bool = False,  # YOLO default
-    epochs: int = 100,  # YOLO default
-    time: float = None,  # YOLO default
-    patience: int = 50,  # YOLO default
-    batch: int | float = 16,  # YOLO default
-    img_size: int = 640,  # YOLO default
-    save: bool = True,  # YOLO default
-    rect: bool = True,  # Keep original aspect ratio
+    exist_ok: bool = False,
+    epochs: int = 100,
+    time: float = None,
+    patience: int = 50,
+    batch: int | float = 16,
+    img_size: int = 640,
+    save: bool = True,
+    rect: bool = True,
+    cache=False,
     **kwargs,
 ):
     """
@@ -361,7 +362,7 @@ def train_yolo_model(
         save=save,
         rect=rect,
         workers=workers,
-        cache=False,
+        cache=cache,
         **kwargs,
     )
 
@@ -467,6 +468,12 @@ def parse_args():
         action="store_true",
         help="Overwrite existing project.",
     )
+    parser.add_argument(
+        "--cache",
+        default=False,
+        action="store_true",
+        help="Cache images for faster testing.",
+    )
     return parser.parse_args()
 
 
@@ -508,6 +515,7 @@ if __name__ == "__main__":
         img_size=args.img_size,
         rect=args.not_rect,
         save=args.do_not_save,
+        cache=args.cache,
     )
 
     print("Training complete!")
