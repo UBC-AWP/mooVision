@@ -178,9 +178,10 @@ uv run scripts/models/yolo/yolo.py --video_path="sample_videos/cross_sucking_cli
 
    ```bash
        uv run python scripts/evaluation.py \
-           --predictions results/metadata/baseline/ \
-           --ground_truth data/raw/all_clips_index_raw.csv \
-           --output results/evaluation_report.json
+        --predictions results/metadata/baseline/ \
+        --ground_truth data/raw/all_clips_index_raw.csv \
+        --output results/evaluation_report.json \
+        --labelled_clips_dir /path/to/cross_sucking_labelled
    ```
 
 8. Clip frames from results:
