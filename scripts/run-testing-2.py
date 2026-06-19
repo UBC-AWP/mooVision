@@ -71,6 +71,7 @@ def run_testing(
         Which chunk to process (0-indexed). -1 runs all videos.
         Default is 0 (first 10% chunk). Used by SLURM array jobs to
         parallelise across subsets of the video list.
+        Must be in range [0, n_chunks).
     chunk_pct : float
         Fraction of total videos per chunk (default: 0.10 = 10%).
         Combined with `chunk` to determine which videos this job processes.
@@ -153,16 +154,29 @@ def run_testing(
     model = YOLO(model_path)
 
     idx = 0
-    if chunk == -1:
-        selected = unique_video_strings
-        print(f"Running models on all {len(selected)} videos...")
-    else:
-        chunk_size = max(1, int(len(unique_video_strings) * chunk_pct))
-        start = chunk * chunk_size
-        selected = unique_video_strings[start : start + chunk_size]
-        print(f"Running models on chunk {chunk} ({chunk_pct*100:.0f}%): videos {start}–{start + len(selected)} of {n_unique_paths}...")
-    
-    for n, video_str in enumerate(selected, 1):
+
+    # set number of chunks and number of uniquevideos
+    n = len(unique_video_strings)
+    n_chunks = round(1 / chunk_pct)
+
+    # throw error when chunk is out of bounds
+    if chunk < 0 or chunk >= n_chunks:
+        raise ValueError(f"chunk {chunk} is out of range for {n_chunks} chunks (0–{n_chunks-1})")
+
+    start = chunk * n // n_chunks
+    end = (chunk + 1) * n // n_chunks
+
+    # throw error when it starts more than the number of existing videos
+    if start >= n:
+        raise ValueError(f"chunk {chunk} starts at index {start} but only {n} videos exist")
+
+    selected = unique_video_strings[start:end]
+
+    # throw error when no video strings are selected
+    if not selected:
+        raise ValueError(f"chunk {chunk} is empty — check chunk_pct and total video count")
+
+    for video_str in selected:
         try:
 
             path = Path(video_str)

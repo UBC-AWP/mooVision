@@ -32,18 +32,18 @@ MODEL_NAMES=(
 )
 
 DATA_SPLITS=(
-    "data/processed/random/test.csv"
-    "data/processed/day_based/test.csv"
-    "data/processed/pen_based/pen_2/test.csv"
-    "data/processed/pen_based/pen_3/test.csv"
-    "data/processed/pen_based/pen_5/test.csv"
-    "data/processed/period_based/POSTWEAN/test.csv"
-    "data/processed/period_based/PREWEAN/test.csv"
-    "data/processed/period_based/WEAN/test.csv"
+    "random"
+    "day_based"
+    "pen_based/pen_2"
+    "pen_based/pen_3"
+    "pen_based/pen_5"
+    "period_based/POSTWEAN"
+    "period_based/PREWEAN"
+    "period_based/WEAN"
 )
 
 MODEL_PATH="/scratch/st-nina-1/moovision/yolo_training_runs/${MODEL_NAMES[$PAIR_IDX]}/weights/best.pt"
-DATA_PATH="${DATA_SPLITS[$PAIR_IDX]}"
+DATA_PATH="data/processed/${DATA_SPLITS[$PAIR_IDX]}"/test.csv
 
 echo "========================================================"
 echo "TASK ${SLURM_ARRAY_TASK_ID}: pair=${PAIR_IDX} chunk=${CHUNK_IDX} chunk_pct=0.10"
