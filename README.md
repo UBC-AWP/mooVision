@@ -286,10 +286,11 @@ The evaluation script compares baseline model predictions against ground truth a
 1. Loads all baseline prediction JSON files from the results directory
 2. Loads the ground truth annotations from the processed clips index CSV
 3. Matches predictions to ground truth events using temporal IoU per video
-4. Computes precision, recall, F1, F2 and bounding box IoU at the event level
-5. Computes temporal IoU at the sequence level
-6. Stratifies all results by pen and weaning stage
-7. Saves a full evaluation report as a JSON file
+4. Computes frame-level bounding box IoU across all predicted frames independently of temporal matching
+5. Computes precision, recall, F1, F2 and bounding box IoU at the event level
+6. Computes temporal IoU at the sequence level
+7. Stratifies all results by pen and weaning stage
+8. Saves a full evaluation report as a JSON file
 
 ### Input
 
@@ -315,6 +316,8 @@ Results are saved to the path specified by `--output`.
 | `f2` | Recall-weighted score — prioritizes not missing real events |
 | `avg_bbox_iou` | Average spatial overlap between predicted and ground truth boxes |
 | `avg_temporal_iou` | Average time window overlap between predictions and ground truth |
+| `frame_level_bbox_iou` | Average spatial accuracy of bounding boxes across ALL predicted frames, independent of event matching |
+| `labelled_clips_dir` | Path to CVAT annotation zip files — required for bbox IoU computation |
 | `by_pen` | All metrics broken down by pen |
 | `by_weaning_stage` | All metrics broken down by weaning stage |
 
@@ -340,6 +343,17 @@ Results are saved to the path specified by `--output`.
         --temporal_iou_threshold 0.4
 ```
 
+3. With bbox IoU using CVAT annotations:
+
+```bash
+    uv run python scripts/evaluation.py \
+    --predictions results/metadata/baseline/ \
+    --ground_truth data/raw/all_clips_index_raw.csv \
+    --output results/evaluation_report.json \
+    --labelled_clips_dir /path/to/cross_sucking_labelled
+```
+
+
 ### Arguments
 
 | Argument | Type | Default | Description |
@@ -349,6 +363,8 @@ Results are saved to the path specified by `--output`.
 | `--output` | str | - | Path to save evaluation report JSON (optional) |
 | `--confidence_threshold` | float | `0.5` | Minimum confidence score to consider a prediction |
 | `--temporal_iou_threshold` | float | `0.5` | Minimum temporal IoU to count a prediction as a match |
+| `--labelled_clips_dir` | str | None | Path to CVAT annotation zip files for bbox IoU. Optional |
+| `--fps` | float | `30` | Frames per second of source videos |
 
 ### Tuning Tips
 
