@@ -83,32 +83,45 @@ def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
                     f"[ERROR] Native tar extraction failed for task {slurm_task_id}: {error_msg}"
                 )
 
-        # ────────────────────────────────────────────────────────────────
-        # ADDED: POST-EXTRACTION VALIDATION CHECKS
-        # ────────────────────────────────────────────────────────────────
+        # POST-EXTRACTION VALIDATION CHECKS
         print(
             f"[INFO] Task {slurm_task_id}: Commencing dataset integrity validation..."
         )
 
-        # Step A: Dynamically check for standard YOLO data splits
-        valid_splits = [
+        # Dynamically check for standard YOLO data splits: images and labels
+        valid_folders = [
             d.name
             for d in isolated_node_dir.iterdir()
-            if d.is_dir() and not d.name.startswith(".") and d.name in ["train", "val"]
+            if d.is_dir()
+            and not d.name.startswith(".")
+            and d.name in ["images", "labels"]
         ]
 
-        if not valid_splits:
+        # Should return "images" and "labels", else clean for next run.
+        if not valid_folders:
             if isolated_node_dir.exists():
                 shutil.rmtree(isolated_node_dir)
             raise RuntimeError(
-                f"[ERROR] Validation Failed: No valid YOLO folders ('train'/'val') found inside "
+                f"[ERROR] Validation Failed: No valid YOLO folders ('images'/'labels') found inside "
                 f"{isolated_node_dir}. Verify if '--strip-components=1' fits your archive structure."
             )
 
+        # Path(tmp_dir_env) / f"job_{slurm_job_id}_task_{slurm_task_id}_{base_name}" / "images" or "labels"
+        img_root_dir = isolated_node_dir / valid_folders[0]
+        lbl_root_dir = isolated_node_dir / valid_folders[1]
+
+        # Should return "train" and "val"
+        valid_splits = [
+            s.name
+            for s in img_root_dir.iterdir()
+            if s.is_dir() and not s.name.startswith(".") and s.name in ["train", "val"]
+        ]
         # Step B: Traverse each found data split to audit structural files
         for split in valid_splits:
-            img_dir = isolated_node_dir / "images" / split
-            lbl_dir = isolated_node_dir / "labels" / split
+
+            # ... / images / train or val
+            img_dir = img_root_dir / split
+            lbl_dir = lbl_root_dir / split
 
             if not img_dir.exists() or not lbl_dir.exists():
                 if isolated_node_dir.exists():
@@ -194,10 +207,11 @@ def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
         )
     else:
         print(f"[SUCCESS] Absolute dataset path locked to: {config_data['path']}")
-    return local_yaml_path
+    return local_yaml_path, on_cluster
 
 
 def train_yolo_model(
+    on_cluster: bool,
     yaml_path: str,
     name: str,
     project: Path | str,
@@ -206,14 +220,15 @@ def train_yolo_model(
     model_size: int,
     device: str,
     workers: int,
-    exist_ok: bool = False,  # YOLO default
-    epochs: int = 100,  # YOLO default
-    time: float = None,  # YOLO default
-    patience: int = 50,  # YOLO default
-    batch: int | float = 16,  # YOLO default
-    img_size: int = 640,  # YOLO default
-    save: bool = True,  # YOLO default
-    rect: bool = True,  # Keep original aspect ratio
+    exist_ok: bool = False,
+    epochs: int = 100,
+    time: float = None,
+    patience: int = 50,
+    batch: int | float = 16,
+    img_size: int = 640,
+    save: bool = True,
+    rect: bool = True,
+    cache=False,
     **kwargs,
 ):
     """
@@ -333,24 +348,44 @@ def train_yolo_model(
     model = YOLO(final_model_target)
     print(f"Model loaded from: {final_model_target}")
 
-    # Train
-    model.train(
-        data=yaml_path,
-        name=name,
-        project=project,
-        device=device,
-        exist_ok=exist_ok,
-        epochs=epochs,
-        time=time,
-        patience=patience,
-        batch=batch,
-        imgsz=img_size,
-        save=save,
-        rect=rect,
-        workers=workers,
-        cache=False,
-        **kwargs,
-    )
+    if on_cluster:
+        # Path to save in root dir defined in sockeye scripts.
+        model.train(
+            data=yaml_path,
+            name=name,
+            project=project,
+            device=device,
+            exist_ok=exist_ok,
+            epochs=epochs,
+            time=time,
+            patience=patience,
+            batch=batch,
+            imgsz=img_size,
+            save=save,
+            rect=rect,
+            workers=workers,
+            cache=cache,
+            **kwargs,
+        )
+    else:
+        # Save project to root dir
+        model.train(
+            data=yaml_path,
+            name=name,
+            project=ROOT_DIR / "data" / "yolo_training_runs" / project,
+            device=device,
+            exist_ok=exist_ok,
+            epochs=epochs,
+            time=time,
+            patience=patience,
+            batch=batch,
+            imgsz=img_size,
+            save=save,
+            rect=rect,
+            workers=workers,
+            cache=cache,
+            **kwargs,
+        )
 
     # return model, results
 
@@ -454,6 +489,12 @@ def parse_args():
         action="store_true",
         help="Overwrite existing project.",
     )
+    parser.add_argument(
+        "--cache",
+        default=False,
+        action="store_true",
+        help="Cache images for faster testing.",
+    )
     return parser.parse_args()
 
 
@@ -472,13 +513,14 @@ if __name__ == "__main__":
             final_device = args.device.strip()
 
     print("\nUnpacking tar file into dataset...\n")
-    node_yaml_config = setup_node_dataset(
+    node_yaml_config, on_cluster = setup_node_dataset(
         dataset=args.dataset,
     )
     print(f"\nData set unpacked at {node_yaml_config.parent}")
 
     print("Training YOLO model ...")
     train_yolo_model(
+        on_cluster=on_cluster,
         yaml_path=str(node_yaml_config),
         name=args.name,
         project=args.project,
@@ -495,7 +537,7 @@ if __name__ == "__main__":
         img_size=args.img_size,
         rect=args.not_rect,
         save=args.do_not_save,
+        cache=args.cache,
     )
 
     print("Training complete!")
-    print("Best model saved to: runs/detect/MooVision/cross-sucking/weights/best.pt")
