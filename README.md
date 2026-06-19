@@ -42,7 +42,7 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 2. Edit `.env` and set your local data path, for example:
 
    ```bash
-   ROOT_DIR=/path/to/your/root/directory
+   ROOT_DIR=/path/to/your/one_drive/Moovision_directory
    LOCAL_DIR=/path/to/your/local/directory
    ```
 
@@ -83,7 +83,7 @@ After configuring you `.env` file, run the following commands from your terminal
 4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
 
    ```bash
-   uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --device="..."
+   uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --device="..." --epochs=1
    ```
 
 5. Run baseline on testing set:
