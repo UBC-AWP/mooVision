@@ -11,6 +11,10 @@ Cross-sucking (here: sucking directed at various body parts of other calves) is 
 - outputs predicted event windows and metadata (start/end time, confidence, pen, weaning stage, day)
 - optionally generates clipped videos for review and evaluation
 
+## Requirements (Data Collection)
+
+- Data index file such as `all_clips_index.csv` listing cross-sucking clips, and associated data...
+
 ## Repository Structure (high level)
 
 - `src/`: library code (config, preprocessing, baseline inference, evaluation)
@@ -25,9 +29,28 @@ Cross-sucking (here: sucking directed at various body parts of other calves) is 
 This project uses `uv` for package management.
 
 1. Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2. Clone the repo and cd into it
-3. Run `uv sync` to install all dependencies
-4. Run scripts with `uv run python <script.py>`
+
+2. Move into the folder where you wish to download the repo. Clone the repo.
+
+    ```bash
+    git clone git@github.com:UBC-AWP/mooVision.git
+    ```
+
+3. Cd into the repo.
+
+    ```bash
+    cd mooVision
+    ```
+
+4. Run `uv sync` to install all dependencies.
+
+    ```bash
+    uv sync
+    ```
+
+5. Run scripts with `uv run python <script.py>`
+
+---
 
 ## Local `.env` configuration (required)
 
@@ -42,20 +65,63 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 2. Edit `.env` and set your local data path, for example:
 
    ```bash
-   ROOT_DIR=/path/to/your/one_drive/Moovision_directory
+   ROOT_DIR=/path/to/your/root/directory
    LOCAL_DIR=/path/to/your/local/directory
    ```
 
 3. `.env` is ignored by git (do not commit). If you need to change what variables exist, update `.env.example` instead.
 
+## OneDrive Sync
+
+UBC offers OneDrive accounts for researchers and research groups. If your data is hosted on OneDrive you will need to sync your account to your local computer.
+
+1. Download the OneDrive App.
+
+2. Sign in with the email account connected to the OneDrive folder hosting your data. For UBC researchers this is your UBC email.
+
+3. Follow the prompts to sync your folder. Alternatively, open OneDrive in your browser, move into the folder you want to sync, and click sync in the top toolbar.
+
 ---
+
+## Configuring your repository in `config.py`
+
+We use `config.py` to configure paths to video and label directories. By default, the config file is setup for source videos, cross-sucking clips, and annotation labels existing in the following data structure:
+
+```plaintext
+mooVision/
+└── data/
+    ├── raw_cross_sucking_datalog/
+    │   └── videos/                          <- Raw field footages from cameras.
+    │
+    ├── cross_sucking_clips/                 <- Curated video segments containing cross-sucking events.
+    │   └── all_clips_index.csv              <- Index file listing curated video segments containing cross-sucking events and associated metadata.
+    │
+    └── cross_sucking_labelled/              <- Ground-truth frames and splits as zipped files.
+     
+```
+
+To configure the project for your data structure layout, change the following variables within the `config.py` module:
+
+```plaintext
+# Videos and labels
+UNLABELLED_CLIPS_DIR = ROOT_DIR / "<cross_sucking_clips_folder>"
+LABELLED_CLIPS_DIR = ROOT_DIR / "<cross_sucking_labels_folder>"
+SOURCE_VIDEOS_DIR = ROOT_DIR / "<source_videos_folder>"
+```
+
+To change the location of your data index file, edit the following:
+
+```plaintext
+# Raw and Processed Index Paths
+INDEX_PATH = Path/to/your/index/file/<file>
+```
 
 ## Pipeline Diagram
 <img src="img/pipeline_diagram.png" width="370"/>
 
-## Running the Pipeline (demo version)
+## Running the Pipeline (demo)
 
-After configuring you `.env` file, run the following commands from your terminal in the MooVision root directory:
+After configuring you `.env` and config files, run the following commands from your terminal in the MooVision root directory to move through a local demo of the project workflow. For more information see, project documentation.
 
 1. Read in Raw index, and Processed video indexes.
 
@@ -63,13 +129,13 @@ After configuring you `.env` file, run the following commands from your terminal
    uv run scripts/data_reading/read_all_clips_index.py --FORCE
    ```
 
-2. Split Data into train and test splits.
+2. Split Data into train and test splits. This outputs the 8 main train/val/test splits tested to the `data/processed/` folder within the root directory. For more information, see the project documentation.
 
    ```bash
    uv run scripts/data_splitting/split_data.py --FORCE
    ```
 
-3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set)
+3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set). Note that the train_path, val_path, and output_path are relative to the root directory `ROOT_DIR` here. Here we run only the demo training set for efficiency purposes as running all 8 splits is a long process. A similar command can be used to run any of the other splits, for more information see project documentation.
 
    ```bash
    uv run scripts/preprocessing/preprocessing_yolo.py \
@@ -80,10 +146,10 @@ After configuring you `.env` file, run the following commands from your terminal
    --FORCE
    ```
 
-4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
+4. Train YOLO object detection model. Note: change `--device="cpu"` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long. This will save the model to `data/yolo_training_runs/project`. For more information see the project documentation.
 
    ```bash
-   uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --device="..." --epochs=1
+   uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --project="pipeline_demo" --name="demo_01" --device="cpu"
    ```
 
 5. Run baseline on testing set:

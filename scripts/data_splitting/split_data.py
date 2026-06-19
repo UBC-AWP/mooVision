@@ -12,7 +12,6 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from config import ROOT_DIR
 
-PROCESSED_INDEX = ROOT_DIR / "data/processed/processed_clips_index.csv"
 OUTPUT_DIR = ROOT_DIR / "data" / "processed"
 
 
