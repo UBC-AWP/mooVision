@@ -99,7 +99,7 @@ def load_ground_truth(path: Path) -> pd.DataFrame:
     file for bounding box evaluation.
 
     Key columns used for evaluation:
-        - source_video_basename: links ground truth to predictions
+        - source_video_basename:    links ground truth to predictions
         - clip_start_in_source_sec: CS event start time in source video
         - clip_end_in_source_sec:   CS event end time in source video
         - pen:                      which pen the calf was in
@@ -470,6 +470,8 @@ def compute_frame_level_bbox_iou(
     """
     all_ious = []
 
+    print(f"Processing {predictions['source_video_basename'].nunique()} unique videos from predictions")
+
     # Process each source video that appears in predictions
     for video in predictions["source_video_basename"].unique():
         video_preds = predictions[
@@ -482,12 +484,14 @@ def compute_frame_level_bbox_iou(
         ].to_dict("records")
 
         if not video_gt:
+            print(f"{video} -> no matching ground truth rows, skipping")
             continue
 
         # Load all ground truth boxes for this video from zip files
         all_gt_boxes = []
         for gt_event in video_gt:
             if not gt_event.get("labelled_clip_relative_path"):
+                print(f"{video} -> xxx")
                 continue
             clip_start_frame = int(gt_event["start_sec"] * fps)
             gt_boxes = load_gt_boxes_from_zip(
@@ -499,7 +503,10 @@ def compute_frame_level_bbox_iou(
             )
             all_gt_boxes.extend(gt_boxes)
 
+        print(f"{video} -> {len(video_gt)} gt clips, {len(all_gt_boxes)} total gt boxes loaded, {len(video_preds)} predicted events")
+
         if not all_gt_boxes:
+            print(f"{video} -> no gt boxes available, skipping")
             continue
 
         # Compute bbox IoU for each predicted event's frames
@@ -513,6 +520,8 @@ def compute_frame_level_bbox_iou(
             )
             if iou > 0:
                 all_ious.append(iou)
+
+    print(f"Matched {len(all_ious)} predicted events with non-zero bbox IoU")
 
     return round(float(np.mean(all_ious)), 4) if all_ious else 0.0
 
