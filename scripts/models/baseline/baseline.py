@@ -11,7 +11,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
 from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW,READ_DF_PATH
 
-
+DEFAULT_PATH = READ_DF_PATH / "day_based" / "test.csv"
 DEFAULT_MODEL = "yolo26x.pt"    
 DEFAULT_IOU_THRESHOLD = 0.1    # Minimum IoU to consider two boxes "overlapping"
 DEFAULT_MIN_DURATION = 0.5       # Minimum seconds of continuous overlap to flag an event
@@ -201,7 +201,7 @@ def extract_video_path(video_path):
     # 
     return [video_path.joinpath(f.name) for f in video_path.glob("*.mp4")]
 
-def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_duration, frame_skip):
+def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_duration, frame_skip , split_name = ["day_based", "pen_based", "period_based","pipeline_testing"]):
     """
     Full detection pipeline:
         load model → open video → detect calves per frame →
@@ -423,10 +423,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=f"Baseline cross-sucking detector using {DEFAULT_MODEL} bounding box overlap."
     )
-    # parser.add_argument("--video",
-    #                     required=True, 
-    #                     default=None,
-    #                     help="Path to input video file")
+    parser.add_argument("--video",
+                        default=DEFAULT_PATH,
+                        help="Path to input video file")
     parser.add_argument("--model", 
                         default=DEFAULT_MODEL, 
                         help=f"YOLO weights file (default: {DEFAULT_MODEL})")
@@ -449,10 +448,10 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    day_path = READ_DF_PATH / "day_based" / "test.csv"
+    
     args = parse_args()
     run_detection(
-        video_paths    = day_path,
+        video_paths   = args.video,
         model_path    = args.model,
         iou_threshold = args.iou_threshold,
         conf_threshold= args.conf_threshold,
