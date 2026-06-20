@@ -498,7 +498,30 @@ def load_all_splits(data_root: Path) -> list[tuple[str, list[Path]]]:
         except ValueError as e:
             print(f"[WARN] Split '{name}' skipped: {e}")
     return results
-   
+
+def resolve_output_path(video_path: Path, split_name: str) -> Path:
+    """
+    Resolve the output JSON path for a given video under the baseline results directory.
+ 
+    Mirrors the source video's Pen/Stage/Day directory hierarchy under:
+        BASELINE_METADATA_DIR_NEW / <split_name> / <Pen> / <Stage> / <Day> /
+ 
+    The relative parent is extracted from the video path by matching everything
+    after the 'videos' directory separator. Falls back to a flat output directory
+    if the expected pattern is not found.
+ 
+    Args:
+        video_path: Absolute path to the source video file.
+        split_name: Name of the data split (e.g. 'day_based').
+ 
+    Returns:
+        Full Path to the output JSON file (not yet created).
+    """
+    m = re.search(r"videos[\\/](.*)$", str(video_path))
+    rel_parent = Path(m.group(1)).parent if m else Path()
+    output_dir = BASELINE_METADATA_DIR_NEW / split_name / rel_parent
+    return output_dir / f"{video_path.stem}_results.json"   
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description=f"Baseline cross-sucking detector using {DEFAULT_MODEL} bounding box overlap."
