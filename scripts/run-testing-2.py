@@ -23,6 +23,274 @@ from scripts.models.seq_NMS.seq_NMS import (
 
 DEFAULT_FRAME_SKIP = 10
 
+def load_test_csv(data_path: str) -> pd.DataFrame:
+    """
+    Load and validate the test.csv for a given split.
+ 
+    Parameters
+    ----------
+    data_path : str
+        Relative path to test.csv inside ROOT_DIR.
+ 
+    Returns
+    -------
+    pd.DataFrame
+        The loaded test set.
+ 
+    Raises
+    ------
+    FileNotFoundError
+        If the test.csv at `data_path` does not exist under ROOT_DIR.
+    ValueError
+        If the test.csv is empty after loading.
+    """
+    full_path = ROOT_DIR / data_path
+    if not full_path.exists():
+        raise FileNotFoundError(f"Could not find file: {full_path}")
+ 
+    df = pd.read_csv(full_path, index_col=0)
+    if df.empty:
+        raise ValueError("df is empty.")
+ 
+    return df
+
+def get_split_label(data_path: str) -> str:
+    """
+    Derive the split label from a test.csv path.
+ 
+    The split label is the folder path between data/processed/ and
+    test.csv, e.g. data/processed/pen_based/pen_2/test.csv -> pen_based/pen_2.
+ 
+    Parameters
+    ----------
+    data_path : str
+        Relative path to test.csv inside ROOT_DIR.
+ 
+    Returns
+    -------
+    str
+        The split label.
+    """
+    return str(Path(data_path).parent.relative_to("data/processed"))
+
+def clean_video_paths(video_paths: pd.Series) -> list[str]:
+    """
+    Resolve raw video paths from test.csv into absolute, existing,
+    de-duplicated source video paths.
+ 
+    Parameters
+    ----------
+    video_paths : pd.Series
+        Raw `source_video_path` column from test.csv.
+ 
+    Returns
+    -------
+    list[str]
+        Sorted, unique, absolute video path strings that exist on disk.
+    """
+    print("Cleaning Video Paths ...")
+    print(f"Videos to clean: {len(video_paths)}")
+ 
+    clean_paths = []
+    for video_path in video_paths:
+        cln_str = video_path.replace("\\", "/")
+        cln_path = Path(cln_str)
+        rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
+        abs_path = SOURCE_VIDEOS_DIR / rel_path
+ 
+        # Do not add video if path does not exist
+        try:
+            if not abs_path.exists():
+                continue
+            clean_paths.append(abs_path)
+        except Exception as e:
+            print(f"{e}")
+ 
+    unique_video_strings = sorted(list(set(str(p) for p in clean_paths)))
+ 
+    difference = len(unique_video_strings) - len(video_paths)
+    print(f"{difference} videos removed.")
+ 
+    return unique_video_strings
+ 
+ 
+def select_chunk(unique_video_strings: list[str], chunk: int, chunk_pct: float) -> list[str]:
+    """
+    Select the slice of videos this chunk/array task is responsible for.
+ 
+    Parameters
+    ----------
+    unique_video_strings : list[str]
+        Full list of unique video paths for the split.
+    chunk : int
+        Which chunk to process (0-indexed).
+    chunk_pct : float
+        Fraction of total videos per chunk (e.g. 0.10 = 10%).
+ 
+    Returns
+    -------
+    list[str]
+        The subset of video paths assigned to this chunk.
+ 
+    Raises
+    ------
+    ValueError
+        If `chunk` is out of range for the computed number of chunks,
+        if `chunk` starts beyond the available videos, or if the
+        resulting selection is empty.
+    """
+    # set number of chunks and number of unique videos
+    n = len(unique_video_strings)
+    n_chunks = round(1 / chunk_pct)
+
+    # throw error when chunk is out of bounds
+    if chunk < 0 or chunk >= n_chunks:
+        raise ValueError(f"chunk {chunk} is out of range for {n_chunks} chunks (0–{n_chunks-1})")
+
+    start = chunk * n // n_chunks
+    end = (chunk + 1) * n // n_chunks
+
+    # throw error when it starts more than the number of existing videos
+    if start >= n:
+        raise ValueError(f"chunk {chunk} starts at index {start} but only {n} videos exist")
+
+    selected = unique_video_strings[start:end]
+
+    # throw error when no video strings are selected
+    if not selected:
+        raise ValueError(f"chunk {chunk} is empty — check chunk_pct and total video count")
+ 
+    return selected
+ 
+ 
+def load_yolo_model(model_path: str) -> tuple[YOLO, str]:
+    """
+    Resolve a model weights path and load it as a YOLO model.
+ 
+    Parameters
+    ----------
+    model_path : str
+        Path to YOLO weights file (e.g. best.pt). May be relative to
+        ROOT_DIR or absolute.
+ 
+    Returns
+    -------
+    tuple[YOLO, str]
+        The loaded model, and the resolved absolute path string used to load it.
+ 
+    Raises
+    ------
+    FileNotFoundError
+        If the model weights file does not exist.
+    """
+    resolved_path = Path(model_path)
+    if not resolved_path.is_absolute():
+        resolved_path = ROOT_DIR / resolved_path
+    if not resolved_path.exists():
+        raise FileNotFoundError(
+            f"Could not find model at {resolved_path} (checked relative to ROOT_DIR if not absolute)."
+        )
+ 
+    resolved_path = str(resolved_path)
+    print(f"[INFO] Loading model: {resolved_path}")
+    model = YOLO(resolved_path)
+ 
+    return model, resolved_path
+ 
+ 
+def check_processed(video_path: Path, output_dir: Path) -> bool:
+    """
+    Check whether a video already has both yolo and seq-nms results.
+ 
+    Parameters
+    ----------
+    video_path : Path
+        Path to the source video.
+    output_dir : Path
+        Split-level output directory containing yolo/ and seq-nms/ subfolders.
+ 
+    Returns
+    -------
+    bool
+        True if both results JSON files already exist.
+    """
+    yolo_json = output_dir / "yolo" / f"{video_path.stem}_results.json"
+    seq_nms_json = output_dir / "seq-nms" / f"{video_path.stem}_results.json"
+    return yolo_json.exists() and seq_nms_json.exists()
+ 
+
+def run_single_video(
+    video_str: str,
+    model: YOLO,
+    model_path: str,
+    output_dir: Path,
+    conf_threshold: float,
+    iou_threshold: float,
+    min_duration: float,
+    buffer: int,
+    frame_skip: int,
+    target_class: str,
+    overwrite: bool,
+) -> str:
+    """
+    Run yolo + seq-nms models on a single video, skipping if already
+    processed (unless `overwrite` is set).
+ 
+    Parameters
+    ----------
+    video_str : str
+        Absolute path to the source video, as a string.
+    model : YOLO
+        Pre-loaded YOLO model instance.
+    model_path : str
+        Resolved path string to the model weights (passed through to run_models).
+    output_dir : Path
+        Split-level output directory.
+    conf_threshold : float
+        Minimum YOLO detection confidence to keep a box.
+    iou_threshold : float
+        Minimum IoU overlap threshold.
+    min_duration : float
+        Minimum event duration in seconds.
+    buffer : int
+        Seconds to wait without detection before ending an event.
+    frame_skip : int
+        Process every Nth frame.
+    target_class : str
+        Target class name for detection.
+    overwrite : bool
+        If False, skip videos that already have results. If True, reprocess.
+ 
+    Returns
+    -------
+    str
+        One of "skipped", "processed", or "failed".
+    """
+    path = Path(video_str)
+ 
+    if check_processed(path, output_dir) and not overwrite:
+        print(f"Skipping {path.stem} — already processed.")
+        return "skipped"
+ 
+    try:
+        run_models(
+            model=model,
+            model_path=model_path,
+            video_path=video_str,
+            output_dir=output_dir,
+            conf_threshold=conf_threshold,
+            iou_threshold=iou_threshold,
+            min_duration=min_duration,
+            buffer=buffer,
+            frame_skip=frame_skip,
+            target_class=target_class,
+            show_video=False,
+        )
+        return "processed"
+    except Exception as e:
+        print(f"Skipped {path.stem}: {e!r}")
+        return "failed"
+ 
 
 def run_testing(
     model_path: str,
@@ -85,14 +353,6 @@ def run_testing(
     None
         This function reads to disk and does not return anything.
 
-    Raises
-    ------
-    FileNotFoundError
-        If the test.csv at `data_path` does not exist under ROOT_DIR.
-        If the model weights file at `model_path` does not exist.
-    ValueError
-        If the test.csv is empty after loading.
-
     Examples
     --------
     run_testing(
@@ -107,109 +367,49 @@ def run_testing(
 
     """
     # Read in Data
-    if not (ROOT_DIR / data_path).exists():
-        raise FileNotFoundError(f"Could not find file: {ROOT_DIR / data_path}")
-    df = pd.read_csv(ROOT_DIR / data_path, index_col=0)
-
-    if df.empty:
-        raise ValueError("df is empty.")
+    df = load_test_csv(data_path)
 
     # the split label is the folder path between data/processed/ and test.csv
     # e.g. data/processed/pen_based/pen_2/test.csv  ->  pen_based/pen_2
-    split_label = str(Path(data_path).parent.relative_to("data/processed"))
+    split_label = get_split_label(data_path)
     print(f"\nSplit Label: {split_label}")
 
     # Clean and Build Video Paths
     video_paths = df["source_video_path"]
-    print("Cleaning Video Paths ...")
-    print(f"Videos to clean: {len(video_paths)}")
-    clean_paths = []
-    for video_path in video_paths:
-        cln_str = video_path.replace("\\", "/")
-        cln_path = Path(cln_str)
-        rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
-        abs_path = SOURCE_VIDEOS_DIR / rel_path
+    unique_video_strings = clean_video_paths(video_paths)
 
-        # Do not add video if path does not exist
-        try:
-            if not abs_path.exists():
-                continue
-            clean_paths.append(abs_path)
-        except Exception as e:
-            print(f"{e}")
+    # Load model
+    model, resolved_model_path = load_yolo_model(model_path)
 
-    unique_video_strings = sorted(list(set(str(p) for p in clean_paths)))
-    n_unique_paths = len(unique_video_strings)
-    n_video_paths = len(video_paths)
+    # Select chunks
+    selected = select_chunk(unique_video_strings, chunk, chunk_pct)
 
-    difference = n_unique_paths - n_video_paths
-    print(f"{difference} videos removed.")
-
+    # Prepare the output directory
     output_dir = ROOT_DIR / "results" / "metadata" / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    model_path = Path(model_path)
-    if not model_path.is_absolute():
-        model_path = ROOT_DIR / model_path
-    if not model_path.exists():
-        raise FileNotFoundError(f"Could not find model at {model_path} (checked relative to ROOT_DIR if not absolute).")
-    model_path = str(model_path)
-    print(f"[INFO] Loading model: {model_path}")
-    model = YOLO(model_path)
-
-    idx = 0
-
-    # set number of chunks and number of uniquevideos
-    n = len(unique_video_strings)
-    n_chunks = round(1 / chunk_pct)
-
-    # throw error when chunk is out of bounds
-    if chunk < 0 or chunk >= n_chunks:
-        raise ValueError(f"chunk {chunk} is out of range for {n_chunks} chunks (0–{n_chunks-1})")
-
-    start = chunk * n // n_chunks
-    end = (chunk + 1) * n // n_chunks
-
-    # throw error when it starts more than the number of existing videos
-    if start >= n:
-        raise ValueError(f"chunk {chunk} starts at index {start} but only {n} videos exist")
-
-    selected = unique_video_strings[start:end]
-
-    # throw error when no video strings are selected
-    if not selected:
-        raise ValueError(f"chunk {chunk} is empty — check chunk_pct and total video count")
-
-    for video_str in selected:
-        try:
-
-            path = Path(video_str)
-            yolo_json = output_dir / "yolo" / f"{path.stem}_results.json"
-            seq_nms_json = output_dir / "seq-nms" / f"{path.stem}_results.json"
-            if yolo_json.exists() and seq_nms_json.exists() and not overwrite:
-                print(f"Skipping {path.stem} — already processed.")
-                idx += 1
-                continue
-
-            print(f"Running {path.stem} {idx}/{len(selected)}")
-            run_models(
-                model=model,
-                model_path=model_path,
-                video_path=str(path),
-                output_dir=output_dir,
-                conf_threshold=conf_threshold,
-                iou_threshold=iou_threshold,
-                min_duration=min_duration,
-                buffer=buffer,
-                frame_skip=frame_skip,
-                target_class=target_class,
-                show_video=False,
-            )
-            idx += 1
-
-        except Exception:
-            print(f"Skipped {path.stem}")
-            continue
+    counts = {"processed": 0, "skipped": 0, "failed": 0}
+    for i, video_str in enumerate(selected):
+        print(f"Running {Path(video_str).stem} {i}/{len(selected)}")
+        status = run_single_video(
+            video_str=video_str,
+            model=model,
+            model_path=resolved_model_path,
+            output_dir=output_dir,
+            conf_threshold=conf_threshold,
+            iou_threshold=iou_threshold,
+            min_duration=min_duration,
+            buffer=buffer,
+            frame_skip=frame_skip,
+            target_class=target_class,
+            overwrite=overwrite,
+        )
+        counts[status] += 1
+ 
+    print(
+        f"\nDone. processed={counts['processed']} "
+        f"skipped={counts['skipped']} failed={counts['failed']}"
+    )
 
 
 def parse_args():
