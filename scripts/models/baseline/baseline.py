@@ -292,7 +292,10 @@ def detect_video(
     frame_indices  = []
     frame_idx      = 0
  
-    print("[INFO] Processing frames...")
+    print(f"[INFO] Processing: {video_path.name}")
+    print(f"       frames={total_frames} | fps={fps:.1f} | skip=1/{frame_skip} "
+          f"(~{total_frames // frame_skip} frames to process)")
+    print("[INFO] Running detection...")
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -300,6 +303,7 @@ def detect_video(
  
         if frame_idx % frame_skip != 0:
             frame_idx += 1
+            skipped += 1
             continue
  
         results = model(frame, conf=conf_threshold, verbose=False)[0]
@@ -323,11 +327,18 @@ def detect_video(
         frame_indices.append(frame_idx)
         frame_interbox.append(inter_box if overlap_detected else None)
         frame_idx += 1
+        processed += 1
  
-        if frame_idx % 100 == 0:
-            print(f"  ...frame {frame_idx}/{total_frames}")
+        if processed % 100 == 0:
+            pct = 100 * frame_idx / total_frames if total_frames else 0
+            print(f"  ...processed {processed} frames | "
+                  f"skipped {skipped} | "
+                  f"video pos {frame_idx}/{total_frames} ({pct:.1f}%) | "
+                  f"events so far: {sum(frame_flags)}")
  
     cap.release()
+    print(f"[INFO] Done — processed {processed} frames, skipped {skipped} | "
+          f"flagged frames: {sum(frame_flags)}")
  
     events = extract_events(
         frame_flags, fps, min_duration, frame_skip,
