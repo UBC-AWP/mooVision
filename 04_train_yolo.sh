@@ -61,6 +61,7 @@ uv run --frozen --offline python scripts/training/training_yolo.py \
     --model_size=m \
     --batch=64 \
     --epochs=100 \
+    --cache \
     --patience=40 
 
 # # 3. Handle Resume Checkpoint Logic vs Fresh Start
