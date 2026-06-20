@@ -9,7 +9,7 @@ from pathlib import Path
 from ultralytics import YOLO
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
-from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW
+from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW,READ_DF_PATH
 
 
 DEFAULT_MODEL = "yolo26x.pt"    
@@ -244,8 +244,11 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
         # fallback if pattern not found
         rel_parent = Path()
         
+    output_dir = BASELINE_METADATA_DIR_NEW / rel_parent
+    os.makedirs(output_dir, exist_ok=True)
+    
     for video_path in video_paths:
-        expected_metadata_file = BASELINE_METADATA_DIR / f"{video_path.stem}_results.json"
+        expected_metadata_file = BASELINE_METADATA_DIR_NEW / f"{video_path.stem}_results.json"
         
         if expected_metadata_file.is_file():
             print(f"Metadata already exists for {video_path.name}. Skipping detection.")
@@ -331,8 +334,6 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
     
         # Build metadata
         video_name = os.path.splitext(os.path.basename(video_path))[0]
-        output_dir = "results/metadata/baseline"
-        os.makedirs(output_dir, exist_ok=True)
     
         metadata = {
             "identifier":             os.path.basename(video_path),
@@ -422,9 +423,10 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=f"Baseline cross-sucking detector using {DEFAULT_MODEL} bounding box overlap."
     )
-    parser.add_argument("--video",
-                        required=True, 
-                        help="Path to input video file")
+    # parser.add_argument("--video",
+    #                     required=True, 
+    #                     default=None,
+    #                     help="Path to input video file")
     parser.add_argument("--model", 
                         default=DEFAULT_MODEL, 
                         help=f"YOLO weights file (default: {DEFAULT_MODEL})")
@@ -447,9 +449,10 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    day_path = READ_DF_PATH / "day_based" / "test.csv"
     args = parse_args()
     run_detection(
-        video_paths    = args.video,
+        video_paths    = day_path,
         model_path    = args.model,
         iou_threshold = args.iou_threshold,
         conf_threshold= args.conf_threshold,
