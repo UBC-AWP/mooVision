@@ -11,7 +11,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
 from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW,READ_DF_PATH
 
-DEFAULT_PATH = READ_DF_PATH / "day_based" / "test.csv"
+DEFAULT_PATH = READ_DF_PATH 
 DEFAULT_MODEL = "yolo26x.pt"    
 DEFAULT_IOU_THRESHOLD = 0.1    # Minimum IoU to consider two boxes "overlapping"
 DEFAULT_MIN_DURATION = 0.5       # Minimum seconds of continuous overlap to flag an event
@@ -201,7 +201,7 @@ def extract_video_path(video_path):
     # 
     return [video_path.joinpath(f.name) for f in video_path.glob("*.mp4")]
 
-def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_duration, frame_skip , split_name = ["day_based", "pen_based", "period_based","pipeline_testing"]):
+def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_duration, frame_skip):
     """
     Full detection pipeline:
         load model → open video → detect calves per frame →
@@ -227,7 +227,7 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
         FileNotFoundError: If video or model file cannot be found
         ValueError: If target class is not in model
     """
-    video_paths = read__df(video_paths)
+    video_paths,folder_name = read__df(video_paths)
     # Download and loading the model
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
@@ -243,12 +243,12 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
     else:
         # fallback if pattern not found
         rel_parent = Path()
-        
-    output_dir = BASELINE_METADATA_DIR_NEW / rel_parent
+    
+    output_dir = BASELINE_METADATA_DIR_NEW / folder_name / rel_parent
     os.makedirs(output_dir, exist_ok=True)
     
     for video_path in video_paths:
-        expected_metadata_file = BASELINE_METADATA_DIR_NEW / f"{video_path.stem}_results.json"
+        expected_metadata_file = output_dir / f"{video_path.stem}_results.json"
         
         if expected_metadata_file.is_file():
             print(f"Metadata already exists for {video_path.name}. Skipping detection.")
@@ -400,24 +400,32 @@ def read__df(data_path):
         >>> read_df("metadata.csv")
         [PosixPath('/path/to/source_videos/dataset/category/video/file.mp4')]
         """
-    df = pd.read_csv(data_path, index_col=0)
-    df = df.drop_duplicates(subset=["source_video_path"])
-    df = df.iloc[:1]
-    if df.empty:
-        raise ValueError("df is empty.")
-    
-    video_paths = df["source_video_path"]
+    split_name = ["day_based", "pen_based", "period_based", "random", "pipeline_demo"]
 
-    clean_paths = []
-    for video_path in video_paths:
-
-        cln_str = video_path.replace("\\", "/")
-        cln_path = Path(cln_str)
-        rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
-        abs_path = SOURCE_VIDEOS_DIR / rel_path
+    for name in split_name:
+        try:
+            data_path = DEFAULT_PATH / name / "test.csv"
+        except Exception as e:
+            print(f"Error constructing data path for {name}: {e}")
+            continue
+        df = pd.read_csv(data_path, index_col=0)
+        df = df.drop_duplicates(subset=["source_video_path"])
+        df = df.iloc[:1]
+        if df.empty:
+            raise ValueError("df is empty.")
         
-        clean_paths.append(abs_path)
-    return clean_paths
+        video_paths = df["source_video_path"]
+
+        clean_paths = []
+        for video_path in video_paths:
+
+            cln_str = video_path.replace("\\", "/")
+            cln_path = Path(cln_str)
+            rel_path = Path(*cln_path.parts[-4:])  # Relies on file naming conventions...
+            abs_path = SOURCE_VIDEOS_DIR / rel_path
+            
+            clean_paths.append(abs_path)
+        return clean_paths,name
     
 def parse_args():
     parser = argparse.ArgumentParser(
