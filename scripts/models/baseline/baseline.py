@@ -1,3 +1,46 @@
+"""
+baseline.py — Cross-sucking detection baseline (YOLO bounding-box overlap method)
+ 
+USAGE
+-----
+    python baseline.py [--data_root PATH] [--model FILE] [--iou_threshold FLOAT]
+                       [--conf_threshold FLOAT] [--min_duration FLOAT] [--frame_skip INT]
+ 
+INPUTS
+------
+    Reads test split manifests from:
+ 
+        <data_root>/
+        ├── day_based/test.csv
+        ├── pen_based/test.csv
+        ├── period_based/test.csv
+        ├── random/test.csv
+        └── pipeline_demo/test.csv
+ 
+    Each CSV must contain a 'source_video_path' column with relative video paths.
+    Duplicate video paths within a split are dropped before processing.
+ 
+OUTPUTS
+-------
+    Writes one JSON metadata file per video under:
+ 
+        MooVision/results/metadata/baseline/
+        ├── day_based/
+        │   └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
+        └── pen_based/
+            └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
+        ...
+ 
+    Each JSON contains detection parameters, per-event timestamps, confidence
+    scores, and frame-level intersection box coordinates.
+ 
+    Videos whose JSON already exists are skipped (safe to re-run).
+ 
+EXAMPLE
+-------
+    uv run scripts/models/baseline/baseline.py --frame_skip 30
+"""
+
 import argparse
 import json
 import os
