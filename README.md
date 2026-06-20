@@ -171,16 +171,17 @@ After configuring you `.env` and config files, run the following commands from y
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
 ```bash
-uv run scripts/models/yolo/yolo.py --video_path="sample_videos/cross_sucking_clip_sample/CS_0031_POSTWEAN_d1_p2_cow3_02112025_ch02-20251103001956_60818_60835.mp4" --model_path="runs/detect/MooVision/cross-sucking/weights/best.pt" --buffer=2
+uv run scripts/run-testing-2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
 ```
 
-7. Evaluate results:
+7. Evaluate results, including frame-level bounding box IoU computed from CVAT annotations. Note that `--labelled_clips_dir` should point to the directory containing the CVAT annotation zip files for the clips being evaluated; this argument is optional and can be omitted if frame-level bbox IoU is not needed.
 
    ```bash
        uv run python scripts/evaluation.py \
-           --predictions results/metadata/baseline/ \
-           --ground_truth data/raw/all_clips_index_raw.csv \
-           --output results/evaluation_report.json
+        --predictions results/metadata/baseline/ \
+        --ground_truth data/raw/all_clips_index_raw.csv \
+        --output results/evaluation_report.json \
+        --labelled_clips_dir /path/to/cross_sucking_labelled
    ```
 
 8. Clip frames from results:
