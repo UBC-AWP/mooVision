@@ -296,7 +296,7 @@ def load_split(data_root: Path, split_name: str) -> list[Path]:
     df = pd.read_csv(csv_path, index_col=0)
     df = df.drop_duplicates(subset=["source_video_path"])
     
-    df = df.iloc[:1]
+    # df = df.iloc[:1]
 
     if df.empty:
         raise ValueError(f"No rows in {csv_path} after deduplication.")
