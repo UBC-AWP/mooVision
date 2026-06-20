@@ -42,7 +42,7 @@ DATA_SPLITS=(
     "period_based/WEAN"
 )
 
-MODEL_PATH="/scratch/st-nina-1/moovision/yolo_training_runs/${MODEL_NAMES[$PAIR_IDX]}/weights/best.pt"
+MODEL_PATH="/scratch/st-nina-1/moovision/data/yolo_training_runs/${MODEL_NAMES[$PAIR_IDX]}/weights/best.pt"
 DATA_PATH="data/processed/${DATA_SPLITS[$PAIR_IDX]}"/test.csv
 
 echo "========================================================"
