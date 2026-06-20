@@ -21,7 +21,6 @@ OVERWRITE=${OVERWRITE:-false}
 
 # ── Model+test pairs (split_1 = random, split_2 = day_based, etc.) ───────────
 MODEL_NAMES=(
-    "split_1_model"
     "split_2_model"
     "split_3_model"
     "split_4_model"
@@ -29,6 +28,7 @@ MODEL_NAMES=(
     "split_6_model"
     "split_7_model"
     "split_8_model"
+    "split_9_model"
 )
 
 DATA_SPLITS=(
