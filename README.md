@@ -176,13 +176,25 @@ uv run scripts/run-testing-2.py --model_path "data/yolo_training_runs/pipeline_d
 
 7. Evaluate results, including frame-level bounding box IoU computed from CVAT annotations. Note that `--labelled_clips_dir` should point to the directory containing the CVAT annotation zip files for the clips being evaluated; this argument is optional and can be omitted if frame-level bbox IoU is not needed.
 
-   ```bash
-       uv run python scripts/evaluation.py \
-        --predictions results/metadata/baseline/ \
-        --ground_truth data/raw/all_clips_index_raw.csv \
-        --output results/evaluation_report.json \
-        --labelled_clips_dir /path/to/cross_sucking_labelled
-   ```
+Evaluate plain fine-tuned YOLO (CS detection only, no temporal linking):
+
+```bash
+uv run python scripts/evaluation.py \
+    --predictions "$ROOT_DIR/results/metadata/pipeline_demo/yolo/" \
+    --ground_truth data/processed/processed_clips_index.csv \
+    --output results/evaluation_report_yolo.json \
+    --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
+```
+
+Evaluate YOLO + Seq-NMS (with temporal linking):
+
+```bash
+uv run python scripts/evaluation.py \
+    --predictions "$ROOT_DIR/results/metadata/pipeline_demo/seq-nms/" \
+    --ground_truth data/processed/processed_clips_index.csv \
+    --output results/evaluation_report_seq_nms.json \
+    --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
+```
 
 8. Clip frames from results:
 
