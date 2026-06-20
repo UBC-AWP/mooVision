@@ -68,7 +68,7 @@ def run_testing(
     target_class : str
         Target class name for detection (default: 'cross-sucking').
     chunk : int
-        Which chunk to process (0-indexed). -1 runs all videos.
+        Which chunk to process (0-indexed).
         Default is 0 (first 10% chunk). Used by SLURM array jobs to
         parallelise across subsets of the video list.
         Must be in range [0, n_chunks).
@@ -262,7 +262,7 @@ def parse_args():
         "--chunk",
         type=int,
         default=0,
-        help="Which chunk to process (0-indexed). -1 runs all videos."
+        help="Which chunk to process (0-indexed)."
     )
     parser.add_argument(
         "--chunk_pct",
