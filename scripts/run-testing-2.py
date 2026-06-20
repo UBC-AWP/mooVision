@@ -378,11 +378,11 @@ def run_testing(
     video_paths = df["source_video_path"]
     unique_video_strings = clean_video_paths(video_paths)
 
-    # Load model
-    model, resolved_model_path = load_yolo_model(model_path)
-
     # Select chunks
     selected = select_chunk(unique_video_strings, chunk, chunk_pct)
+
+    # Load model
+    model, resolved_model_path = load_yolo_model(model_path)
 
     # Prepare the output directory
     output_dir = ROOT_DIR / "results" / "metadata" / split_label
