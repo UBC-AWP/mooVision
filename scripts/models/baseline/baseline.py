@@ -356,6 +356,38 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
         print("═" * 50 + "\n")
     
 def read__df(data_path):
+    """
+        Read a CSV file, deduplicate rows, and extract absolute video paths.
+
+        This function loads a dataframe from the specified `data_path`, removes
+        duplicate rows based on the 'source_video_path' column, and slices the 
+        dataframe to inspect just the first row. It then converts the relative 
+        video path into an absolute path using a predefined directory constant.
+
+        Parameters
+        ----------
+        data_path : str or pathlib.Path
+            The file path to the CSV configuration or data file.
+
+        Returns
+        -------
+        list of pathlib.Path
+            A list containing the resolved absolute path(s) to the video file(s).
+
+        Raises
+        ------
+        ValueError
+            If the resulting dataframe is empty after loading or deduplication.
+
+        See Also
+        --------
+        pandas.read_csv : Underlying function used to load the data.
+
+        Examples
+        --------
+        >>> read_df("metadata.csv")
+        [PosixPath('/path/to/source_videos/dataset/category/video/file.mp4')]
+        """
     df = pd.read_csv(data_path, index_col=0)
     df = df.drop_duplicates(subset=["source_video_path"])
     df = df.iloc[:1]
