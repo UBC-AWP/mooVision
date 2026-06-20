@@ -358,7 +358,7 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
 def read__df(data_path):
     df = pd.read_csv(data_path, index_col=0)
     df = df.drop_duplicates(subset=["source_video_path"])
-    # df = df.iloc[10:20]
+    df = df.iloc[:1]
     if df.empty:
         raise ValueError("df is empty.")
     
@@ -413,5 +413,13 @@ if __name__ == "__main__":
         min_duration  = args.min_duration,
         frame_skip    = args.frame_skip,
     )
+    # run_detection(
+    #     video_paths    = args.video,
+    #     model_path    = args.model,
+    #     iou_threshold = args.iou_threshold,
+    #     conf_threshold= args.conf_threshold,
+    #     min_duration  = args.min_duration,
+    #     frame_skip    = args.frame_skip,
+    # )
     # extract_video_path(args.video)
     
