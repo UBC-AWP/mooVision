@@ -387,8 +387,6 @@ def train_yolo_model(
             **kwargs,
         )
 
-    # return model, results
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Training for YOLO models.")
@@ -458,12 +456,11 @@ def parse_args():
         type=int,
         help="Batch size.",
     )
-
     parser.add_argument(
         "--patience",
         default=20,
         type=int,
-        help="Number of epochs to wait with no imrpovement before early stopping.",
+        help="Number of epochs to wait with no improvement before early stopping.",
     )
     parser.add_argument(
         "--img_size",
