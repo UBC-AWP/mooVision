@@ -226,7 +226,7 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
         FileNotFoundError: If video or model file cannot be found
         ValueError: If target class is not in model
     """
-    video_paths = read__10(video_paths)
+    video_paths = read__df(video_paths)
     # Download and loading the model
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
@@ -355,12 +355,10 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
         print(f"  OUTPUT:   {json_path}")
         print("═" * 50 + "\n")
     
-def read__10(data_path):
-    # Read the file and immediately slice it to the first 10 rows
+def read__df(data_path):
     df = pd.read_csv(data_path, index_col=0)
     df = df.drop_duplicates(subset=["source_video_path"])
-    # df = df.head(10)
-    df = df.iloc[10:20]
+    # df = df.iloc[10:20]
     if df.empty:
         raise ValueError("df is empty.")
     
