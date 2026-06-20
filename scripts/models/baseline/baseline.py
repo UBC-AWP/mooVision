@@ -220,7 +220,6 @@ def extract_video_path(video_path):
 
 def detect_video(
     video_path:    Path,
-    split_name:    str,
     model,
     target_ids:    set,
     iou_threshold: float,
@@ -240,9 +239,6 @@ def detect_video(
     Args:
         video_path:
             Absolute path to the input video file.
-        split_name:
-            Name of the data split this video belongs to (e.g. 'day_based').
-            Used to determine the output directory.
         model:
             Loaded YOLO model instance (ultralytics.YOLO).
         target_ids:
@@ -291,6 +287,8 @@ def detect_video(
     frame_interbox = []
     frame_indices  = []
     frame_idx      = 0
+    processed      = 0
+    skipped        = 0
  
     print(f"[INFO] Processing: {video_path.name}")
     print(f"       frames={total_frames} | fps={fps:.1f} | skip=1/{frame_skip} "
@@ -519,10 +517,14 @@ def run_all(
                 print(f"[WARN] Video not found, skipping: {video_path}")
                 continue
  
-            metadata = detect_video(
-                video_path, split_name, model, target_ids,
-                iou_threshold, conf_threshold, min_duration, frame_skip,
-            )
+            try:
+                metadata = detect_video(
+                    video_path, model, target_ids,
+                    iou_threshold, conf_threshold, min_duration, frame_skip,
+                )
+            except Exception as e:
+                print(f"[ERROR] Failed on {video_path}: {e} — skipping.")
+                continue
  
             os.makedirs(json_path.parent, exist_ok=True)
             with open(json_path, "w") as f:
