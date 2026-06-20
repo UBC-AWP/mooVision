@@ -2,13 +2,14 @@ import argparse
 import json
 import os
 import cv2
+import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from ultralytics import YOLO
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
-from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR
+from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW
 
 
 DEFAULT_MODEL = "yolo26x.pt"    
@@ -232,7 +233,17 @@ def run_detection(video_paths, model_path, iou_threshold, conf_threshold, min_du
     model = YOLO(model_path)
 
     # video_paths = extract_video_path(video_paths)
+    
     # Validate inputs
+    # Extract relative parent path for output directory
+    m = re.search(r"videos[\\/](.*)$", str(video_paths))
+    if m:
+        rel = Path(m.group(1))  # Pen 2 - Group 2/POSTWEANING/Day 1/<file>.mp4
+        rel_parent = rel.parent  # Pen 2 - Group 2/POSTWEANING/Day 1
+    else:
+        # fallback if pattern not found
+        rel_parent = Path()
+        
     for video_path in video_paths:
         expected_metadata_file = BASELINE_METADATA_DIR / f"{video_path.stem}_results.json"
         
@@ -445,13 +456,5 @@ if __name__ == "__main__":
         min_duration  = args.min_duration,
         frame_skip    = args.frame_skip,
     )
-    # run_detection(
-    #     video_paths    = args.video,
-    #     model_path    = args.model,
-    #     iou_threshold = args.iou_threshold,
-    #     conf_threshold= args.conf_threshold,
-    #     min_duration  = args.min_duration,
-    #     frame_skip    = args.frame_skip,
-    # )
     # extract_video_path(args.video)
     
