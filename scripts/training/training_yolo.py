@@ -113,7 +113,9 @@ def train_yolo_model(
             project="MooVision",
         )
     """
+
     # Load pretrained model
+    # yolov26 uses a different naming convention (no 'v') compared to yolov8
     if model == 26:
         model = YOLO(f"yolo{model}{model_size}.pt")
     else:
@@ -135,8 +137,6 @@ def train_yolo_model(
         rect=rect,
         **kwargs,
     )
-
-    # return model, results
 
 
 def parse_args():
@@ -194,12 +194,11 @@ def parse_args():
         type=int,
         help="Batch size.",
     )
-
     parser.add_argument(
         "--patience",
         default=100,
         type=int,
-        help="Number of epochs to wait with no imrpovement before early stopping.",
+        help="Number of epochs to wait with no improvement before early stopping.",
     )
     parser.add_argument(
         "--img_size",
@@ -249,4 +248,4 @@ if __name__ == "__main__":
     )
 
     print("Training complete!")
-    print("Best model saved to: runs/detect/MooVision/cross-sucking/weights/best.pt")
+    print("Best model saved to: MooVision/cross-sucking/weights/best.pt")
