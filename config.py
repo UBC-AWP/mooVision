@@ -45,6 +45,8 @@ PROCESSED_INDEX_PATH = (
 
 # Data / metadata
 DATA_FOLDER_DIR = ROOT_DIR / "data"
+EVALUATION_DATA_DIR = DATA_FOLDER_DIR / "results" 
+BASELINE_MODEL_OUTPUT_DIR = DATA_FOLDER_DIR / "results" / "metadata" / "baseline"
 METADATA_DIR = DATA_FOLDER_DIR / "clips_metadata"
 METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
