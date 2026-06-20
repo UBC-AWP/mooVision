@@ -148,8 +148,12 @@ def run_testing(
     output_dir = ROOT_DIR / "results" / "metadata" / split_label
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not Path(model_path).exists():
-        raise FileNotFoundError(f"Could not find {model_path}.")
+    model_path = Path(model_path)
+    if not model_path.is_absolute():
+        model_path = ROOT_DIR / model_path
+    if not model_path.exists():
+        raise FileNotFoundError(f"Could not find model at {model_path} (checked relative to ROOT_DIR if not absolute).")
+    model_path = str(model_path)
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
 
