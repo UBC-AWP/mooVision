@@ -26,7 +26,7 @@ ROOT_DIR = require_dir("ROOT_DIR")
 # Path on GitHub / local workspace
 LOCAL_DIR = require_dir("LOCAL_DIR")
 BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"
-
+BASELINE_METADATA_DIR_NEW = ROOT_DIR / "results" / "metadata" / "baseline"
 # Clip folders
 UNLABELLED_CLIPS_DIR = ROOT_DIR / "cross_sucking_clips"
 LABELLED_CLIPS_DIR = ROOT_DIR / "cross_sucking_labelled"
@@ -51,3 +51,7 @@ METADATA_DIR.mkdir(parents=True, exist_ok=True)
 # Output clips
 REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"
 REPRODUCED_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+READ_DF_PATH = ROOT_DIR / "data" / "processed" 
+
