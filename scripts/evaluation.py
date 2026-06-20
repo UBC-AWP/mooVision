@@ -3,7 +3,7 @@ evaluation.py
 -------------
 Evaluation module for the MooVision cross-sucking detection pipeline.
 
-Compares baseline model predictions (JSON) against ground truth annotations
+Compares model predictions (JSON) against ground truth annotations
 (processed clips index CSV) across three levels:
   - Frame level:    bounding box IoU for every predicted frame vs ground truth
                     frame, independent of temporal matching. Measures spatial
@@ -13,13 +13,25 @@ Compares baseline model predictions (JSON) against ground truth annotations
   - Sequence level: temporal IoU — how well predicted event time windows
                     overlap with labeled event time windows.
 
+Works with predictions from any model (baseline, fine-tuned YOLO, or
+YOLO + Seq-NMS) as long as the JSON output format is consistent.
+
 How to run:
     python scripts/evaluation.py \
-        --predictions results/metadata/baseline/ \
-        --ground_truth data/raw/all_clips_index_raw.csv \
+        --predictions results/metadata/<model_name>/ \
+        --ground_truth data/processed/processed_clips_index.csv \
         --output results/evaluation_report.json \
         --labelled_clips_dir /path/to/cross_sucking_labelled \
         --fps 30.0
+
+Note: --predictions should point to the output directory of whichever
+model you are evaluating (e.g. results/metadata/baseline/ or
+results/metadata/seq_nms/).
+
+Note: --ground_truth must point to processed_clips_index.csv, not
+all_clips_index_raw.csv. Only the processed index contains the
+labelled_clip_relative_path column required for bounding box IoU
+evaluation against CVAT annotations.
 """
 
 import json
