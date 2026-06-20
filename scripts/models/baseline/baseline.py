@@ -11,7 +11,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
 from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW,READ_DF_PATH
 
-DEFAULT_PATH = READ_DF_PATH 
+DEFAULT_DATA_ROOT = READ_DF_PATH
 DEFAULT_MODEL = "yolo26x.pt"    
 DEFAULT_IOU_THRESHOLD = 0.1    # Minimum IoU to consider two boxes "overlapping"
 DEFAULT_MIN_DURATION = 0.5       # Minimum seconds of continuous overlap to flag an event
@@ -19,6 +19,7 @@ DEFAULT_CONF_THRESHOLD = 0.5      # Minimum YOLO detection confidence to keep a 
 TARGET_CLASS_NAME = "cow"
 DEFAULT_FRAME_SKIP = 1
 
+SPLIT_NAMES = ["day_based", "pen_based", "period_based", "random", "pipeline_demo"]
 
 def compute_iou(box_a, box_b):
     """
@@ -427,13 +428,85 @@ def read__df(data_path):
             clean_paths.append(abs_path)
         return clean_paths,name
     
+def load_split(data_root: Path, split_name: str) -> list[Path]:
+    """
+    Load the test CSV for a single split and resolve video paths to absolute paths.
+
+    Reads <data_root>/<split_name>/test.csv, drops duplicate rows on
+    'source_video_path', and converts each relative path to an absolute
+    path under SOURCE_VIDEOS_DIR.
+
+    The last 4 path components of each relative video path are kept
+    (e.g. Pen/Stage/Day/file.mp4) and joined onto SOURCE_VIDEOS_DIR.
+    This relies on a consistent directory depth in the video naming convention.
+
+    Args:
+        data_root:
+            Root directory containing split subdirectories.
+        split_name:
+            Name of the split subdirectory (e.g. 'day_based').
+
+    Returns:
+        List of resolved absolute Path objects pointing to video files.
+
+    Raises:
+        FileNotFoundError: If the CSV for this split does not exist.
+        ValueError:        If the CSV is empty after deduplication.
+    """
+    csv_path = data_root / split_name / "test.csv"
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Split CSV not found: {csv_path}")
+
+    df = pd.read_csv(csv_path, index_col=0)
+    df = df.drop_duplicates(subset=["source_video_path"])
+
+    if df.empty:
+        raise ValueError(f"No rows in {csv_path} after deduplication.")
+
+    clean_paths = []
+    for raw in df["source_video_path"]:
+        cln  = Path(raw.replace("\\", "/"))
+        rel  = Path(*cln.parts[-4:])   # Pen/Stage/Day/file.mp4
+        clean_paths.append(SOURCE_VIDEOS_DIR / rel)
+
+    return clean_paths
+   
+def load_all_splits(data_root: Path) -> list[tuple[str, list[Path]]]:
+    """
+    Load video paths for every known split under `data_root`.
+ 
+    Skips splits whose CSV is missing or empty with a warning rather
+    than raising, so a partially populated data directory still runs.
+ 
+    Args:
+        data_root:
+            Root directory containing split subdirectories
+            (day_based/, pen_based/, etc.).
+ 
+    Returns:
+        List of (split_name, video_paths) tuples for each split that
+        loaded successfully. Empty if no splits could be loaded.
+    """
+    results = []
+    for name in SPLIT_NAMES:
+        try:
+            paths = load_split(data_root, name)
+            results.append((name, paths))
+            print(f"[INFO] Loaded split '{name}': {len(paths)} unique video(s)")
+        except FileNotFoundError:
+            print(f"[WARN] Split '{name}' not found — skipping.")
+        except ValueError as e:
+            print(f"[WARN] Split '{name}' skipped: {e}")
+    return results
+   
 def parse_args():
     parser = argparse.ArgumentParser(
         description=f"Baseline cross-sucking detector using {DEFAULT_MODEL} bounding box overlap."
     )
-    parser.add_argument("--video",
-                        default=DEFAULT_PATH,
-                        help="Path to input video file")
+    parser.add_argument(
+        "--data_root", type=Path, default=DEFAULT_DATA_ROOT,
+        help="Root directory containing split CSVs (day_based/, pen_based/, etc.)",
+    )
     parser.add_argument("--model", 
                         default=DEFAULT_MODEL, 
                         help=f"YOLO weights file (default: {DEFAULT_MODEL})")
