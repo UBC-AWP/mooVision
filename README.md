@@ -11,9 +11,9 @@ Cross-sucking (here: sucking directed at various body parts of other calves) is 
 - outputs predicted event windows and metadata (start/end time, confidence, pen, weaning stage, day)
 - optionally generates clipped videos for review and evaluation
 
-## Requirements (Data Collection)
+## Data Requirements (Data Collection)
 
-- Data index file such as `all_clips_index.csv` listing cross-sucking clips, and associated data...
+- Data index file such as `all_clips_index.csv` listing cross-sucking clips, and associated data... WIP
 
 ## Repository Structure (high level)
 
@@ -123,7 +123,7 @@ INDEX_PATH = Path/to/your/index/file/<file>
 
 After configuring you `.env` and config files, run the following commands from your terminal in the MooVision root directory to move through a local demo of the project workflow. For more information see, project documentation.
 
-1. Read in Raw index, and Processed video indexes. Note, this will throw a lot of warnings when ran. These are telling you that the function is using the clips NOT found in fixed_clips when multiple versions of the same video are found.
+1. Read in Raw index, and process for videos . Note, this will throw a lot of warnings when ran. These are telling you that the function is using the clips NOT found in fixed_clips when multiple versions of the same video are found.
 
    ```bash
    uv run scripts/data_reading/read_all_clips_index.py --FORCE
@@ -146,9 +146,9 @@ After configuring you `.env` and config files, run the following commands from y
    --FORCE
    ```
 
-    Note: it might take a while to upload files to OneDrive.
+    Note: it might take a while to upload files to OneDrive if you have set your root directory there.
 
-4. Train YOLO object detection model. Note: change `--device="cpu"` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long. This will save the model to `data/yolo_training_runs/project`. For more information see the project documentation.
+4. Train YOLO object detection model. Note: change `--device="cpu"` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long. This will save the model to `data/yolo_training_runs/project` in the root directory (OneDrive if setup that way). For more information see the project documentation.
 
    ```bash
    uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --project="pipeline_demo" --name="demo_01" --device="cpu" --epochs=1 --batch=8
