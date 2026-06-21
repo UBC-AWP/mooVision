@@ -264,78 +264,27 @@ def extract_video_path(video_path):
 
 
  # Data loading      
-def load_split(data_root: Path, split_name: str) -> list[Path]:
+def load_split_from_csv(csv_path: Path) -> list[Path]:
     """
-    Load the test CSV for a single split and resolve video paths to absolute paths.
-
-    Reads <data_root>/<split_name>/test.csv, drops duplicate rows on
-    'source_video_path', and converts each relative path to an absolute
-    path under SOURCE_VIDEOS_DIR.
-
-    The last 4 path components of each relative video path are kept
-    (e.g. Pen/Stage/Day/file.mp4) and joined onto SOURCE_VIDEOS_DIR.
-    This relies on a consistent directory depth in the video naming convention.
+    Load video paths from a single split CSV.
 
     Args:
-        data_root:
-            Root directory containing split subdirectories.
-        split_name:
-            Name of the split subdirectory (e.g. 'day_based').
+        csv_path: Path to a test.csv file (e.g. data/processed/day_based/test.csv).
 
     Returns:
-        List of resolved absolute Path objects pointing to video files.
-
-    Raises:
-        FileNotFoundError: If the CSV for this split does not exist.
-        ValueError:        If the CSV is empty after deduplication.
+        List of resolved absolute video paths, deduplicated.
     """
-    csv_path = data_root / split_name / "test.csv"
-    if not csv_path.exists():
-        raise FileNotFoundError(f"Split CSV not found: {csv_path}")
-
     df = pd.read_csv(csv_path, index_col=0)
     df = df.drop_duplicates(subset=["source_video_path"])
-    
-    # df = df.iloc[:1]
-
     if df.empty:
         raise ValueError(f"No rows in {csv_path} after deduplication.")
 
     clean_paths = []
     for raw in df["source_video_path"]:
-        cln  = Path(raw.replace("\\", "/"))
-        rel  = Path(*cln.parts[-4:])   # Pen/Stage/Day/file.mp4
+        cln = Path(raw.replace("\\", "/"))
+        rel = Path(*cln.parts[-4:])
         clean_paths.append(SOURCE_VIDEOS_DIR / rel)
-
     return clean_paths
-   
-def load_all_splits(data_root: Path) -> list[tuple[str, list[Path]]]:
-    """
-    Load video paths for every known split under `data_root`.
- 
-    Skips splits whose CSV is missing or empty with a warning rather
-    than raising, so a partially populated data directory still runs.
- 
-    Args:
-        data_root:
-            Root directory containing split subdirectories
-            (day_based/, pen_based/, etc.).
- 
-    Returns:
-        List of (split_name, video_paths) tuples for each split that
-        loaded successfully. Empty if no splits could be loaded.
-    """
-    results = []
-    for name in SPLIT_NAMES:
-        try:
-            paths = load_split(data_root, name)
-            results.append((name, paths))
-            print(f"[INFO] Loaded split '{name}': {len(paths)} unique video(s)")
-        except FileNotFoundError:
-            print(f"[WARN] Split '{name}' not found — skipping.")
-        except ValueError as e:
-            print(f"[WARN] Split '{name}' skipped: {e}")
-    return results
 
 # Detection pipeline
 def detect_video(
