@@ -10,29 +10,46 @@ NOTE 2: Look into sampling frames at x/second rather than a defined skip amount.
 NOTE 3: Examples are not finished and need to be properly updated.
 """
 
+from typing import List
 from pathlib import Path
 import sys
-import platform
-import subprocess
-import io
 import os
+import shutil
+import argparse
 import tarfile
 import zipfile
-import shutil
+import yaml
 import concurrent.futures
 import threading
-from typing import List
 import cv2
-import argparse
-import yaml
-
-# import argparse
 import pandas as pd
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from scripts.data_reading.matching import parse_labelled_name, parse_unlabelled_name
 from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR, ROOT_DIR
+
+
+def validate_file_paths(
+    label_paths: List[str],
+    labels_root: Path,
+) -> List[str]:
+    """
+    Clean and Validate Paths in labels_paths.
+
+    """
+    # Input Pre-Validation (Fails fast before touching data)
+    validated_paths = []
+    for raw_path in label_paths:
+        if not isinstance(raw_path, str):
+            raise TypeError(f"ERROR: {raw_path} is not a string path.")
+
+        # Standardize path string
+        clean_path = labels_root / raw_path.replace("\\", "/")
+        if not clean_path.exists():
+            raise FileNotFoundError(f"Label file not found: {clean_path}")
+
+        validated_paths.append(clean_path)
 
 
 def extract_labels(
@@ -42,16 +59,18 @@ def extract_labels(
     frame_registry: dict,
     split: str,
     skip: int,
-    FORCE: bool = False,
+    force: bool = False,
 ) -> dict:
     """
-    Extract labels from annotated data.
+    Extract labels from annotated data folders and match them to frames
+    extracted from corresponding videos.
 
-    Extracts bounding box labels from .zip files (corresponding to CVAT Output
-    folders), and saves files to either a train, or val (split) folder in the
-    specified output directory. If FORCE = True, and the output directory
-    structure already exists, this will delete the existing folders and rebuild
-    the data from scratch.
+    Extracts bounding box labels from .zip files (CVAT Output folders),
+    and saves files to either a train, or val folder in the specified
+    working directory directory.
+
+    If force = True, and the output directory structure already exists,
+    this will delete the existing folders and rebuild the data from scratch.
 
     `extract_labels` outputs data into a labels/ folder within the output directory.
     This is meant to mimic the data format required for fine-tuning YOLO models.
@@ -62,30 +81,28 @@ def extract_labels(
 
     Parameters
     ----------
-    labels_path : List[Path]
-        List of relative paths to zipped folders containing bounding box
-        annotations for each cross-sucking event.
+    labels_path : List[str]
+        List of relative paths within the labelled clips directory to
+        zipped folders containing bounding box annotations for
+        cross-sucking events.
     working_dir : Path
-        Path to output directory. Points to node's local temp workspace on
-        Sockeye.
+        Path to output directory. Points to node's local temp workspace when
+        running on Sockeye.
     labels_root : Path
-        Path to root directory containing zipped folders containing bounding
-        box annotations for each cross-sucking event.
+        Path to the labelled clips directory containing zipped folders
+        with bounding box annotations for cross-sucking events.
     frame_registry : dict
-        A dictionary of sets of frames that have been saved for each video.
-        Keys are the unique numeric ID and part ID of each video. Used to
-        ensure corruption during video reading does not break frame matches
-        between labels and videos.
+        A dictionary folding sets of frames that have been saved for each
+        video. Uses the unique numeric ID and part ID of each video as keys,
+        to ensures all labels have a matching frame.
     split : str
         One of `train`, `val`. Dictates which split folder, train/ or val/, the
         labels should be extracted to.
     skip : int
-        Number of frames to skip.
-    FORCE : bool
+        Controls teh downsampling density; number of frames to skip. `skip=5`
+        will read every 5th frame.
+    force : bool
         If True, overwritres the existing data. Defaults to False.
-    on_cluster : bool
-         States whether the function is running on a Sockeye Cluster or a
-         local env (default: false, equivalent to a local environment.)
 
     Returns
     -------
@@ -110,11 +127,8 @@ def extract_labels(
     Notes
     -----
     `extract_labels` is meant to be used in conjunction with `extract_frames`
-    to build datasets for training YOLO models. YOLO requires datasets in the
-    format listed below where frames and labels are split into train/val sets
-    and each frame has a corresponding label with the same name and a .txt
-    extension. This implies that there needs to be equal numbers of frames
-    and labels, and that frames and labels need to match.
+    to build datasets for training YOLO models. YOLO requires frames and labels
+    are split into train/val sets with corresponding files names.
 
 
     Examples
@@ -154,7 +168,7 @@ def extract_labels(
             target_folder="obj_train_data",
             split="train",
             skip=2,
-            FORCE=True,
+            force=True,
         )
 
         # Clean up mock files after ensuring execution succeeded
@@ -167,25 +181,14 @@ def extract_labels(
     # Add subdirectories to output directory
     final_output_dir = working_dir / "labels" / split
 
-    # Do nothing if files already exist
-    if final_output_dir.exists() and not FORCE:
+    if final_output_dir.exists() and not force:
         print(f"Files already extracted at {final_output_dir}. Skipping computation.")
         return
     # Build output directory
     final_output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Input Pre-Validation (Fails fast before touching data)
-    validated_paths = []
-    for raw_path in label_paths:
-        if not isinstance(raw_path, str):
-            raise TypeError(f"ERROR: {raw_path} is not a string path.")
-
-        # Standardize path string
-        clean_path = labels_root / raw_path.replace("\\", "/")
-        if not clean_path.exists():
-            raise FileNotFoundError(f"Label file not found: {clean_path}")
-
-        validated_paths.append(clean_path)
+    # Clean File Paths
+    validated_paths = validate_file_paths(label_paths, labels_root)
 
     label_batch = {}
     saved_labels_registry = {}
@@ -264,82 +267,6 @@ def extract_labels(
 
     return saved_labels_registry
 
-    # ----- OLD WORKFLOW -----
-
-    # if on_cluster:
-    #     # Create an isolated, hyper-fast playground inside the node's local memory
-    #     local_working_dir = Path(f"/tmp/{task_id}_label_extraction")
-    #     local_working_dir.mkdir(parents=True, exist_ok=True)
-    #     tar_path = local_working_dir / f"labels_batch_{split}.tar"
-    # else:
-    #     local_working_dir = final_output_dir
-    #     tar_path = final_output_dir / f"labels_batch_{split}_{task_id}.tar"
-
-    # print(f"Creating a single memory-tarball at: {tar_path}")
-
-    # # Create a single tar file with all labels
-    # with tarfile.open(tar_path, "w") as tar:
-    #     for filename, text_bytes in label_batch.items():
-    #         idx += 1
-    #         if idx % 1000 == 0:
-    #             print(f"Executing tar-write: label ({idx}/{batch_len})")
-    #         tarinfo = tarfile.TarInfo(name=filename)
-    #         tarinfo.size = len(text_bytes)
-    #         tar.addfile(tarinfo, io.BytesIO(text_bytes))
-
-    # if on_cluster and (platform.system() != "Windows"):
-    #     print("Working on cluster.")
-
-    #     # COPY THE TAR TO SCRATCH FIRST (Single file network transfer = instant)
-    #     scratch_tar_path = (
-    #         final_output_dir.parent / f"labels_batch_{split}_{task_id}.tar"
-    #     )
-    #     final_output_dir.mkdir(parents=True, exist_ok=True)
-
-    #     # Move the single tar archive from /tmp to /scratch natively
-    #     print("Move tar file to /scratch/...")
-    #     shutil.move(str(tar_path), str(scratch_tar_path))
-
-    #     # Wipe the local /tmp folder right away since the tar is safe on scratch
-    #     print("Removing tmp directory on node...")
-    #     shutil.rmtree(local_working_dir)
-    #     print("Done.\n")
-
-    #     # ---- DO NOT UNPACK FILES ON SCRATCH, TRANSFER TO TRAINING NODE AND UNPACK THERE ----
-
-    #     # print(
-    #     #     "Exploding files securely at the storage layer via native system tar tool..."
-    #     # )
-    #     # # 4. Explode the tarball directly into your shared scratch directory
-    #     # # Sockeye's native tar tool handles this at hardware block speeds!
-    #     # subprocess.run(
-    #     #     ["tar", "-xf", str(scratch_tar_path), "-C", str(final_output_dir)],
-    #     #     check=True,
-    #     # )
-
-    #     # Clean up the temporary archive file on scratch
-    #     scratch_tar_path.unlink()
-
-    # else:
-    #     print("Working locally.")
-    #     print("Exploding files securely via native system tar tool...")
-    #     # Standard laptop execution (Mac/Linux optimized, Windows safe fallback)
-    #     if platform.system() != "Windows":
-    #         subprocess.run(
-    #             ["tar", "-xf", str(tar_path), "-C", str(final_output_dir)],
-    #             check=True,
-    #         )
-    #     else:
-    #         with tarfile.open(tar_path, "r") as tar:
-    #             tar.extractall(path=final_output_dir)
-
-    #     tar_path.unlink()  # Clean up local tar file inside scratch/final directory
-
-    # print(
-    #     f"All {len(label_batch)} files successfully loaded to {final_output_dir}!\n"
-    # )
-    # print()
-
 
 def extract_frames(
     video_paths: List[str],
@@ -347,7 +274,7 @@ def extract_frames(
     working_dir: Path,
     split: str,
     skip: int,
-    FORCE: bool = False,
+    force: bool = False,
 ) -> None:
     """
     Extract frames from all videos in list.
@@ -374,7 +301,7 @@ def extract_frames(
         labels should be extracted to.
     skip : int
         Number of frames to skip.
-    FORCE : bool
+    force : bool
         If True, overwritres the existing data. Defaults to False.
 
 
@@ -443,8 +370,8 @@ def extract_frames(
     # Output dir
     final_output_dir = working_dir / "images" / split
 
-    # Rewrite files on FORCE
-    if Path(final_output_dir).exists() and not FORCE:
+    # Rewrite files on force
+    if Path(final_output_dir).exists() and not force:
         print(f"\nFiles already extracted at {Path(__file__) / Path(final_output_dir)}")
         return
 
@@ -544,27 +471,6 @@ def extract_frames(
 
     return saved_frames_registry
 
-    # ----- OLD WORKFLOW -----
-
-    # # Synchronize from compute node memory back to Sockeye /scratch Space
-    # if on_cluster:
-    #     print("Working on Cluster.")
-    #     print("Transferring frames from node local memory to network scratch...")
-
-    #     # Wipe old destination directory to avoid collisions
-    #     if final_output_dir.exists():
-    #         print(f"Cleaning out stale destination directory: {final_output_dir}")
-    #         shutil.rmtree(final_output_dir)
-
-    #     # Move the fully populated folder instantly across storage tiers
-    #     print(f"Moving extracted frames from {working_dir} to {final_output_dir}.")
-    #     shutil.move(str(working_dir), str(final_output_dir))
-    #     print(
-    #         f"Successfully transferred all frames to network scratch: {final_output_dir}"
-    #     )
-    # else:
-    #     print(f"Local run complete. All frames natively verified at {final_output_dir}")
-
 
 def create_yaml(
     working_dir: str,
@@ -611,7 +517,7 @@ def run_yolo_preprocessing(
     val_path: str,
     output_path: str,
     skip: int,
-    FORCE: bool = False,
+    force: bool = False,
 ) -> None:
     """
     Execute the end-to-end YOLO preprocessing pipeline on a tracking index.
@@ -634,7 +540,7 @@ def run_yolo_preprocessing(
     skip : int
         The sequence interval step size for downsampling frame data (e.g.,
         passing 5 extracts every 5th sequential frame).
-    FORCE : bool, default False
+    force : bool, default False
         If True, overwrite files at target destination.
 
     Returns
@@ -725,7 +631,7 @@ def run_yolo_preprocessing(
         working_dir=working_directory,
         split="train",
         skip=skip,
-        FORCE=FORCE,
+        force=force,
     )
     train_label_registry = extract_labels(
         label_paths=train_df["labelled_clip_relative_path"],
@@ -734,7 +640,7 @@ def run_yolo_preprocessing(
         frame_registry=train_registry,
         split="train",
         skip=skip,
-        FORCE=FORCE,
+        force=force,
     )
 
     # Prune trailing video frames that don't have matching labels
@@ -766,7 +672,7 @@ def run_yolo_preprocessing(
         working_dir=working_directory,
         split="val",
         skip=skip,
-        FORCE=FORCE,
+        force=force,
     )
     val_label_registry = extract_labels(
         label_paths=val_df["labelled_clip_relative_path"],
@@ -775,7 +681,7 @@ def run_yolo_preprocessing(
         frame_registry=val_registry,
         split="val",
         skip=skip,
-        FORCE=FORCE,
+        force=force,
     )
 
     # Prune trailing validation video frames
@@ -871,7 +777,7 @@ def parse_args():
         "--output_path",
         type=str,
         required=True,
-        help="Output directory for train/val splits.)",
+        help="Output directory for dataset.",
     )
     parser.add_argument(
         "--skip",
@@ -900,5 +806,5 @@ if __name__ == "__main__":
         val_path=args.val_path,
         output_path=args.output_path,
         skip=args.skip,
-        FORCE=args.FORCE,
+        force=args.FORCE,
     )
