@@ -47,13 +47,13 @@ def validate_file_paths(
         zipped folders containing bounding box annotations for
         cross-sucking events.
 
-    labels_root : Path
+    labels_root : pathlib.Path
         Path to the labelled clips directory containing zipped folders
         with bounding box annotations for cross-sucking events.
 
     Returns
     -------
-    List[Path]
+    validated_paths : List[pathlib.Path]
         List of Paths to zipped folders with bounding box labels
 
     Raises
@@ -102,11 +102,33 @@ def generate_video_metadata(zip_name: str) -> tuple[tuple[int, str | None], str]
 
     Returns
     -------
-    video_key : tuple(int, str or None)
-        A tracking tuple pair composed of (numeric_id, part_id).
+    video_key : tuple of (int, str or None)
+        A tracking tuple pair composed of (numeric_id, part_id) used to index
+        and align annotations with processed frames.
     file_prefix : str
-        The standardized prefix format for output files.
+        The standardized prefix format used for outputting dataset files,
+        formatted as `"{numeric_id:04}_{part_id_str}_"`.
+
+    Raises
+    ------
+    TypeError
+        If `zip_name` is not passed as a string.
+    ValueError
+        If `zip_name` is an empty string.
+
+    See Also
+    --------
+    parse_labelled_name : Extracted internal helper that parses components via regex.
     """
+    # Type Validation
+    if not isinstance(zip_name, str):
+        raise TypeError(
+            f"Input 'zip_name' must be a string, received {type(zip_name).__name__}"
+        )
+
+    if not zip_name.strip():
+        raise ValueError("Input 'zip_name' cannot be an empty string or whitespace.")
+
     numeric_id, part_id = parse_labelled_name(zip_name)
     video_key = (int(numeric_id), part_id)
 
@@ -114,6 +136,119 @@ def generate_video_metadata(zip_name: str) -> tuple[tuple[int, str | None], str]
     file_prefix = f"{int(numeric_id):04}_{part_id_str}_"
 
     return video_key, file_prefix
+
+
+def extract_single_zip(
+    zip_path: Path,
+    frame_registry: dict,
+    skip: int,
+    file_prefix: str,
+    video_key: tuple[int, str | None],
+) -> tuple[dict[str, bytes], set[int]]:
+    """
+    Extract downsampled annotation files matching a valid frame registry from one zip.
+
+    Parses a single zipped CVAT export file, extracting text annotation data for
+    frames that match downsampling strides and exist within the provided tracking
+    registry.
+
+    Parameters
+    ----------
+    zip_path : pathlib.Path
+        The filesystem path leading to the target zip file archive.
+    frame_registry : dict
+        A multi-video tracking lookup dictionary. Keys are tuples matching
+        `(numeric_id, part_id)` and values are sets of integers representing
+        successfully extracted video frames.
+    skip : int
+        The downsampling stride value (e.g., `5` extracts every 5th frame).
+    file_prefix : str
+        The standardized name prefix string generated for the specific video file clip.
+    video_key : tuple of (int, str or None)
+        A pair composed of `(numeric_id, part_id)` used as a unique identifier
+        for logging and checking against registries.
+
+    Returns
+    -------
+    label_batch : dict of {str : bytes}
+        A mapping of target destination filenames to their raw, unwritten text-file
+        binary data bytes.
+    saved_frames : set of int
+        A set tracking the sequential frame numbers successfully extracted and batched
+        from this specific archive.
+
+    Raises
+    ------
+    TypeError
+        If `zip_path` is not a Path object, `frame_registry` is not a dict,
+        `skip` is not an integer, `file_prefix` is not a string, or `video_key`
+        is not a tuple.
+    ValueError
+        If `skip` is less than or equal to zero, or if a parsed file inside the
+        zip archive contains an invalid frame index structure.
+    FileNotFoundError
+        If the file at `zip_path` does not exist on disk.
+    """
+    # Runtime Type Checking
+    if not isinstance(zip_path, Path):
+        raise TypeError(
+            f"Argument 'zip_path' must be a Path object, received {type(zip_path).__name__}"
+        )
+    if not zip_path.exists():
+        raise FileNotFoundError(f"Target archive zip not found at path: {zip_path}")
+    if frame_registry is not None and not isinstance(frame_registry, dict):
+        raise TypeError(
+            f"Argument 'frame_registry' must be a dict, received {type(frame_registry).__name__}"
+        )
+    if not isinstance(skip, int):
+        raise TypeError(
+            f"Argument 'skip' must be an int, received {type(skip).__name__}"
+        )
+    if skip <= 0:
+        raise ValueError(
+            f"Argument 'skip' must be a positive integer greater than 0, received {skip}"
+        )
+    if not isinstance(file_prefix, str):
+        raise TypeError(
+            f"Argument 'file_prefix' must be a string, received {type(file_prefix).__name__}"
+        )
+    if not isinstance(video_key, tuple):
+        raise TypeError(
+            f"Argument 'video_key' must be a tuple, received {type(video_key).__name__}"
+        )
+
+    label_batch = {}
+    saved_frames = set()
+    target_folder = "obj_train_data"
+
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        for zinfo in zip_ref.infolist():
+            filename = zinfo.filename
+
+            if filename.startswith(target_folder) and filename.endswith(".txt"):
+                pure_name = filename.split("/")[-1]
+
+                try:
+                    frame_num = int(pure_name[6:12])
+                except ValueError as e:
+                    raise ValueError(
+                        f"CRITICAL: Structural naming mismatch inside archive {zip_path.name}. "
+                        f"Expected 'frame_XXXXXX.txt' but got '{pure_name}'."
+                    ) from e
+
+                if frame_num % skip == 0:
+                    if frame_registry is not None:
+                        if (
+                            video_key not in frame_registry
+                            or frame_num not in frame_registry[video_key]
+                        ):
+                            continue  # Drop safely if the image frame isn't present
+
+                    new_filename = f"{file_prefix}{pure_name}"
+                    label_batch[new_filename] = zip_ref.read(zinfo)
+                    saved_frames.add(frame_num)
+
+    return label_batch, saved_frames
 
 
 def parse_zip_annotations(
@@ -168,53 +303,25 @@ def parse_zip_annotations(
     """
     # Loop over zip file paths (CVAT Outputs)
     print("\n--- Extracting Annotation Labels ---\n")
-    label_batch = {}
+    global_label_batch = {}
     saved_labels_registry = {}
     n_files = len(validated_paths)
     for n, input_path in enumerate(validated_paths, start=1):
         print(f"Extracting files from {input_path.name} ({n}/{n_files} )...")
 
         video_key, file_prefix = generate_video_metadata(zip_name=input_path.name)
-        target_folder = "obj_train_data"
         saved_labels_registry[video_key] = set()
 
-        # Extracting labels
-        with zipfile.ZipFile(input_path, "r") as zip_ref:
-            for zinfo in zip_ref.infolist():
-                filename = zinfo.filename
+        label_batch, saved_frames = extract_single_zip(
+            zip_path=input_path,
+            frame_registry=frame_registry,
+            skip=skip,
+            file_prefix=file_prefix,
+            video_key=video_key,
+        )
 
-                # Labels are .txt files starting with target_folder; e.g. 'obj_train_data/frame_000001.txt'
-                if filename.startswith(target_folder) and filename.endswith(".txt"):
-
-                    # Pure frame name is 'frame_000001.txt'
-                    pure_name = filename.split("/")[-1]
-
-                    try:
-                        frame_num = int(pure_name[6:12])
-                    except ValueError:
-                        raise (
-                            f"ValueError: Incorrect naming conventions for {filename} in {input_path.name}"
-                        )
-
-                    # Take only frames we want
-                    if frame_num % skip == 0:
-
-                        # Check corresponding video loop successfully extracted this specific frame number
-                        if frame_registry is not None:
-                            if (
-                                video_key not in frame_registry
-                                or frame_num not in frame_registry[video_key]
-                            ):
-                                continue  # Drop label safely if the frame isn't on disk
-
-                        # File names are: '0001_None_frame_000001.txt'
-                        new_filename = f"{file_prefix}{pure_name}"
-
-                        # Read text directly into RAM dictionary
-                        label_batch[new_filename] = zip_ref.read(zinfo)
-
-                        # Log frame
-                        saved_labels_registry[video_key].add(frame_num)
+        global_label_batch.update(label_batch)
+        saved_labels_registry[video_key] = saved_frames
 
         print(f"Labels Saved: {len(saved_labels_registry[video_key])}")
 
@@ -226,9 +333,41 @@ def save_label_batch(
     final_output_dir: Path,
 ) -> None:
     """
-    Save label batch to root directory or tmp/ on Sockeye
-    """
+    Commit a batch of in-memory annotation byte streams to disk.
 
+    Iterates over a dictionary of pre-filtered filenames and raw text byte
+    arrays, writing them directly to the specified local workspace directory
+    (e.g., node-local NVMe staging or local repository folders). Prints
+    periodic progress updates for large batch operations.
+
+    Parameters
+    ----------
+    label_batch : dict of {str : bytes}
+        A mapping of target destination filenames (e.g., `'0001_part01_frame_000000.txt'`)
+        to their raw annotation contents stored as unwritten text bytes.
+    final_output_dir : pathlib.Path
+        The destination directory path where the text files will be saved.
+
+    Returns
+    -------
+    None
+        This function writes directly to the filesystem and does not return a value.
+
+    Raises
+    ------
+    TypeError
+        If `label_batch` is not a dictionary or if `final_output_dir` is not a
+        pathlib.Path object.
+    """
+    # Runtime Type Checking
+    if not isinstance(label_batch, dict):
+        raise TypeError(
+            f"Argument 'label_batch' must be a dict, received {type(label_batch).__name__}"
+        )
+    if not isinstance(final_output_dir, Path):
+        raise TypeError(
+            f"Argument 'final_output_dir' must be a Path object, received {type(final_output_dir).__name__}"
+        )
     print("\nExtraction complete.\n")
     if label_batch:
         idx = 0
@@ -324,10 +463,6 @@ def extract_labels(
     to build datasets for training YOLO models. YOLO requires frames and labels
     are split into train/val sets with corresponding files names.
 
-
-    Examples
-    --------
-
     """
     if split not in ["train", "val"]:
         raise ValueError("split must be either 'train' or 'val'.")
@@ -422,35 +557,6 @@ def extract_frames(
     extension. This implies that there needs to be equal numbers of frames
     and labels, and that labels need to match to correct frames.
 
-    Examples
-    --------
-    .. code-block:: python
-
-        from pathlib import Path
-        from unittest.mock import MagicMock, patch
-        from my_project.preprocessing import extract_frames
-
-        # Create dummy directories
-        video_root = Path("temp_videos")
-        output_dir = Path("temp_output")
-        video_root.mkdir(parents=True, exist_ok=True)
-        (video_root / "CS_0042_clip.mp4").touch() # Just an empty file shell
-
-        # Mock OpenCV so it simulates reading 10 successful frames
-        with patch('cv2.VideoCapture') as mock_caps:
-            instance = mock_caps.return_value
-            instance.isOpened.side_effect = [True] * 10 + [False]
-            instance.read.return_value = (True, "mock_frame_data")
-            instance.grab.return_value = True
-
-            # Run the extraction function safely without a real video file
-            extract_frames(
-                videos=["CS_0042_clip.mp4"],
-                videos_root=video_root,
-                output_dir=output_dir,
-                split="train",
-                skip=2
-            )
     """
     print("\n\n--- Extracting Video Frames---\n")
 
@@ -503,10 +609,7 @@ def extract_frames(
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
 
         # Print working video...
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        print(
-            f"Extracting frames from video ({n}/{n_videos}); total frames = {total_frames}..."
-        )
+        print(f"Extracting frames from video ({n}/{n_videos})")
 
         frame_pointer = 0
 
