@@ -62,8 +62,6 @@ DEFAULT_CONF_THRESHOLD = 0.5      # Minimum YOLO detection confidence to keep a 
 TARGET_CLASS_NAME = "cow"
 DEFAULT_FRAME_SKIP = 1
 
-SPLIT_NAMES = ["day_based", "pen_based", "period_based", "random", "pipeline_demo"]
-
 def compute_iou(box_a, box_b):
     """
     Compute Intersection over Union (IoU) between two bounding boxes
@@ -454,7 +452,6 @@ def resolve_output_path(video_path: Path, split_name: str) -> Path:
 
 def run_all(
     csv_path:       Path,
-    output_dir:     Path,
     model_path:     str,
     iou_threshold:  float,
     conf_threshold: float,
@@ -480,6 +477,7 @@ def run_all(
     Raises:
         ValueError: If the target class is not present in the loaded model.
     """
+    split_name = csv_path.parent.name  # e.g. "day_based" from .../day_based/test.csv
     video_paths = load_split_from_csv(csv_path)
     if not video_paths:
         print("[ERROR] No videos loaded.")
@@ -497,7 +495,7 @@ def run_all(
     for video_path in video_paths:
         m = re.search(r"videos[\\/](.*)$", str(video_path))
         rel_parent = Path(m.group(1)).parent if m else Path()
-        json_path = output_dir / rel_parent / f"{video_path.stem}_results.json"
+        json_path = BASELINE_METADATA_DIR_NEW / split_name / rel_parent / f"{video_path.stem}_results.json"
 
         if json_path.exists():
             print(f"[SKIP] {json_path.name}")
@@ -534,10 +532,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=f"Baseline cross-sucking detector using {DEFAULT_MODEL} bounding box overlap."
     )
-    parser.add_argument(
-        "--data_root", type=Path, default=DEFAULT_DATA_ROOT,
-        help="Root directory containing split CSVs (day_based/, pen_based/, etc.)",
-    )
+    parser.add_argument("--csv", type=Path, required=True,
+                        help="Path to a split test.csv (e.g. data/processed/day_based/test.csv)")
     parser.add_argument("--model", 
                         default=DEFAULT_MODEL, 
                         help=f"YOLO weights file (default: {DEFAULT_MODEL})")
@@ -563,7 +559,7 @@ if __name__ == "__main__":
     
     args = parse_args()
     run_all(
-        data_root   = args.data_root,
+        csv_path   = args.csv,
         model_path    = args.model,
         iou_threshold = args.iou_threshold,
         conf_threshold= args.conf_threshold,
