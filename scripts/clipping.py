@@ -22,10 +22,11 @@ Input/Output
 Inputs
   - Source videos (`*.mp4`) located under :root:`config.SOURCE_VIDEOS_DIR`.
   - A CSV index at :root:`config.INDEX_PATH` (index mode), or JSON metadata files
-    under :root:`config.BASELINE_METADATA_DIR` (JSON events mode).
+    under :root:`config.BASELINE_METADATA_DIR_NEW` (JSON events mode).
 
 Outputs
-  - Reproduced clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
+  - Clips written to :root:`config.RESULT_CLIPS_DIR` under
+    <split_name>/<Pen>/<Stage>/<Day>/ mirroring the baseline metadata structure.
 
 Notes
 -----
@@ -194,57 +195,56 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
         
 def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     """
-    Reproduce clips defined by JSON event metadata, optionally with annotations.
+    Reproduce annotated clips defined by JSON event metadata files.
 
     Overview
     --------
-    Loads one JSON metadata file or processes all `*.json` files in a directory.
-    For each event (`start_sec`, `end_sec`), a clip is reproduced. If
-    `annotate=True`, an additional `*_boxed.mp4` is written with bounding boxes
-    overlaid.
+    Recursively searches `json_path` for `*.json` metadata files produced by the
+    baseline detection pipeline. For each event in each JSON, reproduces a clip
+    from the source video and writes an annotated `*_boxed.mp4` with bounding
+    boxes overlaid. The split name is inferred from the JSON directory structure
+    to mirror the baseline output hierarchy.
 
     Input/Output
     ------------
     Input
-      - `json_path`: A JSON file or a directory of JSON files.
-      - Each JSON must specify `video_path` and `events`.
+      - `json_path`: A single JSON file, or a directory searched recursively
+                     for `*.json` files.
+      - Each JSON must specify `video_path` and `events`, and must live under a
+        path of the form: `.../baseline/<split_name>/<Pen>/<Stage>/<Day>/<file>.json`
 
     Output
-      - Clips written under `output_dir`.
-      - If `annotate=True`, additional annotated clips are written beside the
-        unboxed clips.
+      - Annotated clips written under:
+            <output_dir>/<split_name>/<Pen>/<Stage>/<Day>/<video_stem>_event###_<start>-<end>_boxed.mp4
 
     Parameters
     ----------
     json_path : pathlib.Path
-        A single JSON file, or a directory containing JSON files (non-recursive).
+        A single JSON file, or a root directory to search recursively for JSON files.
     output_dir : pathlib.Path
-        Output root directory where clips will be created.
-    annotate : bool, default=True
-        Whether to also produce annotated clips with bounding boxes.
+        Output root directory (e.g. RESULT_CLIPS_DIR).
 
     Returns
     -------
     int
-        Total number of successfully reproduced (unboxed) clips across all
-        processed JSON files.
+        Total number of successfully reproduced clips across all JSON files.
 
     Raises
     ------
     FileNotFoundError
-        If a JSON references a `video_path` that does not exist.
+        If a JSON references a `video_path` that does not exist on disk.
 
     Notes
     -----
     Expected JSON schema (minimum):
       - `video_path` : str
-      - `events` : list[dict] with keys `start_sec`, `end_sec`
+      - `events`     : list[dict] with keys `start_sec`, `end_sec`
 
-    Optional keys:
-      - `identifier` : str
-      - `fps` : float (used for annotation alignment)
+    Optional keys used if present:
+      - `identifier`               : str — used for output filename stem
+      - `fps`                      : float — used for annotation frame alignment
       - `events[*].intersection_box` : list[dict] with keys `frame`, `x1`, `y1`,
-        `x2`, `y2` (frames are in source-video coordinates)
+                                       `x2`, `y2` in source-video frame coordinates
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     if json_path.is_dir():
@@ -420,7 +420,8 @@ def run_splitting(func) -> None:
       - `func`: A function object indicating which strategy to run.
 
     Output
-      - Reproduced clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
+      - Clips written to :root:`config.RESULT_CLIPS_DIR` under
+        <split_name>/<Pen>/<Stage>/<Day>/.
 
     Parameters
     ----------
@@ -454,10 +455,10 @@ def main():
     Input/Output
     ------------
     Input
-      - JSON metadata from :root:`config.BASELINE_METADATA_DIR`.
+      - JSON metadata files from :root:`config.BASELINE_METADATA_DIR_NEW`.
 
     Output
-      - Clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
+      - Annotated clips written to :root:`config.RESULT_CLIPS_DIR`.
 
     Returns
     -------
