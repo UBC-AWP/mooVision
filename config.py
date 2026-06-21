@@ -47,6 +47,8 @@ PROCESSED_INDEX_PATH = (
 DATA_FOLDER_DIR = ROOT_DIR / "data"
 EVALUATION_DATA_DIR = DATA_FOLDER_DIR / "results" 
 BASELINE_MODEL_OUTPUT_DIR = DATA_FOLDER_DIR / "results" / "metadata" / "baseline"
+YOLO_MODEL_OUTPUT_DIR = DATA_FOLDER_DIR / "results" / "metadata" / "random" / "yolo"
+SEQ_MODEL_OUTPUT_DIR = DATA_FOLDER_DIR / "results" / "metadata" / "random" / "seq-nms"
 METADATA_DIR = DATA_FOLDER_DIR / "clips_metadata"
 METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
