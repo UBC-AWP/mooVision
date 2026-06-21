@@ -43,7 +43,7 @@ import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import SOURCE_VIDEOS_DIR,INDEX_PATH,REPRODUCED_CLIPS_DIR,BASELINE_MODEL_OUTPUT_DIR
+from config import SOURCE_VIDEOS_DIR, INDEX_PATH, RESULT_CLIPS_DIR, BASELINE_METADATA_DIR_NEW, REPRODUCED_CLIPS_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
@@ -248,7 +248,7 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     if json_path.is_dir():
-        json_files = sorted(json_path.glob("*.json"))  # non-recursive: only this folder
+        json_files = sorted(json_path.rglob("*.json"))  # recursive search for JSON files
         if not json_files:
             print(f"No .json files found in {json_path}")
             return 0
@@ -270,12 +270,16 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
             print(f"No events found in {jf.name}")
             continue
         
-        # extract the relative path after "cross_sucking_clips/" to find the raw video in RAW_DIR
-        m = re.search(r"(Pen \d+ - Group \d+[\\/]\w+[\\/]Day \d+)", str(video_path))
-        rel_parent = Path(m.group(1)) if m else Path()
+        # extract the relative path after "videos/" to find the raw video in RAW_DIR
+        m = re.search(r"videos[\\/](.*)$", str(video_path))
+        if m:
+            rel_parent = Path(m.group(1)).parent  # Pen/Stage/Day
+        else:
+            rel_parent = Path()
 
-        video_stem = Path(identifier).stem          # ch02_20250913081207
-        out_folder = output_dir / rel_parent / video_stem
+        split_name = jf.parent.parent.parent.parent.name  # e.g. "day_based" — four levels up from the JSON
+        print(split_name)
+        out_folder = output_dir / split_name / rel_parent
         
         out_folder.mkdir(parents=True, exist_ok=True)
         
@@ -297,28 +301,25 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
                 tmp_path.unlink(missing_ok=True)
                 continue
 
-            # annotate (optional)
-            if annotate:
-                event_start_frame = int(start_sec * fps)
-                boxes = ev.get("intersection_box", [])
 
-                # convert source-video frames -> clip frames
-                clip_boxes = []
-                for b in boxes:
-                    f = int(b["frame"]) - event_start_frame
-                    if f < 0:
-                        continue
-                    clip_boxes.append({**b, "frame": f})
+            event_start_frame = int(start_sec * fps)
+            boxes = ev.get("intersection_box", [])
 
-                boxed_path = out_folder / f"{base_name}_boxed.mp4"
-                if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
-                    print(f"saved boxed to {boxed_path.name}")
-                    if out_path.exists():
-                        out_path.unlink()
-                else:
-                    print(f"Warning: Failed to annotate {out_path.name}, keeping unboxed version.")
+            # convert source-video frames -> clip frames
+            clip_boxes = []
+            for b in boxes:
+                f = int(b["frame"]) - event_start_frame
+                if f < 0:
+                    continue
+                clip_boxes.append({**b, "frame": f})
+
+            boxed_path = out_folder / f"{base_name}_boxed.mp4"
+            if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
+                print(f"saved boxed to {boxed_path.name}")
+                if out_path.exists():
+                    out_path.unlink()
             else:
-                print(f"saved unboxed to {out_path.name}")
+                print(f"Warning: Failed to annotate {out_path.name}, keeping unboxed version.")
                 
             success += 1
             total_success += 1
@@ -438,7 +439,7 @@ def run_splitting(func) -> None:
     if func == split_by_index:
         split_by_index(INDEX_PATH, REPRODUCED_CLIPS_DIR)
     elif func == split_by_json_events:
-        split_by_json_events(BASELINE_MODEL_OUTPUT_DIR, REPRODUCED_CLIPS_DIR)
+        split_by_json_events(BASELINE_METADATA_DIR_NEW, RESULT_CLIPS_DIR)
     else:
         raise ValueError(f"Unknown splitting function: {func}")
     
