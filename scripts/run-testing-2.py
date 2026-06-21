@@ -24,6 +24,17 @@ from scripts.models.seq_NMS.seq_NMS import (
 DEFAULT_FRAME_SKIP = 10
 
 
+def force_onedrive_download(file_path):
+    """Force file download before sending to model."""
+    # We must actually attempt to read a single byte to force macOS to download files
+    try:
+        with open(file_path, "rb") as f:
+            f.read(1)  # Reads just the first byte, forcing the download
+        print(f"Successfully synced: {(file_path.name)}")
+    except Exception as e:
+        print(f"Failed to force download: {e}")
+
+
 def run_testing(
     model_path: str,
     data_path: str,
@@ -152,7 +163,9 @@ def run_testing(
     if not model_path.is_absolute():
         model_path = ROOT_DIR / model_path
     if not model_path.exists():
-        raise FileNotFoundError(f"Could not find model at {model_path} (checked relative to ROOT_DIR if not absolute).")
+        raise FileNotFoundError(
+            f"Could not find model at {model_path} (checked relative to ROOT_DIR if not absolute)."
+        )
     model_path = str(model_path)
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
@@ -165,20 +178,26 @@ def run_testing(
 
     # throw error when chunk is out of bounds
     if chunk < 0 or chunk >= n_chunks:
-        raise ValueError(f"chunk {chunk} is out of range for {n_chunks} chunks (0–{n_chunks-1})")
+        raise ValueError(
+            f"chunk {chunk} is out of range for {n_chunks} chunks (0–{n_chunks-1})"
+        )
 
     start = chunk * n // n_chunks
     end = (chunk + 1) * n // n_chunks
 
     # throw error when it starts more than the number of existing videos
     if start >= n:
-        raise ValueError(f"chunk {chunk} starts at index {start} but only {n} videos exist")
+        raise ValueError(
+            f"chunk {chunk} starts at index {start} but only {n} videos exist"
+        )
 
     selected = unique_video_strings[start:end]
 
     # throw error when no video strings are selected
     if not selected:
-        raise ValueError(f"chunk {chunk} is empty — check chunk_pct and total video count")
+        raise ValueError(
+            f"chunk {chunk} is empty — check chunk_pct and total video count"
+        )
 
     for video_str in selected:
         try:
@@ -191,7 +210,10 @@ def run_testing(
                 idx += 1
                 continue
 
-            print(f"Running {path.stem} {idx}/{len(selected)}")
+            print(f"\nDownloading video from {path}")
+            force_onedrive_download(path)
+
+            print(f"\nRunning {path.stem} {idx}/{len(selected)}")
             run_models(
                 model=model,
                 model_path=model_path,
@@ -263,22 +285,19 @@ def parse_args():
         help="Target class for detection (default: cross-sucking)",
     )
     parser.add_argument(
-        "--chunk",
-        type=int,
-        default=0,
-        help="Which chunk to process (0-indexed)."
+        "--chunk", type=int, default=0, help="Which chunk to process (0-indexed)."
     )
     parser.add_argument(
         "--chunk_pct",
         type=float,
         default=0.10,
-        help="Percentage of videos per chunk (default: 0.10 = 10%%)"
+        help="Percentage of videos per chunk (default: 0.10 = 10%%)",
     )
     parser.add_argument(
         "--overwrite",
         action="store_true",
         default=False,
-        help="Overwrite existing results. If not set, skips already processed videos."
+        help="Overwrite existing results. If not set, skips already processed videos.",
     )
     return parser.parse_args()
 
