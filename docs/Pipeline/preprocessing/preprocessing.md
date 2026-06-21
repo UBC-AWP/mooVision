@@ -159,9 +159,9 @@ The skip parameter controls downsampling density. For instance, setting skip=5 e
 
 The skip parameter controls downsampling density. For instance, setting skip=5 extracts every 5th frame. Using larger step intervals accelerates dataset generation and reduces spatial autocorrelation (redundant data), but excessive downsampling introduces temporal tracking errors across fast-moving targets.
 
-### Overwrite Behaviours (FORCE)
+### Overwrite Behaviours (force)
 
-By default, the pipeline preserves existing targets to save disk I/O time. If an output target directory is present, the script skips parsing. To discard stale data matrices and completely rebuild your dataset structures from scratch, pass the explicit overwrite flag: FORCE=True.
+By default, the pipeline preserves existing targets to save disk I/O time. If an output target directory is present, the script skips parsing. To discard stale data matrices and completely rebuild your dataset structures from scratch, pass the explicit overwrite flag: force=True.
 
 ---
 
@@ -173,7 +173,7 @@ By default, the pipeline preserves existing targets to save disk I/O time. If an
 | `--val_path` | `str` | **Required** | Path to the validation data file. |
 | `--output_path` | `str` | **Required** | Output directory where the train/val splits will be saved. |
 | `--skip` | `int` | `1` | Downsampling density. For example, `5` means the script will read every 5th frame. |
-| `--FORCE` | `flag` | `False` | Overwrite existing files in the output directory if specified. |
+| `--force` | `flag` | `False` | Overwrite existing files in the output directory if specified. |
 
 ## Examples
 
@@ -195,10 +195,10 @@ uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_d
 
 ### Overwriting Files
 
-To overwrite files use the `--FORCE` argument.
+To overwrite files use the `--force` argument.
 
 ```bash
-uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_demo/train.csv" --val_path="data/processed/pipeline_demo/val.csv" --output_dir="data/training/pipeline_demo/" --FORCE
+uv run scripts/training/preprocessing.py --input_path="data/processed/pipeline_demo/train.csv" --val_path="data/processed/pipeline_demo/val.csv" --output_dir="data/training/pipeline_demo/" --force
 ```
 
 ---
