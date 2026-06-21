@@ -292,6 +292,17 @@ def run_single_video(
         return "failed"
  
 
+def force_onedrive_download(file_path):
+    """Force file download before sending to model."""
+    # We must actually attempt to read a single byte to force macOS to download files
+    try:
+        with open(file_path, "rb") as f:
+            f.read(1)  # Reads just the first byte, forcing the download
+        print(f"Successfully synced: {(file_path.name)}")
+    except Exception as e:
+        print(f"Failed to force download: {e}")
+
+
 def run_testing(
     model_path: str,
     data_path: str,
@@ -463,22 +474,19 @@ def parse_args():
         help="Target class for detection (default: cross-sucking)",
     )
     parser.add_argument(
-        "--chunk",
-        type=int,
-        default=0,
-        help="Which chunk to process (0-indexed)."
+        "--chunk", type=int, default=0, help="Which chunk to process (0-indexed)."
     )
     parser.add_argument(
         "--chunk_pct",
         type=float,
         default=0.10,
-        help="Percentage of videos per chunk (default: 0.10 = 10%%)"
+        help="Percentage of videos per chunk (default: 0.10 = 10%%)",
     )
     parser.add_argument(
         "--overwrite",
         action="store_true",
         default=False,
-        help="Overwrite existing results. If not set, skips already processed videos."
+        help="Overwrite existing results. If not set, skips already processed videos.",
     )
     return parser.parse_args()
 

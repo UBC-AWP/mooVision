@@ -647,7 +647,7 @@ def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True
     # Take small, easily downloadable dataset.
     train = train_df.iloc[10:13]  # 3 videos
     val = train_df.iloc[14:16]  # 2 videos
-    test = test_df.iloc[17:19]  # 2 videos
+    test = test_df.iloc[35:36]  # 1 videos
 
     # Save to csv
     print("\n--------------------------------\n")

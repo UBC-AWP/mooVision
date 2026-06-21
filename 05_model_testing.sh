@@ -21,7 +21,6 @@ OVERWRITE=${OVERWRITE:-false}
 
 # ── Model+test pairs (split_1 = random, split_2 = day_based, etc.) ───────────
 MODEL_NAMES=(
-    "split_1_model"
     "split_2_model"
     "split_3_model"
     "split_4_model"
@@ -29,6 +28,7 @@ MODEL_NAMES=(
     "split_6_model"
     "split_7_model"
     "split_8_model"
+    "split_9_model"
 )
 
 DATA_SPLITS=(
@@ -42,7 +42,7 @@ DATA_SPLITS=(
     "period_based/WEAN"
 )
 
-MODEL_PATH="/scratch/st-nina-1/moovision/yolo_training_runs/${MODEL_NAMES[$PAIR_IDX]}/weights/best.pt"
+MODEL_PATH="/scratch/st-nina-1/moovision/data/yolo_training_runs/${MODEL_NAMES[$PAIR_IDX]}/weights/best.pt"
 DATA_PATH="data/processed/${DATA_SPLITS[$PAIR_IDX]}"/test.csv
 
 echo "========================================================"

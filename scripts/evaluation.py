@@ -3,7 +3,7 @@ evaluation.py
 -------------
 Evaluation module for the MooVision cross-sucking detection pipeline.
 
-Compares baseline model predictions (JSON) against ground truth annotations
+Compares model predictions (JSON) against ground truth annotations
 (processed clips index CSV) across three levels:
   - Frame level:    bounding box IoU for every predicted frame vs ground truth
                     frame, independent of temporal matching. Measures spatial
@@ -13,21 +13,38 @@ Compares baseline model predictions (JSON) against ground truth annotations
   - Sequence level: temporal IoU — how well predicted event time windows
                     overlap with labeled event time windows.
 
+Works with predictions from any model (baseline, fine-tuned YOLO, or
+YOLO + Seq-NMS) as long as the JSON output format is consistent.
+
 How to run:
     python scripts/evaluation.py \
-        --predictions results/metadata/baseline/ \
-        --ground_truth data/raw/all_clips_index_raw.csv \
+        --predictions results/metadata/<model_name>/ \
+        --ground_truth data/processed/processed_clips_index.csv \
         --output results/evaluation_report.json \
         --labelled_clips_dir /path/to/cross_sucking_labelled \
         --fps 30.0
+
+Note: --predictions should point to the output directory of whichever
+model you are evaluating (e.g. results/metadata/baseline/ or
+results/metadata/seq_nms/).
+
+Note: --ground_truth must point to processed_clips_index.csv, not
+all_clips_index_raw.csv. Only the processed index contains the
+labelled_clip_relative_path column required for bounding box IoU
+evaluation against CVAT annotations.
 """
 
 import json
+import sys
 import zipfile
 import argparse
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+
+sys.path.append(str(Path(__file__).parent.parent))
+from config import ROOT_DIR
 
 # Video dimensions — used to convert YOLO normalized coords to pixels
 VIDEO_WIDTH  = 1920
@@ -99,7 +116,7 @@ def load_ground_truth(path: Path) -> pd.DataFrame:
     file for bounding box evaluation.
 
     Key columns used for evaluation:
-        - source_video_basename: links ground truth to predictions
+        - source_video_basename:    links ground truth to predictions
         - clip_start_in_source_sec: CS event start time in source video
         - clip_end_in_source_sec:   CS event end time in source video
         - pen:                      which pen the calf was in
@@ -470,6 +487,8 @@ def compute_frame_level_bbox_iou(
     """
     all_ious = []
 
+    print(f"Processing {predictions['source_video_basename'].nunique()} unique videos from predictions")
+
     # Process each source video that appears in predictions
     for video in predictions["source_video_basename"].unique():
         video_preds = predictions[
@@ -482,12 +501,14 @@ def compute_frame_level_bbox_iou(
         ].to_dict("records")
 
         if not video_gt:
+            print(f"{video} -> no matching ground truth rows, skipping")
             continue
 
         # Load all ground truth boxes for this video from zip files
         all_gt_boxes = []
         for gt_event in video_gt:
             if not gt_event.get("labelled_clip_relative_path"):
+                print(f"{video} -> xxx")
                 continue
             clip_start_frame = int(gt_event["start_sec"] * fps)
             gt_boxes = load_gt_boxes_from_zip(
@@ -499,7 +520,10 @@ def compute_frame_level_bbox_iou(
             )
             all_gt_boxes.extend(gt_boxes)
 
+        print(f"{video} -> {len(video_gt)} gt clips, {len(all_gt_boxes)} total gt boxes loaded, {len(video_preds)} predicted events")
+
         if not all_gt_boxes:
+            print(f"{video} -> no gt boxes available, skipping")
             continue
 
         # Compute bbox IoU for each predicted event's frames
@@ -513,6 +537,8 @@ def compute_frame_level_bbox_iou(
             )
             if iou > 0:
                 all_ious.append(iou)
+
+    print(f"Matched {len(all_ious)} predicted events with non-zero bbox IoU")
 
     return round(float(np.mean(all_ious)), 4) if all_ious else 0.0
 
@@ -1033,8 +1059,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    preds = load_predictions(args.predictions)
-    gt    = load_ground_truth(args.ground_truth)
+    preds = load_predictions(ROOT_DIR / args.predictions)
+    gt    = load_ground_truth(ROOT_DIR / args.ground_truth)
 
     report = generate_evaluation_report(
         predictions=preds,
@@ -1042,7 +1068,7 @@ if __name__ == "__main__":
         output_path=args.output,
         temporal_iou_threshold=args.temporal_iou_threshold,
         confidence_threshold=args.confidence_threshold,
-        labelled_clips_dir=args.labelled_clips_dir,
+        labelled_clips_dir=ROOT_DIR / args.labelled_clips_dir,
         fps=args.fps,
     )
 
