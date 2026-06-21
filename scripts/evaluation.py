@@ -35,11 +35,16 @@ evaluation against CVAT annotations.
 """
 
 import json
+import sys
 import zipfile
 import argparse
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+
+sys.path.append(str(Path(__file__).parent.parent))
+from config import ROOT_DIR
 
 # Video dimensions — used to convert YOLO normalized coords to pixels
 VIDEO_WIDTH  = 1920
@@ -1054,8 +1059,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    preds = load_predictions(args.predictions)
-    gt    = load_ground_truth(args.ground_truth)
+    preds = load_predictions(ROOT_DIR / args.predictions)
+    gt    = load_ground_truth(ROOT_DIR / args.ground_truth)
 
     report = generate_evaluation_report(
         predictions=preds,
@@ -1063,7 +1068,7 @@ if __name__ == "__main__":
         output_path=args.output,
         temporal_iou_threshold=args.temporal_iou_threshold,
         confidence_threshold=args.confidence_threshold,
-        labelled_clips_dir=args.labelled_clips_dir,
+        labelled_clips_dir=ROOT_DIR / args.labelled_clips_dir,
         fps=args.fps,
     )
 
