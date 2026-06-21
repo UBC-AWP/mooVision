@@ -464,7 +464,7 @@ def detect_video(
     )
  
     metadata = {
-        "identifier":             video_path.name,
+        "identifier":              video_path.name,
         "video_path":             str(video_path.resolve()),
         "model":                  str(DEFAULT_MODEL),
         "iou_threshold":          iou_threshold,
@@ -504,7 +504,8 @@ def resolve_output_path(video_path: Path, split_name: str) -> Path:
     return output_dir / f"{video_path.stem}_results.json"   
 
 def run_all(
-    data_root:      Path,
+    csv_path:       Path,
+    output_dir:     Path,
     model_path:     str,
     iou_threshold:  float,
     conf_threshold: float,
@@ -530,63 +531,54 @@ def run_all(
     Raises:
         ValueError: If the target class is not present in the loaded model.
     """
-    from ultralytics import YOLO
- 
-    splits = load_all_splits(data_root)
-    if not splits:
-        print("[ERROR] No splits loaded. Check your data_root path.")
+    video_paths = load_split_from_csv(csv_path)
+    if not video_paths:
+        print("[ERROR] No videos loaded.")
         return
- 
+
+    from ultralytics import YOLO
     print(f"[INFO] Loading model: {model_path}")
     model = YOLO(model_path)
- 
+
     class_name_to_id = {v: k for k, v in model.names.items()}
     target_ids = {class_name_to_id[TARGET_CLASS_NAME]} if TARGET_CLASS_NAME in class_name_to_id else set()
     if not target_ids:
-        raise ValueError(
-            f"'{TARGET_CLASS_NAME}' not found in model classes: {list(model.names.values())}"
-        )
-    print(f"[INFO] Target class '{TARGET_CLASS_NAME}' → IDs {target_ids}")
- 
-    for split_name, video_paths in splits:
-        print(f"\n{'─' * 60}")
-        print(f"  SPLIT: {split_name}  ({len(video_paths)} video(s))")
-        print(f"{'─' * 60}")
- 
-        for video_path in video_paths:
-            json_path = resolve_output_path(video_path, split_name)
- 
-            if json_path.exists():
-                print(f"[SKIP] Metadata exists: {json_path.name}")
-                continue
- 
-            if not video_path.exists():
-                print(f"[WARN] Video not found, skipping: {video_path}")
-                continue
- 
-            try:
-                metadata = detect_video(
-                    video_path, model, target_ids,
-                    iou_threshold, conf_threshold, min_duration, frame_skip,
-                )
-            except Exception as e:
-                print(f"[ERROR] Failed on {video_path}: {e} — skipping.")
-                continue
- 
-            os.makedirs(json_path.parent, exist_ok=True)
-            with open(json_path, "w") as f:
-                json.dump(metadata, f, indent=2)
- 
-            # Summary
-            print("\n" + "═" * 50)
-            print(f"  VIDEO:   {metadata['identifier']}")
-            print(f"  FLAGGED: {metadata['cross_sucking_detected']}")
-            print(f"  EVENTS:  {metadata['num_events']}")
-            for i, ev in enumerate(metadata["events"]):
-                print(f"    Event {i+1}: {ev['start_sec']}s → {ev['end_sec']}s "
-                      f"({ev['duration_sec']}s) | conf={ev['avg_confidence']}")
-            print(f"  OUTPUT:  {json_path}")
-            print("═" * 50 + "\n")
+        raise ValueError(f"'{TARGET_CLASS_NAME}' not found in model: {list(model.names.values())}")
+
+    for video_path in video_paths:
+        m = re.search(r"videos[\\/](.*)$", str(video_path))
+        rel_parent = Path(m.group(1)).parent if m else Path()
+        json_path = output_dir / rel_parent / f"{video_path.stem}_results.json"
+
+        if json_path.exists():
+            print(f"[SKIP] {json_path.name}")
+            continue
+        if not video_path.exists():
+            print(f"[WARN] Video not found, skipping: {video_path}")
+            continue
+
+        try:
+            metadata = detect_video(
+                video_path, model, target_ids,
+                iou_threshold, conf_threshold, min_duration, frame_skip,
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed on {video_path.name}: {e} — skipping.")
+            continue
+
+        os.makedirs(json_path.parent, exist_ok=True)
+        with open(json_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        print("\n" + "═" * 50)
+        print(f"  VIDEO:   {metadata['identifier']}")
+        print(f"  FLAGGED: {metadata['cross_sucking_detected']}")
+        print(f"  EVENTS:  {metadata['num_events']}")
+        for i, ev in enumerate(metadata["events"]):
+            print(f"    Event {i+1}: {ev['start_sec']}s → {ev['end_sec']}s "
+                  f"({ev['duration_sec']}s) | conf={ev['avg_confidence']}")
+        print(f"  OUTPUT:  {json_path}")
+        print("═" * 50 + "\n")
 
 # CLI
 def parse_args():
