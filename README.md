@@ -143,7 +143,7 @@ After configuring you `.env` and config files, run the following commands from y
    --val_path="data/processed/pipeline_demo/val.csv" \
    --output_path="data/training/pipeline_demo/" \
    --skip=10 \
-   --FORCE
+   --force
    ```
 
     Note: it might take a while to upload files to OneDrive if you have set your root directory there.
