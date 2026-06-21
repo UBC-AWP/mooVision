@@ -86,29 +86,6 @@ uv run --frozen --offline python scripts/training/training_yolo.py \
 
 # fi
 
-# sbatch --account=st-nina-1-gpu \
-# --job-name=yolo_training_7 \
-# --time=24:00:00 \
-# --gres=gpu:1 \
-# --mem=96G \
-# --nodes=1 \
-# --ntasks=1 \
-# --cpus-per-task=8 \
-# --wrap="uv run python /scratch/st-nina-1/mooVision/scripts/training/training_yolo.py \
-# --dataset=${USER_SCRATCH}/data/training/period_based/PREWEAN/yolo/dataset.tar \
-# --project=$TARGET_PROJECT_DIR \
-# --name=split_7_model \
-# --device=0 \
-# --workers=8 \
-# --weights_dir=$WEIGHTS_DIR \
-# --model=26 \
-# --model_size=m \
-# --batch=64 \
-# --epochs=100 \
-# --patience=40"
-
-# rm something?
-
 echo "========================================================"
 echo "SUCCESS: Split #$SPLIT_NUM Model Training Complete."
 echo "========================================================"
