@@ -171,7 +171,7 @@ After configuring you `.env` and config files, run the following commands from y
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
 ```bash
-uv run scripts/run-testing-2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
+uv run scripts/run_testing_2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
 ```
 
 7. Evaluate results, including frame-level bounding box IoU computed from CVAT annotations. Note that `--labelled_clips_dir` should point to the directory containing the CVAT annotation zip files for the clips being evaluated; this argument is optional and can be omitted if frame-level bbox IoU is not needed.
