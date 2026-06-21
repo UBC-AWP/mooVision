@@ -180,10 +180,10 @@ Evaluate plain fine-tuned YOLO (CS detection only, no temporal linking):
 
 ```bash
 uv run python scripts/evaluation.py \
-    --predictions "$ROOT_DIR/results/metadata/pipeline_demo/yolo/" \
+    --predictions "results/metadata/pipeline_demo/yolo/" \
     --ground_truth data/processed/processed_clips_index.csv \
     --output results/evaluation_report_yolo.json \
-    --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
+    --labelled_clips_dir "cross_sucking_labelled"
 ```
 
 Evaluate YOLO + Seq-NMS (with temporal linking):
