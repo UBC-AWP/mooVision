@@ -11,6 +11,10 @@ Cross-sucking (here: sucking directed at various body parts of other calves) is 
 - outputs predicted event windows and metadata (start/end time, confidence, pen, weaning stage, day)
 - optionally generates clipped videos for review and evaluation
 
+## Data Requirements (Data Collection)
+
+- Data index file such as `all_clips_index.csv` listing cross-sucking clips, and associated data... WIP
+
 ## Repository Structure (high level)
 
 - `src/`: library code (config, preprocessing, baseline inference, evaluation)
@@ -25,9 +29,28 @@ Cross-sucking (here: sucking directed at various body parts of other calves) is 
 This project uses `uv` for package management.
 
 1. Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2. Clone the repo and cd into it
-3. Run `uv sync` to install all dependencies
-4. Run scripts with `uv run python <script.py>`
+
+2. Move into the folder where you wish to download the repo. Clone the repo.
+
+    ```bash
+    git clone git@github.com:UBC-AWP/mooVision.git
+    ```
+
+3. Cd into the repo.
+
+    ```bash
+    cd mooVision
+    ```
+
+4. Run `uv sync` to install all dependencies.
+
+    ```bash
+    uv sync
+    ```
+
+5. Run scripts with `uv run python <script.py>`
+
+---
 
 ## Local `.env` configuration (required)
 
@@ -48,40 +71,90 @@ We use a local `.env` file (stored at the **repo root**) to configure machine-sp
 
 3. `.env` is ignored by git (do not commit). If you need to change what variables exist, update `.env.example` instead.
 
+## OneDrive Sync
+
+UBC offers OneDrive accounts for researchers and research groups. If your data is hosted on OneDrive you will need to sync your account to your local computer.
+
+1. Download the OneDrive App.
+
+2. Sign in with the email account connected to the OneDrive folder hosting your data. For UBC researchers this is your UBC email.
+
+3. Follow the prompts to sync your folder. Alternatively, open OneDrive in your browser, move into the folder you want to sync, and click sync in the top toolbar.
+
 ---
+
+## Configuring your repository in `config.py`
+
+We use `config.py` to configure paths to video and label directories. By default, the config file is setup for source videos, cross-sucking clips, and annotation labels existing in the following data structure:
+
+```plaintext
+mooVision/
+└── data/
+    ├── raw_cross_sucking_datalog/
+    │   └── videos/                          <- Raw field footages from cameras.
+    │
+    ├── cross_sucking_clips/                 <- Curated video segments containing cross-sucking events.
+    │   └── all_clips_index.csv              <- Index file listing curated video segments containing cross-sucking events and associated metadata.
+    │
+    └── cross_sucking_labelled/              <- Ground-truth frames and splits as zipped files.
+     
+```
+
+To configure the project for your data structure layout, change the following variables within the `config.py` module:
+
+```plaintext
+# Videos and labels
+UNLABELLED_CLIPS_DIR = ROOT_DIR / "<cross_sucking_clips_folder>"
+LABELLED_CLIPS_DIR = ROOT_DIR / "<cross_sucking_labels_folder>"
+SOURCE_VIDEOS_DIR = ROOT_DIR / "<source_videos_folder>"
+```
+
+To change the location of your data index file, edit the following:
+
+```plaintext
+# Raw and Processed Index Paths
+INDEX_PATH = Path/to/your/index/file/<file>
+```
 
 ## Pipeline Diagram
 <img src="img/pipeline_diagram.png" width="370"/>
 
-## Running the Pipeline (demo version)
+## Running the Pipeline (demo)
 
-After configuring you `.env` file, run the following commands from your terminal in the MooVision root directory:
+After configuring you `.env` and config files, run the following commands from your terminal in the MooVision root directory to move through a local demo of the project workflow. For more information see, project documentation.
 
-1. Read in Raw index, and Processed video indexes.
+1. Read in Raw index, and process for videos . Note, this will throw a lot of warnings when ran. These are telling you that the function is using the clips NOT found in fixed_clips when multiple versions of the same video are found.
 
    ```bash
    uv run scripts/data_reading/read_all_clips_index.py --FORCE
    ```
 
-2. Split Data into train and tes splits.
+2. Split Data into train and test splits. This outputs the 8 main train/val/test splits tested to the `data/processed/` folder within the root directory. For more information, see the project documentation.
 
    ```bash
-   uv run scripts/data_splitting/data_splitting.py --FORCE
+   uv run scripts/data_splitting/split_data.py --FORCE
    ```
 
-3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set)
+3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set). Note that the train_path, val_path, and output_path are relative to the root directory `ROOT_DIR` here. Here we run only the demo training set for efficiency purposes as running all 8 splits is a long process. A similar command can be used to run any of the other splits, for more information see project documentation.
 
    ```bash
-   uv run scripts/preprocessing/preprocessing_yolo.py --input_path="data/processed/pipeline_testing/train.csv" --output_dir="data/training/pipeline_testing/yolo_format" --skip=10 --FORCE
+   uv run scripts/preprocessing/preprocessing_yolo.py \
+   --train_path="data/processed/pipeline_demo/train.csv" \
+   --val_path="data/processed/pipeline_demo/val.csv" \
+   --output_path="data/training/pipeline_demo/" \
+   --skip=10 \
+   --FORCE
    ```
 
-4. Train YOLO object detection model. Note: change `--device="..."` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long.
+    Note: it might take a while to upload files to OneDrive if you have set your root directory there.
+
+4. Train YOLO object detection model. Note: change `--device="cpu"` to 0 for GPU, `cuda` for CUDA GPU, 'mps' for Mac GPU, or "cpu" if no GPU available. Note the dataset size is small so training should not take long. This will save the model to `data/yolo_training_runs/project` in the root directory (OneDrive if setup that way). For more information see the project documentation.
 
    ```bash
-   uv run scripts/training/training_yolo.py --yaml_path="data/training/pipeline_testing/yolo_format/dataset.yaml" --device="..."
+   uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --project="pipeline_demo" --name="demo_01" --device="cpu" --epochs=1 --batch=8
    ```
 
-5. Run baseline on testing set:
+5. Run baseline on test videos to capture cross-sucking events and produce associated metadata: NEEDS TO HAVE OUTPUT LOCATION UPDATED TO ONEDRIVE/data/results
 
    - Cross-sucking examples (~2-3 minutes):
 
@@ -98,17 +171,30 @@ After configuring you `.env` file, run the following commands from your terminal
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
 ```bash
-uv run scripts/models/yolo/yolo.py --video_path="sample_videos/cross_sucking_clip_sample/CS_0031_POSTWEAN_d1_p2_cow3_02112025_ch02-20251103001956_60818_60835.mp4" --model_path="runs/detect/MooVision/cross-sucking/weights/best.pt" --buffer=2
+uv run scripts/run-testing-2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
 ```
 
-7. Evaluate results:
+7. Evaluate results, including frame-level bounding box IoU computed from CVAT annotations. Note that `--labelled_clips_dir` should point to the directory containing the CVAT annotation zip files for the clips being evaluated; this argument is optional and can be omitted if frame-level bbox IoU is not needed.
 
-   ```bash
-       uv run python scripts/evaluation.py \
-           --predictions results/metadata/baseline/ \
-           --ground_truth data/raw/all_clips_index_raw.csv \
-           --output results/evaluation_report.json
-   ```
+Evaluate plain fine-tuned YOLO (CS detection only, no temporal linking):
+
+```bash
+uv run python scripts/evaluation.py \
+    --predictions "results/metadata/pipeline_demo/yolo/" \
+    --ground_truth data/processed/processed_clips_index.csv \
+    --output results/evaluation_report_yolo.json \
+    --labelled_clips_dir "cross_sucking_labelled"
+```
+
+Evaluate YOLO + Seq-NMS (with temporal linking):
+
+```bash
+uv run python scripts/evaluation.py \
+    --predictions "$ROOT_DIR/results/metadata/pipeline_demo/seq-nms/" \
+    --ground_truth data/processed/processed_clips_index.csv \
+    --output results/evaluation_report_seq_nms.json \
+    --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
+```
 
 8. Clip frames from results:
 
@@ -281,10 +367,11 @@ The evaluation script compares baseline model predictions against ground truth a
 1. Loads all baseline prediction JSON files from the results directory
 2. Loads the ground truth annotations from the processed clips index CSV
 3. Matches predictions to ground truth events using temporal IoU per video
-4. Computes precision, recall, F1, F2 and bounding box IoU at the event level
-5. Computes temporal IoU at the sequence level
-6. Stratifies all results by pen and weaning stage
-7. Saves a full evaluation report as a JSON file
+4. Computes frame-level bounding box IoU across all predicted frames independently of temporal matching
+5. Computes precision, recall, F1, F2 and bounding box IoU at the event level
+6. Computes temporal IoU at the sequence level
+7. Stratifies all results by pen and weaning stage
+8. Saves a full evaluation report as a JSON file
 
 ### Input
 
@@ -310,6 +397,8 @@ Results are saved to the path specified by `--output`.
 | `f2` | Recall-weighted score — prioritizes not missing real events |
 | `avg_bbox_iou` | Average spatial overlap between predicted and ground truth boxes |
 | `avg_temporal_iou` | Average time window overlap between predictions and ground truth |
+| `frame_level_bbox_iou` | Average spatial accuracy of bounding boxes across ALL predicted frames, independent of event matching |
+| `labelled_clips_dir` | Path to CVAT annotation zip files — required for bbox IoU computation |
 | `by_pen` | All metrics broken down by pen |
 | `by_weaning_stage` | All metrics broken down by weaning stage |
 
@@ -335,6 +424,17 @@ Results are saved to the path specified by `--output`.
         --temporal_iou_threshold 0.4
 ```
 
+3. With bbox IoU using CVAT annotations:
+
+```bash
+    uv run python scripts/evaluation.py \
+    --predictions results/metadata/baseline/ \
+    --ground_truth data/raw/all_clips_index_raw.csv \
+    --output results/evaluation_report.json \
+    --labelled_clips_dir /path/to/cross_sucking_labelled
+```
+
+
 ### Arguments
 
 | Argument | Type | Default | Description |
@@ -344,6 +444,8 @@ Results are saved to the path specified by `--output`.
 | `--output` | str | - | Path to save evaluation report JSON (optional) |
 | `--confidence_threshold` | float | `0.5` | Minimum confidence score to consider a prediction |
 | `--temporal_iou_threshold` | float | `0.5` | Minimum temporal IoU to count a prediction as a match |
+| `--labelled_clips_dir` | str | None | Path to CVAT annotation zip files for bbox IoU. Optional |
+| `--fps` | float | `30` | Frames per second of source videos |
 
 ### Tuning Tips
 
