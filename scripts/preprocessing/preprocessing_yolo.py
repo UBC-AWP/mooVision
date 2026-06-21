@@ -10,15 +10,17 @@ NOTE 2: Look into sampling frames at x/second rather than a defined skip amount.
 NOTE 3: Examples are not finished and need to be properly updated.
 """
 
-from typing import List
+from typing import List, Tuple, Dict, Any, Set
 from pathlib import Path
 import sys
 import os
+
 import shutil
 import argparse
 import tarfile
 import zipfile
 import yaml
+
 import concurrent.futures
 import threading
 import cv2
@@ -33,11 +35,44 @@ from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR, ROOT_DIR
 def validate_file_paths(
     label_paths: List[str],
     labels_root: Path,
-) -> List[str]:
+) -> List[Path]:
     """
-    Clean and Validate Paths in labels_paths.
+    Clean file paths to label_paths to standardize path structure
+    and validate paths exist in the labelled root directory `labels_root`.
 
+    Parameters
+    ----------
+    labels_path : List[str]
+        List of relative paths within the labelled clips directory to
+        zipped folders containing bounding box annotations for
+        cross-sucking events.
+
+    labels_root : Path
+        Path to the labelled clips directory containing zipped folders
+        with bounding box annotations for cross-sucking events.
+
+    Returns
+    -------
+    List[Path]
+        List of Paths to zipped folders with bounding box labels
+
+    Raises
+    ------
+    TypeError
+        If label_paths is not a list or labels_root is not a Path object.
+    FileNotFoundError
+        If a constructed path does not exist.
     """
+    # Type Validation
+    if not isinstance(label_paths, list):
+        raise TypeError(
+            f"Expected 'label_paths' to be a list, got {type(label_paths).__name__}"
+        )
+
+    if not isinstance(labels_root, Path):
+        raise TypeError(
+            f"Expected 'labels_root' to be a Path object, got {type(labels_root).__name__}"
+        )
     # Input Pre-Validation (Fails fast before touching data)
     validated_paths = []
     for raw_path in label_paths:
@@ -47,9 +82,168 @@ def validate_file_paths(
         # Standardize path string
         clean_path = labels_root / raw_path.replace("\\", "/")
         if not clean_path.exists():
-            raise FileNotFoundError(f"Label file not found: {clean_path}")
+            raise FileNotFoundError(
+                f"Attempting clean file paths, cleaned label file not found: {clean_path}"
+            )
 
         validated_paths.append(clean_path)
+
+    return validated_paths
+
+
+def generate_video_metadata(zip_name: str) -> tuple[tuple[int, str | None], str]:
+    """
+    Extract lookup keys and file prefixes from a CVAT export zip filename.
+
+    Parameters
+    ----------
+    zip_name : str
+        The base name of the zip file archive.
+
+    Returns
+    -------
+    video_key : tuple(int, str or None)
+        A tracking tuple pair composed of (numeric_id, part_id).
+    file_prefix : str
+        The standardized prefix format for output files.
+    """
+    numeric_id, part_id = parse_labelled_name(zip_name)
+    video_key = (int(numeric_id), part_id)
+
+    part_id_str = f"part0{part_id}" if part_id else None
+    file_prefix = f"{int(numeric_id):04}_{part_id_str}_"
+
+    return video_key, file_prefix
+
+
+def parse_zip_annotations(
+    validated_paths: List[Path],
+    frame_registry: Dict[Tuple[int, Any], Set[int]],
+    skip: int,
+) -> Tuple[Dict[str, bytes], Dict[Tuple[int, Any], Set[int]]]:
+    """
+    Parse zipped CVAT annotation exports into in-memory byte batches and matching registries.
+
+    Iterates through a list of validated paths to zip files containing bounding box
+    annotations. Extracts text streams for downsampled frames that possess a valid
+    corresponding entry in the provided frame registry.
+
+    Parameters
+    ----------
+    validated_paths : list of pathlib.Path
+        A list of verified absolute paths to zipped CVAT data folders.
+    frame_registry : dict
+        A lookup dictionary tracking extracted video frames. Keys are tuples containing
+        the numeric ID and part ID (`(int, str/None)`), and values are sets of integers
+        representing successfully saved frame numbers.
+    skip : int
+        The sequence interval step size used for downsampling frame data (e.g.,
+        passing 5 filters and extracts every 5th sequential frame annotation).
+
+    Returns
+    -------
+    label_batch : dict of {str : bytes}
+        An in-memory batch mapping target destination filenames (formatted for YOLO)
+        to their raw text binary streams extracted directly from the zip file archives.
+    saved_labels_registry : dict of {tuple(int, str or None) : set of int}
+        A mapping of video keys to sets of frame indexes that were successfully
+        processed and queued for extraction.
+
+    Raises
+    ------
+    ValueError
+        If a file within the target archive violates standard naming conventions
+        preventing safe extraction of its sequential frame index.
+
+    See Also
+    --------
+    extract_labels : Parent orchestrator executing actual I/O batch writes.
+
+    Notes
+    -----
+    This function reads zipped files directly into RAM to minimize redundant storage
+    overhead on high-performance compute node playgrounds (like Sockeye's local NVMe
+    burst workspaces). The returned byte arrays should be written using binary file-mode
+    handlers (`"wb"`).
+    """
+    # Loop over zip file paths (CVAT Outputs)
+    print("\n--- Extracting Annotation Labels ---\n")
+    label_batch = {}
+    saved_labels_registry = {}
+    n_files = len(validated_paths)
+    for n, input_path in enumerate(validated_paths, start=1):
+        print(f"Extracting files from {input_path.name} ({n}/{n_files} )...")
+
+        video_key, file_prefix = generate_video_metadata(zip_name=input_path.name)
+        target_folder = "obj_train_data"
+        saved_labels_registry[video_key] = set()
+
+        # Extracting labels
+        with zipfile.ZipFile(input_path, "r") as zip_ref:
+            for zinfo in zip_ref.infolist():
+                filename = zinfo.filename
+
+                # Labels are .txt files starting with target_folder; e.g. 'obj_train_data/frame_000001.txt'
+                if filename.startswith(target_folder) and filename.endswith(".txt"):
+
+                    # Pure frame name is 'frame_000001.txt'
+                    pure_name = filename.split("/")[-1]
+
+                    try:
+                        frame_num = int(pure_name[6:12])
+                    except ValueError:
+                        raise (
+                            f"ValueError: Incorrect naming conventions for {filename} in {input_path.name}"
+                        )
+
+                    # Take only frames we want
+                    if frame_num % skip == 0:
+
+                        # Check corresponding video loop successfully extracted this specific frame number
+                        if frame_registry is not None:
+                            if (
+                                video_key not in frame_registry
+                                or frame_num not in frame_registry[video_key]
+                            ):
+                                continue  # Drop label safely if the frame isn't on disk
+
+                        # File names are: '0001_None_frame_000001.txt'
+                        new_filename = f"{file_prefix}{pure_name}"
+
+                        # Read text directly into RAM dictionary
+                        label_batch[new_filename] = zip_ref.read(zinfo)
+
+                        # Log frame
+                        saved_labels_registry[video_key].add(frame_num)
+
+        print(f"Labels Saved: {len(saved_labels_registry[video_key])}")
+
+    return label_batch, saved_labels_registry
+
+
+def save_label_batch(
+    label_batch: dict,
+    final_output_dir: Path,
+) -> None:
+    """
+    Save label batch to root directory or tmp/ on Sockeye
+    """
+
+    print("\nExtraction complete.\n")
+    if label_batch:
+        idx = 0
+        batch_len = len(label_batch)
+        print(f"--- Executing batch-write for {batch_len} annotation labels ---\n")
+        # Create an isolated, hyper-fast playground inside the node's local memory
+        for filename, text_bytes in label_batch.items():
+            idx += 1
+            if idx % 1000 == 0:
+                print(f"Writing label: ({idx}/{batch_len})")
+            file_path = final_output_dir / filename
+            with open(file_path, "wb") as f:
+                f.write(text_bytes)
+
+        print(f"\nAll labels saved at: {final_output_dir}")
 
 
 def extract_labels(
@@ -133,47 +327,7 @@ def extract_labels(
 
     Examples
     --------
-    .. code-block:: python
 
-        import shutil
-        import zipfile
-        from pathlib import Path
-        from my_project.preprocessing import extract_labels
-
-        # Setup temporary directories mimicking a real project workspace
-        labels_root = Path("temp_labels_source")
-        output_dir = Path("temp_yolo_output")
-        labels_root.mkdir(parents=True, exist_ok=True)
-
-        # Ensure the mock filename aligns with your expected identifier conventions.
-        mock_zip_name = "0042_p1.zip"
-        zip_path = labels_root / mock_zip_name
-
-        # Build a mock CVAT export zip file on the fly
-        # Creates files inside 'obj_train_data/' to replicate CVAT structure
-        with zipfile.ZipFile(zip_path, "w") as archive:
-            for frame_idx in range(10):
-                # Simulated YOLO format line: <class_id> <x1> <y1> <x2> <y2>
-                mock_annotation = f"0 0.50 0.50 0.22 0.34"
-                archive.writestr(
-                    f"obj_train_data/frame_{frame_idx:06d}.txt",
-                    mock_annotation
-                )
-
-        # Execute the label extraction (skipping every 2nd frame)
-        extract_labels(
-            labels_path=[mock_zip_name],
-            labels_root=labels_root,
-            output_dir=output_dir,
-            target_folder="obj_train_data",
-            split="train",
-            skip=2,
-            force=True,
-        )
-
-        # Clean up mock files after ensuring execution succeeded
-        shutil.rmtree(labels_root)
-        shutil.rmtree(output_dir)
     """
     if split not in ["train", "val"]:
         raise ValueError("split must be either 'train' or 'val'.")
@@ -190,80 +344,13 @@ def extract_labels(
     # Clean File Paths
     validated_paths = validate_file_paths(label_paths, labels_root)
 
-    label_batch = {}
-    saved_labels_registry = {}
-    n_files = len(validated_paths)
+    label_batch, saved_labels_registry = parse_zip_annotations(
+        validated_paths,
+        frame_registry,
+        skip,
+    )
 
-    # Loop over zip file paths (CVAT Outputs)
-    print("\n--- Extracting Annotation Labels ---\n")
-    for n, input_path in enumerate(validated_paths, start=1):
-        print(f"Extracting files from {input_path.name} ({n}/{n_files} )...")
-
-        # Get numeric id and part id of labelled output
-        numeric_id, part_id = parse_labelled_name(str(input_path.name))
-        video_key = (int(numeric_id), part_id)
-
-        saved_labels_registry[video_key] = set()
-
-        part_id_str = f"part0{part_id}" if part_id else None
-        file_prefix = f"{int(numeric_id):04}_{part_id_str}_"
-        target_folder = "obj_train_data"
-
-        # Extracting labels
-        with zipfile.ZipFile(input_path, "r") as zip_ref:
-            for zinfo in zip_ref.infolist():
-                filename = zinfo.filename
-
-                # Labels are .txt files starting with target_folder; e.g. 'obj_train_data/frame_000001.txt'
-                if filename.startswith(target_folder) and filename.endswith(".txt"):
-
-                    # Pure frame name is 'frame_000001.txt'
-                    pure_name = filename.split("/")[-1]
-
-                    try:
-                        frame_num = int(pure_name[6:12])
-                    except ValueError:
-                        raise (
-                            f"ValueError: Incorrect naming conventions for {filename} in {input_path.name}"
-                        )
-
-                    # Take only frames we want
-                    if frame_num % skip == 0:
-
-                        # Check corresponding video loop successfully extracted this specific frame number
-                        if frame_registry is not None:
-                            if (
-                                video_key not in frame_registry
-                                or frame_num not in frame_registry[video_key]
-                            ):
-                                continue  # Drop label safely if the frame isn't on disk
-
-                        # File names are: '0001_None_frame_000001.txt'
-                        new_filename = f"{file_prefix}{pure_name}"
-
-                        # Read text directly into RAM dictionary
-                        label_batch[new_filename] = zip_ref.read(zinfo)
-
-                        # Log frame
-                        saved_labels_registry[video_key].add(frame_num)
-
-        print(f"Labels Saved: {len(saved_labels_registry[video_key])}")
-
-    print("\nExtraction complete.\n")
-    if label_batch:
-        idx = 0
-        batch_len = len(label_batch)
-        print(f"--- Executing batch-write for {batch_len} annotation labels ---\n")
-        # Create an isolated, hyper-fast playground inside the node's local memory
-        for filename, text_bytes in label_batch.items():
-            idx += 1
-            if idx % 1000 == 0:
-                print(f"Writing label: ({idx}/{batch_len})")
-            file_path = final_output_dir / filename
-            with open(file_path, "wb") as f:
-                f.write(text_bytes)
-
-        print(f"\nAll labels saved at: {final_output_dir}")
+    save_label_batch(label_batch, final_output_dir)
 
     return saved_labels_registry
 
@@ -567,13 +654,11 @@ def run_yolo_preprocessing(
     """
     if not isinstance(ROOT_DIR, Path):
         # Convert inputs to Path objects
-        skip = int(skip)
         output_dir = str(Path(ROOT_DIR) / output_path)
         # Read in data
         train_df = pd.read_csv(Path(ROOT_DIR) / train_path, index_col=0)
         val_df = pd.read_csv(Path(ROOT_DIR) / val_path, index_col=0)
     else:
-        skip = int(skip)
         output_dir = str(ROOT_DIR / output_path)
         # Read in data
         train_df = pd.read_csv(str(ROOT_DIR / train_path), index_col=0)
@@ -782,10 +867,11 @@ def parse_args():
     parser.add_argument(
         "--skip",
         default=1,
+        type=int,
         help="Downsampling density. Skip=5 means read every 5th frame.",
     )
     parser.add_argument(
-        "--FORCE",
+        "--force",
         default=False,
         action="store_true",
         help="Overwrite existing files.",
@@ -806,5 +892,5 @@ if __name__ == "__main__":
         val_path=args.val_path,
         output_path=args.output_path,
         skip=args.skip,
-        force=args.FORCE,
+        force=args.force,
     )
