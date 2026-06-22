@@ -208,7 +208,7 @@ The distribution analysis notebook is not part of the `make run` pipeline and
 should be run manually after any model stage to explore its outputs:
 
 ```bash
-uv run jupyter notebook distribution_analysis.ipynb
+uv run jupyter notebook notebooks/distribution_analysis.ipynb
 ```
 
 ## Running the Full Pipeline (Sockeye HPC)
