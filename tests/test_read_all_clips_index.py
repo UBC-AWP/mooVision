@@ -1,14 +1,15 @@
+
 """
 Module for testing read_all_clips_index.py
 """
-
+ 
 import pytest
 import pandas as pd
 import sys
 from pathlib import Path
-
+ 
 sys.path.append(str(Path(__file__).parent.parent))
-
+ 
 from scripts.data_reading.read_all_clips_index import (
     read_data,
     validate_data,
@@ -20,8 +21,50 @@ from scripts.data_reading.read_all_clips_index import (
     filter_label_paths,
     read_data_from_index_file,
 )
+ 
+from scripts.data_reading.schema import schema, processed_schema
+ 
+ 
+# ===========================================================================
+# SHARED HELPER
+# ===========================================================================
+ 
+def make_valid_df(n=2, with_labels=False):
+    df = pd.DataFrame({
+        "clip_name":                    [f"CS_000{i}_clip.mp4" for i in range(n)],
+        "clip_relative_path":           [f"Pen 2/clip_{i}.mp4" for i in range(n)],
+        "clip_output_path":             [f"output/clip_{i}.mp4" for i in range(n)],
+        "source_video_path":            [f"source/video_{i}.mp4" for i in range(n)],
+        "source_video_basename":        [f"ch02_video_{i}.mp4" for i in range(n)],
+        "export_status":                ["exported"] * n,
+        "part_index":                   [0] * n,
+        "part_count":                   [1] * n,
+        "observation_id":               [f"obs_{i}" for i in range(n)],
+        "group_name":                   ["Group 1"] * n,
+        "phase":                        ["POSTWEAN"] * n,
+        "day":                          [1] * n,
+        "pen":                          [2] * n,
+        "obs_date_raw":                 [20251102] * n,
+        "subject":                      ["cow1"] * n,
+        "modifiers":                    ["mod1"] * n,
+        "interval_start_obs_sec":       [0.0] * n,
+        "interval_end_obs_sec":         [10.0] * n,
+        "part_start_obs_sec":           [0.0] * n,
+        "part_end_obs_sec":             [10.0] * n,
+        "source_segment_obs_start_sec": [0.0] * n,
+        "source_segment_obs_end_sec":   [10.0] * n,
+        "clip_start_in_source_sec":     [0.0] * n,
+        "clip_end_in_source_sec":       [10.0] * n,
+    })
+    if with_labels:
+        df["labelled_clip_relative_path"] = [f"Pen 2/POSTWEAN/Day 1/000{i}.zip" for i in range(n)]
+    return df
 
 
+# ===========================================================================
+# TestReadData
+# ===========================================================================
+ 
 class TestReadData:
 
     # --- Fixtures ---
@@ -160,3 +203,67 @@ class TestReadData:
         path = tmp_path / "data.tsv"
         df.to_csv(path, sep="\t", index=False)
         assert read_data(path).shape == (1, 2)
+
+
+# ===========================================================================
+# TestValidateData
+# ===========================================================================
+ 
+class TestValidateData:
+ 
+    # --- Fixtures ---
+ 
+    @pytest.fixture
+    def valid_df(self):
+        return make_valid_df()
+ 
+    @pytest.fixture
+    def valid_df_with_labels(self):
+        return make_valid_df(with_labels=True)
+ 
+    # --- Happy path ---
+ 
+    def test_valid_df_passes_raw_schema(self, valid_df):
+        result = validate_data(valid_df, schema)
+        assert isinstance(result, pd.DataFrame)
+ 
+    def test_valid_df_passes_processed_schema(self, valid_df_with_labels):
+        result = validate_data(valid_df_with_labels, processed_schema)
+        assert isinstance(result, pd.DataFrame)
+ 
+    # --- Error cases ---
+ 
+    def test_not_a_dataframe_raises_type_error(self):
+        with pytest.raises(TypeError):
+            validate_data("not a df", schema)
+ 
+    def test_not_a_schema_raises_type_error(self, valid_df):
+        with pytest.raises(TypeError):
+            validate_data(valid_df, "not a schema")
+ 
+    def test_empty_df_raises_value_error(self):
+        with pytest.raises(ValueError, match="empty"):
+            validate_data(pd.DataFrame(), schema)
+ 
+    def test_missing_required_column_raises(self, valid_df):
+        df = valid_df.drop(columns=["clip_name"])
+        with pytest.raises(ValueError, match="Data validation failed"):
+            validate_data(df, schema)
+ 
+    # --- Edge cases ---
+ 
+    def test_negative_day_raises(self, valid_df):
+        valid_df["day"] = [-1, -2]
+        with pytest.raises(ValueError, match="Data validation failed"):
+            validate_data(valid_df, schema)
+ 
+    def test_end_before_start_raises(self, valid_df):
+        valid_df["clip_end_in_source_sec"] = [0.0, 0.0]
+        with pytest.raises(ValueError, match="Data validation failed"):
+            validate_data(valid_df, schema)
+ 
+    def test_extra_column_raises_strict_schema(self, valid_df):
+        valid_df["unexpected_column"] = ["x", "y"]
+        with pytest.raises(ValueError, match="Data validation failed"):
+            validate_data(valid_df, schema)
+ 
