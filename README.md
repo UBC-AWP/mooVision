@@ -156,10 +156,16 @@ After configuring you `.env` and config files, run the following commands from y
 
 5. Run baseline on test videos to capture cross-sucking events and produce associated metadata: NEEDS TO HAVE OUTPUT LOCATION UPDATED TO ONEDRIVE/data/results
 
+    - First, source your `.env` to load the path variables:
+
+    ```bash
+    source .env
+    ```
+
    - Cross-sucking examples (~2-3 minutes):
 
       ```bash
-      uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv"
+      uv run scripts/models/baseline/baseline.py --csv "$ROOT_DIR/data/processed/pipeline_demo/test.csv" --frame_skip 100
       ```
 
    - Non-cross-sucking examples (~1-2 minutes):
@@ -170,36 +176,37 @@ After configuring you `.env` and config files, run the following commands from y
 
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
-```bash
-uv run scripts/run_testing_2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
-```
+    ```bash
+    uv run scripts/run_testing_2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
+    ```
 
-Note: if you wish to overwrite the existing result, add the argument `--overwrite` in the end
-```bash
-uv run scripts/run_testing_2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0 --overwrite
-```
+    Note: if you wish to overwrite the existing result, add the argument `--overwrite` in the end
+
+    ```bash
+    uv run scripts/run_testing_2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0 --overwrite
+    ```
 
 7. Evaluate results, including frame-level bounding box IoU computed from CVAT annotations. Note that `--labelled_clips_dir` should point to the directory containing the CVAT annotation zip files for the clips being evaluated; this argument is optional and can be omitted if frame-level bbox IoU is not needed.
 
-Evaluate plain fine-tuned YOLO (CS detection only, no temporal linking):
+    Evaluate plain fine-tuned YOLO (CS detection only, no temporal linking):
 
-```bash
-uv run python scripts/evaluation.py \
-    --predictions "results/metadata/pipeline_demo/yolo/" \
-    --ground_truth data/processed/processed_clips_index.csv \
-    --output results/evaluation_report_yolo.json \
-    --labelled_clips_dir "cross_sucking_labelled"
-```
+    ```bash
+    uv run python scripts/evaluation.py \
+        --predictions "results/metadata/pipeline_demo/yolo/" \
+        --ground_truth data/processed/processed_clips_index.csv \
+        --output results/evaluation_report_yolo.json \
+        --labelled_clips_dir "cross_sucking_labelled"
+    ```
 
-Evaluate YOLO + Seq-NMS (with temporal linking):
+    Evaluate YOLO + Seq-NMS (with temporal linking):
 
-```bash
-uv run python scripts/evaluation.py \
-    --predictions "$ROOT_DIR/results/metadata/pipeline_demo/seq-nms/" \
-    --ground_truth data/processed/processed_clips_index.csv \
-    --output results/evaluation_report_seq_nms.json \
-    --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
-```
+    ```bash
+    uv run python scripts/evaluation.py \
+        --predictions "$ROOT_DIR/results/metadata/pipeline_demo/seq-nms/" \
+        --ground_truth data/processed/processed_clips_index.csv \
+        --output results/evaluation_report_seq_nms.json \
+        --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
+    ```
 
 8. Clip frames from results:
 
