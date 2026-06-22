@@ -67,7 +67,7 @@ fi
 # ==============================================================================
 # RUN
 # ==============================================================================
-uv run --no-sync python scripts/evaluation.py \
+uv run python scripts/evaluation.py \
     --predictions "${PREDICTIONS}" \
     --ground_truth "${GROUND_TRUTH}" \
     --output "${OUTPUT_FILE}" \
