@@ -51,3 +51,9 @@ torch = [
 torchvision = [
   { index = "pytorch-cu121", marker = "sys_platform == 'linux'" },
 ]
+
+# register @pytest.mark.integration
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as heavy integration tests (deselect with '-m \"not integration\"')"
+]
