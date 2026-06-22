@@ -256,14 +256,14 @@ def extract_frames(
 
     print("\n\n--- Extracting Video Frames---\n")
 
-    validated_video_paths = validate_file_paths(video_paths, videos_root)
-
     final_output_dir = working_dir / "images" / split
     if Path(final_output_dir).exists() and not force:
         print(f"\nFiles already extracted at {Path(__file__) / Path(final_output_dir)}")
         return
 
     final_output_dir.mkdir(parents=True, exist_ok=True)
+
+    validated_video_paths = validate_file_paths(video_paths, videos_root)
 
     # Initialize ThreadPoolExecutor
     MAX_QUEUE_SIZE = 40
