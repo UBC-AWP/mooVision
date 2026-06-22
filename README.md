@@ -229,4 +229,4 @@ This project requires a Gemini API key to run multimodal inference via the `goog
 Create a `.env` file in the root directory of your project (or open your existing one) and add your copied key variable:
 
 ```env
-GEMINI_API_KEY="YOUR_COPIED_AIZASY_KEY_HERE"
+GEMINI_API_KEY="YOUR_API_KEY_HERE"
