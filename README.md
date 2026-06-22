@@ -195,18 +195,18 @@ After configuring you `.env` and config files, run the following commands from y
 
     Evaluate YOLO + Seq-NMS (with temporal linking):
 
-```bash
-uv run python scripts/evaluation.py \
-    --predictions "results/metadata/pipeline_demo/seq-nms/" \
-    --ground_truth data/processed/processed_clips_index.csv \
-    --output results/evaluation_report_seq_nms.json \
-    --labelled_clips_dir "cross_sucking_labelled"
-```
+    ```bash
+    uv run python scripts/evaluation.py \
+        --predictions "results/metadata/pipeline_demo/seq-nms/" \
+        --ground_truth data/processed/processed_clips_index.csv \
+        --output results/evaluation_report_seq_nms.json \
+        --labelled_clips_dir "cross_sucking_labelled"
+    ```
 
 8. Clip frames from results:
 
    ```bash
-       uv run python scripts/clipping.py
+   uv run python scripts/clipping.py
    ```
 
 ---
