@@ -154,7 +154,7 @@ After configuring you `.env` and config files, run the following commands from y
    uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --project="pipeline_demo" --name="demo_01" --device="cpu" --epochs=1 --batch=8
    ```
 
-5. Run baseline on test videos to capture cross-sucking events and produce associated metadata: NEEDS TO HAVE OUTPUT LOCATION UPDATED TO ONEDRIVE/data/results
+5. Run baseline on test videos to capture cross-sucking events and produce associated metadata:
 
    - Cross-sucking examples (~2-3 minutes):
 
