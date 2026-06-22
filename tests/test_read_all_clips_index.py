@@ -382,6 +382,197 @@ class TestFilterExistingClips:
     def test_missing_clips_raises_warning(self, df_some_missing, clips_dir):
         with pytest.warns(UserWarning, match="Dropped"):
             filter_existing_clips(df_some_missing, clips_dir)
+
+
+ 
+# ===========================================================================
+# TestGetLabelPaths
+# ===========================================================================
+ 
+class TestGetLabelPaths:
+ 
+    # --- Fixtures ---
+ 
+    @pytest.fixture
+    def labels_dir(self, tmp_path):
+        labels = tmp_path / "labels"
+        (labels / "Pen 2" / "POSTWEAN" / "Day 1").mkdir(parents=True)
+        (labels / "Pen 2" / "POSTWEAN" / "Day 1" / "0001.zip").touch()
+        (labels / "Pen 2" / "POSTWEAN" / "Day 1" / "0002.zip").touch()
+        return labels
+ 
+    # --- Happy path ---
+ 
+    def test_correct_number_of_zips_found(self, labels_dir):
+        result = get_label_paths(labels_dir)
+        assert len(result) == 2
+ 
+    def test_returns_list_of_tuples_with_name_and_path(self, labels_dir):
+        result = get_label_paths(labels_dir)
+        assert isinstance(result, list)
+        assert all(isinstance(item, tuple) for item in result)
+        names = [r[0] for r in result]
+        assert "0001.zip" in names
+ 
+    # --- Error cases ---
+ 
+    def test_nonexistent_directory_raises(self):
+        with pytest.raises(FileNotFoundError):
+            get_label_paths(Path("/nonexistent/path"))
+ 
+    def test_empty_directory_raises(self, tmp_path):
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        with pytest.raises(FileNotFoundError, match="No .zip files"):
+            get_label_paths(empty)
+ 
+    # --- Edge cases ---
+ 
+    def test_non_zip_files_ignored(self, tmp_path):
+        labels = tmp_path / "labels"
+        labels.mkdir()
+        (labels / "0001.zip").touch()
+        (labels / "readme.txt").touch()
+        result = get_label_paths(labels)
+        assert len(result) == 1
+ 
+ 
+# ===========================================================================
+# TestMatchLabelPaths
+# ===========================================================================
+ 
+class TestMatchLabelPaths:
+ 
+    # --- Fixtures ---
+ 
+    @pytest.fixture
+    def simple_df(self):
+        return make_valid_df(n=2)
+ 
+    # --- Happy path ---
+ 
+    def test_returns_list_of_correct_length(self, simple_df):
+        result = match_label_paths(simple_df, [("9999.zip", "path/9999.zip")])
+        assert isinstance(result, list)
+        assert len(result) == len(simple_df)
+ 
+    # --- Error cases ---
+ 
+    def test_not_a_dataframe_raises_type_error(self):
+        with pytest.raises(TypeError):
+            match_label_paths("not a df", [("0001.zip", "path/0001.zip")])
+ 
+    def test_empty_df_raises_value_error(self):
+        with pytest.raises(ValueError, match="empty"):
+            match_label_paths(pd.DataFrame(), [("0001.zip", "path/0001.zip")])
+ 
+    def test_empty_label_paths_raises_value_error(self, simple_df):
+        with pytest.raises(ValueError, match="empty"):
+            match_label_paths(simple_df, [])
+ 
+    # --- Edge cases ---
+ 
+    def test_no_matches_returns_none_values_with_warning(self, simple_df):
+        with pytest.warns(UserWarning):
+            result = match_label_paths(simple_df, [("9999.zip", "path/9999.zip")])
+        assert all(p is None for p in result)
+ 
+ 
+# ===========================================================================
+# TestAddLabelPaths
+# ===========================================================================
+ 
+class TestAddLabelPaths:
+ 
+    # --- Fixtures ---
+ 
+    @pytest.fixture
+    def simple_df(self):
+        return make_valid_df(n=2)
+ 
+    @pytest.fixture
+    def label_paths(self):
+        return ["path/0001.zip", "path/0002.zip"]
+ 
+    # --- Happy path ---
+ 
+    def test_adds_column_to_dataframe(self, simple_df, label_paths):
+        result = add_label_paths(simple_df, label_paths)
+        assert "labelled_clip_relative_path" in result.columns
+ 
+    def test_column_values_correct(self, simple_df, label_paths):
+        result = add_label_paths(simple_df, label_paths)
+        assert list(result["labelled_clip_relative_path"]) == label_paths
+ 
+    # --- Error cases ---
+ 
+    def test_not_a_dataframe_raises_type_error(self, label_paths):
+        with pytest.raises(TypeError):
+            add_label_paths("not a df", label_paths)
+ 
+    def test_empty_df_raises_value_error(self, label_paths):
+        with pytest.raises(ValueError, match="empty"):
+            add_label_paths(pd.DataFrame(), label_paths)
+ 
+    def test_empty_label_paths_raises_value_error(self, simple_df):
+        with pytest.raises(ValueError):
+            add_label_paths(simple_df, [])
+ 
+    # --- Edge cases ---
+ 
+    def test_none_values_added_correctly(self, simple_df):
+        result = add_label_paths(simple_df, ["path/0001.zip", None])
+        assert result["labelled_clip_relative_path"].iloc[1] is None
+ 
+ 
+# ===========================================================================
+# TestFilterLabelPaths
+# ===========================================================================
+ 
+class TestFilterLabelPaths:
+ 
+    # --- Fixtures ---
+ 
+    @pytest.fixture
+    def df_all_labels(self):
+        return make_valid_df(n=2, with_labels=True)
+ 
+    @pytest.fixture
+    def df_some_none(self):
+        df = make_valid_df(n=2, with_labels=True)
+        df["labelled_clip_relative_path"] = ["path/0001.zip", None]
+        return df
+ 
+    # --- Happy path ---
+ 
+    def test_all_labels_present_returns_full_df(self, df_all_labels):
+        result = filter_label_paths(df_all_labels)
+        assert len(result) == 2
+ 
+    def test_none_labels_filtered_out(self, df_some_none):
+        result = filter_label_paths(df_some_none)
+        assert len(result) == 1
+        assert result["labelled_clip_relative_path"].iloc[0] == "path/0001.zip"
+ 
+    # --- Error cases ---
+ 
+    def test_not_a_dataframe_raises_type_error(self):
+        with pytest.raises(TypeError):
+            filter_label_paths("not a df")
+ 
+    def test_empty_df_raises_value_error(self):
+        with pytest.raises(ValueError, match="empty"):
+            filter_label_paths(pd.DataFrame())
+ 
+    # --- Edge cases ---
+ 
+    def test_all_none_returns_empty_with_warning(self):
+        df = make_valid_df(n=2, with_labels=True)
+        df["labelled_clip_relative_path"] = [None, None]
+        with pytest.warns(UserWarning):
+            result = filter_label_paths(df)
+        assert result.empty
+ 
  
  
  
