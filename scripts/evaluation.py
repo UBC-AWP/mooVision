@@ -32,6 +32,12 @@ Note: --ground_truth must point to processed_clips_index.csv, not
 all_clips_index_raw.csv. Only the processed index contains the
 labelled_clip_relative_path column required for bounding box IoU
 evaluation against CVAT annotations.
+
+Note: if a model produces zero detections across all evaluated videos
+(e.g. an undertrained model), the predictions DataFrame returned by
+load_predictions() will be empty and will not have any columns. The
+functions below guard against this case explicitly and return
+zero-valued metrics rather than raising a KeyError.
 """
 
 import json
@@ -69,6 +75,12 @@ def load_predictions(predictions_dir: Path) -> pd.DataFrame:
     This function reads all JSON files in the directory and flattens
     them into a single DataFrame where each row is one predicted event.
 
+    Note: videos with zero detected events (empty "events" list) do not
+    contribute any rows. If every JSON file in predictions_dir has zero
+    events, this function returns a completely empty DataFrame with no
+    columns at all. Callers must not assume "source_video_basename" or
+    other columns exist without checking .empty first.
+
     Parameters
     ----------
     predictions_dir : Path
@@ -81,7 +93,8 @@ def load_predictions(predictions_dir: Path) -> pd.DataFrame:
         One row per predicted event. Columns:
         source_video_basename, start_sec, end_sec, duration_sec,
         avg_confidence, intersection_box, fps.
-        Returns empty DataFrame if no JSON files found.
+        Returns empty DataFrame if no JSON files found, or if all
+        found JSON files reported zero detected events.
     """
     records = []
 
@@ -102,6 +115,14 @@ def load_predictions(predictions_dir: Path) -> pd.DataFrame:
                 "intersection_box":     event.get("intersection_box", []),
                 "fps":                  metadata["fps"],
             })
+
+    if not records:
+        print(
+            "[WARN] load_predictions(): no detected events found in any "
+            f"JSON file under {predictions_dir}. Returning empty DataFrame — "
+            "downstream metrics will report zero true positives and zero "
+            "frame-level bbox IoU."
+        )
 
     return pd.DataFrame(records)
 
@@ -465,7 +486,9 @@ def compute_frame_level_bbox_iou(
     ----------
     predictions : pd.DataFrame
         Output of load_predictions(). Must contain intersection_box
-        column with per-frame predicted bounding boxes.
+        column with per-frame predicted bounding boxes. May be empty
+        (e.g. if the model produced zero detections across all
+        evaluated videos) — this is handled explicitly below.
     ground_truth : pd.DataFrame
         Output of load_ground_truth(). Must contain
         labelled_clip_relative_path column linking to CVAT zip files.
@@ -483,8 +506,23 @@ def compute_frame_level_bbox_iou(
     -------
     float
         Average bbox IoU across all matched predicted frames.
-        Returns 0.0 if no frames could be matched.
+        Returns 0.0 if no frames could be matched, OR if predictions
+        is empty / missing the source_video_basename column (i.e. the
+        model detected zero events in every evaluated video).
     """
+    # Guard: predictions can be a completely empty DataFrame with no
+    # columns at all if every JSON file in the predictions directory
+    # reported zero events (see load_predictions). Accessing
+    # predictions["source_video_basename"] in that case raises a
+    # KeyError, so we check for it explicitly first.
+    if predictions.empty or "source_video_basename" not in predictions.columns:
+        print(
+            "[WARN] compute_frame_level_bbox_iou(): predictions is empty or "
+            "missing 'source_video_basename' (model detected zero events). "
+            "Skipping frame-level bbox IoU computation; returning 0.0."
+        )
+        return 0.0
+
     all_ious = []
 
     print(f"Processing {predictions['source_video_basename'].nunique()} unique videos from predictions")
@@ -632,7 +670,8 @@ def match_predictions_to_ground_truth(
     Parameters
     ----------
     predictions : pd.DataFrame
-        Output of load_predictions().
+        Output of load_predictions(). May be empty (e.g. zero detections
+        across all evaluated videos) — handled explicitly below.
     ground_truth : pd.DataFrame
         Output of load_ground_truth().
     temporal_iou_threshold : float
@@ -659,7 +698,33 @@ def match_predictions_to_ground_truth(
             matched_pairs (list of dict): details of each TP match
             temporal_ious (list of float): temporal IoU per TP
             bbox_ious (list of float): bbox IoU per TP
+
+        If predictions is empty, every ground truth event in the
+        provided ground_truth (i.e. all events in scope for this call)
+        is counted as a false negative, since there were no predictions
+        available to match against them.
     """
+    # Guard: predictions can be empty (no columns at all) if every
+    # video in the predictions set had zero detected events. Accessing
+    # predictions["avg_confidence"] in that case raises a KeyError, so
+    # we short-circuit here and report every ground truth row as a
+    # false negative instead of crashing.
+    if predictions.empty or "avg_confidence" not in predictions.columns:
+        print(
+            "[WARN] match_predictions_to_ground_truth(): predictions is "
+            "empty or missing 'avg_confidence' (model detected zero "
+            f"events). Counting all {len(ground_truth)} ground truth "
+            "event(s) in scope as false negatives."
+        )
+        return {
+            "true_positives":  0,
+            "false_positives": 0,
+            "false_negatives": len(ground_truth),
+            "matched_pairs":   [],
+            "temporal_ious":   [],
+            "bbox_ious":       [],
+        }
+
     preds = predictions[
         predictions["avg_confidence"] >= confidence_threshold
     ].copy()
@@ -783,7 +848,7 @@ def evaluate_by_stratum(
     Parameters
     ----------
     predictions : pd.DataFrame
-        Output of load_predictions().
+        Output of load_predictions(). May be empty.
     ground_truth : pd.DataFrame
         Output of load_ground_truth().
     stratum : str
@@ -807,8 +872,12 @@ def evaluate_by_stratum(
     results = []
 
     for value in ground_truth[stratum].unique():
-        preds_subset = predictions[predictions[stratum] == value] \
-            if stratum in predictions.columns else predictions
+        # predictions may be empty / have no columns at all if the model
+        # detected zero events anywhere — guard the column lookup below.
+        if not predictions.empty and stratum in predictions.columns:
+            preds_subset = predictions[predictions[stratum] == value]
+        else:
+            preds_subset = predictions
         gt_subset = ground_truth[ground_truth[stratum] == value]
 
         match_result = match_predictions_to_ground_truth(
@@ -875,10 +944,19 @@ def generate_evaluation_report(
     Also stratifies all event-level metrics by pen and weaning stage
     to support the partner's research questions.
 
+    If predictions is empty (the model produced zero detections across
+    every evaluated video), the report is still generated successfully:
+    all event-level counts will show 0 true positives, 0 false
+    positives, and false_negatives equal to the number of ground truth
+    events in scope, with precision/recall/F1/F2/bbox IoU all 0.0. A
+    "zero_detections" flag is added to the report so this case is easy
+    to distinguish from "the model made predictions but none were
+    correct" when reading the JSON output later.
+
     Parameters
     ----------
     predictions : pd.DataFrame
-        Output of load_predictions().
+        Output of load_predictions(). May be empty.
     ground_truth : pd.DataFrame
         Output of load_ground_truth().
     output_path : Path, optional
@@ -899,6 +977,7 @@ def generate_evaluation_report(
     dict
         Full evaluation report with keys:
             thresholds: confidence and temporal IoU thresholds used
+            zero_detections: True if predictions had no usable rows
             frame_level: avg bbox IoU across all predicted frames
             event_level: TP/FP/FN, precision, recall, F1, F2, avg bbox IoU
             sequence_level: avg temporal IoU for matched events
@@ -906,9 +985,19 @@ def generate_evaluation_report(
             by_weaning_stage: event-level metrics broken down by weaning stage
             matched_pairs: details of each True Positive match
     """
+    zero_detections = predictions.empty or "source_video_basename" not in predictions.columns
+    if zero_detections:
+        print(
+            "[WARN] generate_evaluation_report(): predictions contains no "
+            "detected events for any video. The report will still be "
+            "generated, but all event-level metrics will report 0 true "
+            "positives and every ground truth event in scope will count "
+            "as a false negative."
+        )
+
     # --- Frame level bbox IoU (independent of temporal matching) ---
     frame_level_bbox_iou = 0.0
-    if labelled_clips_dir:
+    if labelled_clips_dir and not zero_detections:
         frame_level_bbox_iou = compute_frame_level_bbox_iou(
             predictions=predictions,
             ground_truth=ground_truth,
@@ -961,6 +1050,7 @@ def generate_evaluation_report(
             "temporal_iou_threshold": temporal_iou_threshold,
             "confidence_threshold":   confidence_threshold,
         },
+        "zero_detections": zero_detections,
         "frame_level": {
             "avg_bbox_iou": frame_level_bbox_iou,
             "description":  (
