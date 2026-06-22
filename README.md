@@ -159,7 +159,7 @@ After configuring you `.env` and config files, run the following commands from y
    - Cross-sucking examples (~2-3 minutes):
 
       ```bash
-      uv run scripts/models/baseline/baseline.py --video "sample_videos/cross_sucking_clip_sample/CS_0276_WEAN_d1_p2_cowT_16102025_ch02-20251016124717_19033_19045.mp4"
+      uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv"
       ```
 
    - Non-cross-sucking examples (~1-2 minutes):
