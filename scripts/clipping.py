@@ -44,7 +44,7 @@ import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import RESULT_CLIPS_DIR, YOLO_MODEL_OUTPUT_DIR
+from config import RESULT_CLIPS_DIR, DEMO_DATA_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
@@ -175,7 +175,6 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
       - `events[*].intersection_box` : list[dict] with keys `frame`, `x1`, `y1`,
                                        `x2`, `y2` in source-video frame coordinates
     """
-    output_dir.mkdir(parents=True, exist_ok=True)
     if json_path.is_dir():
         json_files = sorted(json_path.rglob("*.json"))  # recursive search for JSON files
         if not json_files:
@@ -207,6 +206,8 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
             rel_parent = Path()
 
         split_name = jf.parent.parent.parent.parent.name  # e.g. "day_based" — four levels up from the JSON
+        if split_name == "results":
+            split_name = jf.parent.parent.name
         print(split_name)
         out_folder = output_dir / split_name / rel_parent
         
@@ -354,7 +355,7 @@ def main():
     -------
     None
     """
-    split_by_json_events(YOLO_MODEL_OUTPUT_DIR, RESULT_CLIPS_DIR)
+    split_by_json_events(DEMO_DATA_DIR, RESULT_CLIPS_DIR)
 
 if __name__ == "__main__":
     main()

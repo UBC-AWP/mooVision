@@ -44,6 +44,7 @@ EVALUATION_DATA_DIR = DATA_FOLDER_DIR / "results"
 BASELINE_MODEL_OUTPUT_DIR = DATA_FOLDER_DIR / "results" / "metadata" / "baseline"
 YOLO_MODEL_OUTPUT_DIR = ROOT_DIR / "results" / "metadata" / "random" / "yolo"
 SEQ_MODEL_OUTPUT_DIR = ROOT_DIR / "results" / "metadata" / "random" / "seq-nms"
+DEMO_DATA_DIR = ROOT_DIR / "results" / "metadata" / "pipeline_demo" / "yolo"
 METADATA_DIR = DATA_FOLDER_DIR / "clips_metadata"
 METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
