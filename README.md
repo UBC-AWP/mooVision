@@ -158,9 +158,9 @@ After configuring you `.env` and config files, run the following commands from y
 
     - First, source your `.env` to load the path variables:
 
-    ```bash
-    source .env
-    ```
+      ```bash
+      source .env
+      ```
 
    - Cross-sucking examples (~2-3 minutes):
 
@@ -168,11 +168,6 @@ After configuring you `.env` and config files, run the following commands from y
       uv run scripts/models/baseline/baseline.py --csv "$ROOT_DIR/data/processed/pipeline_demo/test.csv" --frame_skip 100
       ```
 
-   - Non-cross-sucking examples (~1-2 minutes):
-
-      ```bash
-      uv run scripts/models/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch05_20251114073451_15s.mp4"
-      ```
 
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
