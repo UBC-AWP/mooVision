@@ -1,46 +1,60 @@
 """
 baseline.py — Cross-sucking detection baseline (YOLO bounding-box overlap method)
- 
+
 USAGE
 -----
-    python baseline.py [--data_root PATH] [--model FILE] [--iou_threshold FLOAT]
-                       [--conf_threshold FLOAT] [--min_duration FLOAT] [--frame_skip INT]
- 
+    uv run scripts/models/baseline/baseline.py --csv <path/to/test.csv> [OPTIONS]
+
 INPUTS
 ------
-    Reads test split manifests from:
- 
-        <data_root>/
-        ├── day_based/test.csv
-        ├── pen_based/test.csv
-        ├── period_based/test.csv
-        ├── random/test.csv
-        └── pipeline_demo/test.csv
- 
-    Each CSV must contain a 'source_video_path' column with relative video paths.
-    Duplicate video paths within a split are dropped before processing.
- 
+    Reads a test split CSV specified via --csv, e.g.:
+
+        data/processed/pipeline_demo/test.csv
+        data/processed/day_based/test.csv
+        data/processed/pen_based/test.csv
+
+    The CSV must contain a `source_video_path` column with paths to source
+    videos. Duplicate video paths within the CSV are dropped before processing.
+    The split name is inferred from the parent folder of the CSV (e.g. `day_based`).
+
 OUTPUTS
 -------
     Writes one JSON metadata file per video under:
- 
-        MooVision/results/metadata/baseline/
+
+        results/metadata/baseline/
         ├── day_based/
         │   └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
-        └── pen_based/
+        ├── pen_based/
+        │   └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
+        └── pipeline_demo/
             └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
-        ...
- 
+
     Each JSON contains detection parameters, per-event timestamps, confidence
     scores, and frame-level intersection box coordinates.
- 
-    Videos whose JSON already exists are skipped (safe to re-run).
- 
-EXAMPLE
--------
-    uv run scripts/models/baseline/baseline.py --frame_skip 30
-"""
 
+    Videos whose JSON already exists are skipped (safe to re-run).
+
+ARGUMENTS
+---------
+    --csv             str    Required. Path to a split test CSV.
+    --model           str    YOLO model weights filename. Default: yolo26x.pt
+    --iou_threshold   float  Minimum IoU to flag a frame. Default: 0.1
+    --conf_threshold  float  Minimum YOLO confidence to keep a box. Default: 0.5
+    --min_duration    float  Minimum event duration in seconds. Default: 1.0
+    --frame_skip      int    Process every Nth frame. Default: 1
+
+EXAMPLES
+--------
+    # Run with defaults on the pipeline demo split
+    uv run scripts/models/baseline/baseline.py --csv data/processed/pipeline_demo/test.csv
+
+    # Run with frame skipping for faster processing
+    uv run scripts/models/baseline/baseline.py --csv data/processed/day_based/test.csv --frame_skip 30
+
+    # Run with custom thresholds
+    uv run scripts/models/baseline/baseline.py --csv data/processed/day_based/test.csv \
+        --iou_threshold 0.05 --conf_threshold 0.4 --min_duration 2.0
+"""
 import argparse
 import json
 import os
@@ -51,10 +65,9 @@ import pandas as pd
 from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
-from config import ROOT_DIR,SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW,READ_DF_PATH
+from config import ROOT_DIR,SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_CLOUD
 
 # Defaults
-DEFAULT_DATA_ROOT = READ_DF_PATH
 DEFAULT_MODEL = "yolo26x.pt"    
 DEFAULT_IOU_THRESHOLD = 0.1    # Minimum IoU to consider two boxes "overlapping"
 DEFAULT_MIN_DURATION = 0.5       # Minimum seconds of continuous overlap to flag an event
@@ -447,7 +460,7 @@ def resolve_output_path(video_path: Path, split_name: str) -> Path:
     """
     m = re.search(r"videos[\\/](.*)$", str(video_path))
     rel_parent = Path(m.group(1)).parent if m else Path()
-    output_dir = BASELINE_METADATA_DIR_NEW / split_name / rel_parent
+    output_dir = BASELINE_METADATA_DIR_CLOUD / split_name / rel_parent
     return output_dir / f"{video_path.stem}_results.json"   
 
 def run_all(
@@ -495,7 +508,7 @@ def run_all(
     for video_path in video_paths:
         m = re.search(r"videos[\\/](.*)$", str(video_path))
         rel_parent = Path(m.group(1)).parent if m else Path()
-        json_path = BASELINE_METADATA_DIR_NEW / split_name / rel_parent / f"{video_path.stem}_results.json"
+        json_path = BASELINE_METADATA_DIR_CLOUD / split_name / rel_parent / f"{video_path.stem}_results.json"
 
         if json_path.exists():
             print(f"[SKIP] {json_path.name}")

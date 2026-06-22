@@ -2,37 +2,47 @@
 scripts.clipping
 ================
 
-Reproduce short video clips from longer source videos.
+Reproduce short annotated video clips from longer source videos.
 
 Overview
 --------
-This module provides a small pipeline for reproducing clip video segments from
-source `.mp4` files using one of two input formats:
+This module provides a pipeline for reproducing clip video segments from
+source `.mp4` files using JSON event metadata produced by any stage of the
+detection pipeline (baseline, fine-tuned YOLO, or sequence-linked).
 
-1. CSV index mode (`split_by_index`):
-   Reads a CSV index describing clip start/end times in the source video.
-
-2. JSON events mode (`split_by_json_events`):
-   Reads one JSON file (or a directory of JSON files) describing events to clip,
-   optionally producing an additional annotated version of each clip with
-   bounding boxes.
+For each event in each JSON, a clip is reproduced from the source video and
+an annotated ``*_boxed.mp4`` is written with per-frame bounding boxes overlaid.
 
 Input/Output
 ------------
 Inputs
-  - Source videos (`*.mp4`) located under :root:`config.SOURCE_VIDEOS_DIR`.
-  - A CSV index at :root:`config.INDEX_PATH` (index mode), or JSON metadata files
-    under :root:`config.BASELINE_METADATA_DIR_NEW` (JSON events mode).
+  - Source videos (``*.mp4``) resolved via ``ROOT_DIR`` in ``config.py``.
+  - A single JSON file, or a directory searched recursively for ``*.json``
+    metadata files, passed via ``--input`` on the command line.
 
 Outputs
-  - Clips written to :root:`config.RESULT_CLIPS_DIR` under
-    <split_name>/<Pen>/<Stage>/<Day>/ mirroring the baseline metadata structure.
+  - Annotated clips written under ``results/result_clips/``, preserving
+    everything after ``metadata/`` in the input JSON path, with one
+    subfolder per video named after its ``identifier`` stem::
+
+        results/result_clips/<path_after_metadata>/<identifier>/
+            <identifier>_event001_<start>-<end>_boxed.mp4
+            <identifier>_event002_<start>-<end>_boxed.mp4
+
+    Examples:
+        input  → results/metadata/pipeline_demo/yolo/ch02_....json
+        output → results/result_clips/pipeline_demo/yolo/ch02_.../
+
+        input  → results/metadata/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_....json
+        output → results/result_clips/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_.../
 
 Notes
 -----
-The module relies on OpenCV for video I/O. Configuration is centralized in
-`config.py` and typically driven by environment variables in a `.env` file.
-
+  - Relies on OpenCV for video I/O.
+  - Configuration is centralised in ``config.py``, driven by environment
+    variables in a ``.env`` file at the repo root.
+  - If annotation fails for an event, the unboxed intermediate clip is kept
+    as a fallback and a warning is printed.
 """
 
 import sys
@@ -44,7 +54,7 @@ import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import RESULT_CLIPS_DIR
+from config import RESULT_CLIPS_DIR,ROOT_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
@@ -129,22 +139,30 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     Overview
     --------
     Recursively searches `json_path` for `*.json` metadata files produced by the
-    baseline detection pipeline. For each event in each JSON, reproduces a clip
-    from the source video and writes an annotated `*_boxed.mp4` with bounding
-    boxes overlaid. The split name is inferred from the JSON directory structure
-    to mirror the baseline output hierarchy.
+    detection pipeline. For each event in each JSON, reproduces a clip from the
+    source video and writes an annotated `*_boxed.mp4` with bounding boxes
+    overlaid. The output directory structure is derived entirely from the JSON
+    file's path relative to the `metadata/` folder, so it mirrors the input
+    hierarchy regardless of how deeply nested the JSON files are.
 
     Input/Output
     ------------
     Input
       - `json_path`: A single JSON file, or a directory searched recursively
-                     for `*.json` files.
-      - Each JSON must specify `video_path` and `events`, and must live under a
-        path of the form: `.../baseline/<split_name>/<Pen>/<Stage>/<Day>/<file>.json`
+                     for `*.json` files produced by the detection pipeline.
+      - Each JSON must specify `video_path` and `events`, and must live
+        somewhere under a `metadata/` directory.
 
     Output
       - Annotated clips written under:
-            <output_dir>/<split_name>/<Pen>/<Stage>/<Day>/<video_stem>_event###_<start>-<end>_boxed.mp4
+            <output_dir>/<path_after_metadata>/<identifier_stem>/<stem>_event###_<start>-<end>_boxed.mp4
+
+        Examples:
+            input  → results/metadata/pipeline_demo/yolo/ch02_....json
+            output → results/result_clips/pipeline_demo/yolo/ch02_.../
+
+            input  → results/metadata/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_....json
+            output → results/result_clips/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_.../
 
     Parameters
     ----------
@@ -170,8 +188,8 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
       - `events`     : list[dict] with keys `start_sec`, `end_sec`
 
     Optional keys used if present:
-      - `identifier`               : str — used for output filename stem
-      - `fps`                      : float — used for annotation frame alignment
+      - `identifier`                 : str — used as the per-video output folder name
+      - `fps`                        : float — used for annotation frame alignment
       - `events[*].intersection_box` : list[dict] with keys `frame`, `x1`, `y1`,
                                        `x2`, `y2` in source-video frame coordinates
     """
@@ -188,9 +206,12 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     for jf in json_files:
         data = json.loads(jf.read_text(encoding="utf-8"))
         video_path = Path(data["video_path"])
+        p = re.search(r"raw_cross_sucking_datalog[\\/](.*)$", str(video_path))
+        video_path = ROOT_DIR / "raw_cross_sucking_datalog" / p.group(1) if p else video_path
         identifier = data.get("identifier", video_path.name)
         events = data.get("events", [])
         fps = float(data.get("fps", 30.0))
+        print(video_path)
 
         if not video_path.exists():
             raise FileNotFoundError(f"video_path does not exist: {video_path} (from {jf})")
@@ -198,19 +219,12 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
             print(f"No events found in {jf.name}")
             continue
         
-        # extract the relative path after "videos/" to find the raw video in RAW_DIR
-        m = re.search(r"videos[\\/](.*)$", str(video_path))
-        if m:
-            rel_parent = Path(m.group(1)).parent  # Pen/Stage/Day
-        else:
-            rel_parent = Path()
-
-        split_name = jf.parent.parent.parent.parent.name  # e.g. "day_based" — four levels up from the JSON
-        if split_name == "results":
-            split_name = jf.parent.parent.name
-        print(split_name)
-        out_folder = output_dir / split_name / rel_parent
-        
+        # extract split name from JSON path 
+        m_meta = re.search(r"metadata[\\/](.+)$", str(jf.parent))
+        rel_from_metadata = Path(m_meta.group(1)) if m_meta else Path()
+        video_stem = Path(identifier).stem
+        out_folder = output_dir / rel_from_metadata / video_stem
+                        
         out_folder.mkdir(parents=True, exist_ok=True)
         
         success = 0
@@ -389,7 +403,7 @@ def main():
     parser.add_argument("--output", type=Path, default=RESULT_CLIPS_DIR,
                         help="Output root directory. Default: results/result_clips")
     args = parser.parse_args()
-    split_by_json_events(args.input, args.output)
+    split_by_json_events(ROOT_DIR / args.input, args.output)
     
 if __name__ == "__main__":
     main()

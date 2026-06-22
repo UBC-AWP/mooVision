@@ -123,6 +123,8 @@ INDEX_PATH = Path/to/your/index/file/<file>
 
 After configuring you `.env` and config files, run the following commands from your terminal in the MooVision root directory to move through a local demo of the project workflow. For more information see, project documentation.
 
+0. *Tip: You can run all steps below in one command with `make run`, or individual steps*
+
 1. Read in Raw index, and process for videos . Note, this will throw a lot of warnings when ran. These are telling you that the function is using the clips NOT found in fixed_clips when multiple versions of the same video are found.
 
    ```bash
@@ -156,11 +158,11 @@ After configuring you `.env` and config files, run the following commands from y
 
 5. Run baseline on test videos to capture cross-sucking events and produce associated metadata:
 
-   - Cross-sucking examples (~2-3 minutes):
+    Cross-sucking examples (~2-3 minutes):
 
-      ```bash
-      uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
-      ```
+    ```bash
+    uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
+    ```
 
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
@@ -199,8 +201,15 @@ After configuring you `.env` and config files, run the following commands from y
 8. Clip frames from results:
 
    ```bash
-   uv run python scripts/clipping.py
+   uv run scripts/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
    ```
+   
+The distribution analysis notebook is not part of the `make run` pipeline and
+should be run manually after any model stage to explore its outputs:
+
+```bash
+uv run jupyter notebook distribution_analysis.ipynb
+```
 
 ## Running the Full Pipeline (Sockeye HPC)
 
