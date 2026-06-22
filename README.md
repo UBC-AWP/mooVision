@@ -190,10 +190,10 @@ Evaluate YOLO + Seq-NMS (with temporal linking):
 
 ```bash
 uv run python scripts/evaluation.py \
-    --predictions "$ROOT_DIR/results/metadata/pipeline_demo/seq-nms/" \
+    --predictions "results/metadata/pipeline_demo/seq-nms/" \
     --ground_truth data/processed/processed_clips_index.csv \
     --output results/evaluation_report_seq_nms.json \
-    --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
+    --labelled_clips_dir "cross_sucking_labelled"
 ```
 
 8. Clip frames from results:
