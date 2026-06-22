@@ -48,10 +48,9 @@ METADATA_DIR = DATA_FOLDER_DIR / "clips_metadata"
 METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Output clips
-REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"
-REPRODUCED_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
-
+RESULT_CLIPS_DIR = ROOT_DIR  / "results" / "result_clips"
+RESULT_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
 
 READ_DF_PATH = ROOT_DIR / "data" / "processed" 
-RESULT_CLIPS_DIR = ROOT_DIR  / "results" / "result_clips"
+
 
