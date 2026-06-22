@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=model-eval
-#SBATCH --account=st-nina-1-gpu
+#SBATCH --account=st-nina-1
 #SBATCH --partition=interactive            # CPU-only, eval needs no GPU
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
