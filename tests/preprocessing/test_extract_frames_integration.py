@@ -19,7 +19,7 @@ class TestProcessSingleVideoIntegration:
     """Integration tests for process_single_video using real treading and semaphore executors"""
 
     @pytest.fixture
-    def synthetic_video_path(tmp_path):
+    def synthetic_video_path(self, tmp_path):
         """Generates a real, valid 10-frame sample video file on disk for true integration testing."""
         video_file = tmp_path / "synthetic_sample.mp4"
 
@@ -39,7 +39,7 @@ class TestProcessSingleVideoIntegration:
         return video_file
 
     @pytest.mark.integration
-    def test_process_single_video_end_to_end(synthetic_video_path, tmp_path):
+    def test_process_single_video_end_to_end(self, synthetic_video_path, tmp_path):
         """
         Integration Test: Verifies that real video streams decode, pass through active
         OS threads, and physically write verified JPEG assets onto the filesystem.
@@ -105,12 +105,12 @@ class TestExtractFramesIntegration:
     """Integration tests for end-to-end extract_frames running."""
 
     @pytest.fixture
-    def multiple_synthetic_videos(tmp_path):
+    def multiple_synthetic_videos(self, tmp_path):
         """Generates two real, short sample video files on disk for multi-video integration testing."""
         videos_root = tmp_path / "raw_videos"
         videos_root.mkdir()
 
-        video_filenames = ["video_A.mp4", "video_B.mp4"]
+        video_filenames = ["CS_0001_test_info_part01.mp4", "CS_1342_test_info.mp4"]
         video_paths = []
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
@@ -123,8 +123,8 @@ class TestExtractFramesIntegration:
             )
 
             try:
-                # Write 6 frames per video
-                for _ in range(6):
+                # Write 7 frames per video
+                for _ in range(9):
                     frame = np.ones((height, width, 3), dtype=np.uint8) * 100
                     video_writer.write(frame)
             finally:
@@ -140,7 +140,7 @@ class TestExtractFramesIntegration:
 
     @pytest.mark.integration
     def test_extract_frames_orchestrator_end_to_end(
-        multiple_synthetic_videos, tmp_path
+        self, multiple_synthetic_videos, tmp_path
     ):
         """
         Integration Test: Verifies that the top-level orchestrator successfully
@@ -149,9 +149,7 @@ class TestExtractFramesIntegration:
         """
         working_dir = tmp_path / "workspace"
         split = "val"
-        skip = (
-            3  # Stride skip of 3 means frames 0 and 3 should be written for each video
-        )
+        skip = 3  # Stride skip of 3 means frames 0, 3, and 6 should be written for each video
 
         # Act: Fire off the complete end-to-end pipeline execution
         registry = extract_frames(
@@ -163,13 +161,13 @@ class TestExtractFramesIntegration:
             force=False,
         )
 
-        # --- Assert 1: Verify Registry Metadata Map Structure ---
+        # --- Verify Registry Metadata Map Structure ---
         # The keys depend on what your project's generate_video_metadata() outputs,
         # but the dictionary values should map to the exact sets of frames processed.
         assert isinstance(registry, dict)
         assert len(registry) == 2
         for video_key, saved_frames in registry.items():
-            assert saved_frames == {0, 3}
+            assert saved_frames == {0, 3, 6}
 
         # --- Assert 2: Physical Directory and Disk File Verification ---
         expected_output_dir = working_dir / "images" / split
@@ -178,8 +176,8 @@ class TestExtractFramesIntegration:
         # Get a list of all files physically written to the output path
         written_files = list(expected_output_dir.glob("*.jpg"))
 
-        # With 2 videos, each writing 2 frames (0 and 3), we expect exactly 4 images total
-        assert len(written_files) == 4
+        # With 2 videos, each writing 3 frames (0, 3, and 6), we expect exactly 6 images total
+        assert len(written_files) == 6
 
         # Ensure images are readable binary files and not empty 0-byte corrupt assets
         for img_path in written_files:
@@ -187,8 +185,32 @@ class TestExtractFramesIntegration:
             assert img is not None
             assert img.shape == (240, 320, 3)
 
+        print(
+            "PHYSICAL FILES ON DISK:",
+            [f.name for f in expected_output_dir.glob("*.jpg")],
+        )
+        # Assert 2: Physical Disk Verification
+        expected_file_0001_0 = expected_output_dir / "0001_part01_frame_000000.jpg"
+        expected_file_0001_3 = expected_output_dir / "0001_part01_frame_000003.jpg"
+        expected_file_0001_6 = expected_output_dir / "0001_part01_frame_000006.jpg"
+
+        expected_file_1342_0 = expected_output_dir / "1342_None_frame_000000.jpg"
+        expected_file_1342_3 = expected_output_dir / "1342_None_frame_000003.jpg"
+        expected_file_1342_6 = expected_output_dir / "1342_None_frame_000006.jpg"
+
+        assert (
+            expected_file_0001_0.exists()
+        ), "Frame 0 was not physically written to disk!"
+        assert (
+            expected_file_0001_3.exists()
+        ), "Frame 3 was not physically written to disk!"
+        assert (
+            expected_file_0001_6.exists()
+        ), "Frame 6 was not physically written to disk!"
+
+    @pytest.mark.integration
     def test_extract_frames_orchestrator_skips_existing_by_default(
-        multiple_synthetic_videos, tmp_path
+        self, multiple_synthetic_videos, tmp_path
     ):
         """
         Integration Test: Assures that if the image target folder already exists,
