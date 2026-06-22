@@ -154,7 +154,7 @@ After configuring you `.env` and config files, run the following commands from y
    uv run scripts/training/training_yolo.py --dataset="data/training/pipeline_demo/dataset/dataset.yaml" --project="pipeline_demo" --name="demo_01" --device="cpu" --epochs=1 --batch=8
    ```
 
-5. Run baseline on test videos to capture cross-sucking events and produce associated metadata: NEEDS TO HAVE OUTPUT LOCATION UPDATED TO ONEDRIVE/data/results
+5. Run baseline on test videos to capture cross-sucking events and produce associated metadata:
 
     - First, source your `.env` to load the path variables:
 
@@ -200,13 +200,13 @@ After configuring you `.env` and config files, run the following commands from y
 
     Evaluate YOLO + Seq-NMS (with temporal linking):
 
-    ```bash
-    uv run python scripts/evaluation.py \
-        --predictions "$ROOT_DIR/results/metadata/pipeline_demo/seq-nms/" \
-        --ground_truth data/processed/processed_clips_index.csv \
-        --output results/evaluation_report_seq_nms.json \
-        --labelled_clips_dir "$ROOT_DIR/cross_sucking_labelled"
-    ```
+```bash
+uv run python scripts/evaluation.py \
+    --predictions "results/metadata/pipeline_demo/seq-nms/" \
+    --ground_truth data/processed/processed_clips_index.csv \
+    --output results/evaluation_report_seq_nms.json \
+    --labelled_clips_dir "cross_sucking_labelled"
+```
 
 8. Clip frames from results:
 
