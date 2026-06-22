@@ -320,9 +320,7 @@ class TestExtractFrames:
             "skip": 2,
         }
 
-    # ==============================================================================
-    # 1. TYPE & VALUE VALIDATION TESTS
-    # ==============================================================================
+    # --- TYPE & VALUE VALIDATION TESTS ---
 
     @pytest.mark.parametrize(
         "invalid_arg, patch_dict",
@@ -354,11 +352,9 @@ class TestExtractFrames:
         with pytest.raises(ValueError):
             extract_frames(**kwargs)
 
-    # ==============================================================================
-    # 2. BEHAVIORAL & LOGIC FLOW TESTS
-    # ==============================================================================
+    # --- BEHAVIORAL & LOGIC FLOW TESTS ---
 
-    @patch("scripts.preprocessing.extract_labels.validate_file_paths")
+    @patch("scripts.preprocessing.extract_frames.validate_file_paths")
     def test_early_exit_if_directory_exists_without_force(
         self, mock_validate, standard_setup
     ):
@@ -370,16 +366,14 @@ class TestExtractFrames:
         output_dir = working_dir / "images" / standard_setup["split"]
         output_dir.mkdir(parents=True, exist_ok=True)  # Pre-create directory
 
-        # Act
         result = extract_frames(**standard_setup, force=False)
 
-        # Assert
         assert result is None
         mock_validate.assert_not_called()  # Never even started checking video files
 
-    @patch("scripts.preprocessing.extract_labels.process_single_video")
-    @patch("scripts.preprocessing.extract_labels.generate_video_metadata")
-    @patch("scripts.preprocessing.extract_labels.validate_file_paths")
+    @patch("scripts.preprocessing.extract_frames.process_single_video")
+    @patch("scripts.preprocessing.extract_frames.generate_video_metadata")
+    @patch("scripts.preprocessing.extract_frames.validate_file_paths")
     def test_successful_orchestration_loop(
         self, mock_validate, mock_metadata, mock_process, standard_setup
     ):
@@ -387,7 +381,7 @@ class TestExtractFrames:
 
         over, and the registry map compiles properly.
         """
-        # Arrange Mocks
+
         p1, p2 = Path("v1.mp4"), Path("v2.mp4")
         mock_validate.return_value = [p1, p2]
 
@@ -400,10 +394,9 @@ class TestExtractFrames:
         # Mock process_single_video returns: set of frame indices
         mock_process.side_effect = [{0, 2, 4}, {0, 2}]
 
-        # Act
+        # Run extract_frames
         registry = extract_frames(**standard_setup, force=False)
 
-        # Assert
         expected_output_dir = standard_setup["working_dir"] / "images" / "train"
         assert expected_output_dir.exists()
 
@@ -413,9 +406,9 @@ class TestExtractFrames:
         # Verify the structure of the final output data registry mapping
         assert registry == {(1, "v1"): {0, 2, 4}, (2, "v2"): {0, 2}}
 
-    @patch("scripts.preprocessing.extract_labels.process_single_video")
-    @patch("scripts.preprocessing.extract_labels.generate_video_metadata")
-    @patch("scripts.preprocessing.extract_labels.validate_file_paths")
+    @patch("scripts.preprocessing.extract_frames.process_single_video")
+    @patch("scripts.preprocessing.extract_frames.generate_video_metadata")
+    @patch("scripts.preprocessing.extract_frames.validate_file_paths")
     def test_force_flag_overrides_existing_directory(
         self, mock_validate, mock_metadata, mock_process, standard_setup
     ):
@@ -431,9 +424,7 @@ class TestExtractFrames:
         mock_metadata.return_value = ((1, "v1"), "v1_prefix_")
         mock_process.return_value = {0}
 
-        # Act
         registry = extract_frames(**standard_setup, force=True)
 
-        # Assert
         assert registry == {(1, "v1"): {0}}
         mock_process.assert_called_once()

@@ -59,7 +59,7 @@ class TestProcessSingleVideoIntegration:
                 semaphore.release()
 
         try:
-            # Act: Run the live video through the processing loop with a stride skip of 4
+            # Run the live video through the processing loop with a stride skip of 4
             saved_frames = process_single_video(
                 video_path=synthetic_video_path,
                 file_prefix="integ_test_",
@@ -73,10 +73,10 @@ class TestProcessSingleVideoIntegration:
             # Shut down the pool and force all background disk I/O threads to flush completely
             executor.shutdown(wait=True)
 
-            # Assert 1: Verify the function mathematically tracked frames 0, 4, and 8
+            # Verify the function mathematically tracked frames 0, 4, and 8
             assert saved_frames == {0, 4, 8}
 
-            # Assert 2: Physical Disk Verification
+            # Physical Disk Verification
             expected_file_0 = output_dir / "integ_test_000000.jpg"
             expected_file_4 = output_dir / "integ_test_000004.jpg"
             expected_file_8 = output_dir / "integ_test_000008.jpg"
@@ -91,7 +91,7 @@ class TestProcessSingleVideoIntegration:
                 expected_file_8.exists()
             ), "Frame 8 was not physically written to disk!"
 
-            # Assert 3: Image Integrity Check (Verify the written files aren't 0-byte corrupt blanks)
+            # Image Integrity Check (Verify the written files aren't 0-byte corrupt blanks)
             img = cv2.imread(str(expected_file_0))
             assert img is not None
             assert img.shape == (480, 640, 3)
@@ -151,7 +151,7 @@ class TestExtractFramesIntegration:
         split = "val"
         skip = 3  # Stride skip of 3 means frames 0, 3, and 6 should be written for each video
 
-        # Act: Fire off the complete end-to-end pipeline execution
+        # Run the complete end-to-end pipeline execution
         registry = extract_frames(
             video_paths=multiple_synthetic_videos["video_paths"],
             videos_root=multiple_synthetic_videos["videos_root"],
@@ -169,7 +169,7 @@ class TestExtractFramesIntegration:
         for video_key, saved_frames in registry.items():
             assert saved_frames == {0, 3, 6}
 
-        # --- Assert 2: Physical Directory and Disk File Verification ---
+        # --- Physical Directory and Disk File Verification ---
         expected_output_dir = working_dir / "images" / split
         assert expected_output_dir.exists()
 
@@ -179,17 +179,7 @@ class TestExtractFramesIntegration:
         # With 2 videos, each writing 3 frames (0, 3, and 6), we expect exactly 6 images total
         assert len(written_files) == 6
 
-        # Ensure images are readable binary files and not empty 0-byte corrupt assets
-        for img_path in written_files:
-            img = cv2.imread(str(img_path))
-            assert img is not None
-            assert img.shape == (240, 320, 3)
-
-        print(
-            "PHYSICAL FILES ON DISK:",
-            [f.name for f in expected_output_dir.glob("*.jpg")],
-        )
-        # Assert 2: Physical Disk Verification
+        # Physical Disk Verification
         expected_file_0001_0 = expected_output_dir / "0001_part01_frame_000000.jpg"
         expected_file_0001_3 = expected_output_dir / "0001_part01_frame_000003.jpg"
         expected_file_0001_6 = expected_output_dir / "0001_part01_frame_000006.jpg"
@@ -208,6 +198,22 @@ class TestExtractFramesIntegration:
             expected_file_0001_6.exists()
         ), "Frame 6 was not physically written to disk!"
 
+        assert (
+            expected_file_1342_0.exists()
+        ), "Frame 0 was not physically written to disk!"
+        assert (
+            expected_file_1342_3.exists()
+        ), "Frame 3 was not physically written to disk!"
+        assert (
+            expected_file_1342_6.exists()
+        ), "Frame 6 was not physically written to disk!"
+
+        # Ensure images are readable binary files and not empty 0-byte corrupt assets
+        for img_path in written_files:
+            img = cv2.imread(str(img_path))
+            assert img is not None
+            assert img.shape == (240, 320, 3)
+
     @pytest.mark.integration
     def test_extract_frames_orchestrator_skips_existing_by_default(
         self, multiple_synthetic_videos, tmp_path
@@ -224,7 +230,7 @@ class TestExtractFramesIntegration:
         sentinel_file = expected_output_dir / "should_not_be_overwritten.txt"
         sentinel_file.write_text("touch me not")
 
-        # Act: Attempt execution without force=True
+        # Attempt execution without force=True
         registry = extract_frames(
             video_paths=multiple_synthetic_videos["video_paths"],
             videos_root=multiple_synthetic_videos["videos_root"],
@@ -234,6 +240,6 @@ class TestExtractFramesIntegration:
             force=False,
         )
 
-        # Assert: Should return early (None) and leave our sentinel file completely intact
+        # Should return early (None) and leave our sentinel file completely intact
         assert registry is None
         assert sentinel_file.exists()
