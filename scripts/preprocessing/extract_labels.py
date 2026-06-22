@@ -315,28 +315,28 @@ def extract_labels(
     split: str,
     skip: int,
     force: bool = False,
-) -> dict:
+) -> dict | None:
     """
     Extract labels from annotated data folders and match them to frames
     extracted from corresponding videos.
 
     Extracts bounding box labels from .zip files (CVAT Output folders),
     and saves files to either a train, or val folder in the specified
-    working directory directory.
+    working directory.
 
     If force = True, and the output directory structure already exists,
-    this will delete the existing folders and rebuild the data from scratch.
+    this will overwrite the existing folders and rebuild the data from scratch.
 
     `extract_labels` outputs data into a labels/ folder within the output directory.
-    This is meant to mimic the data format required for fine-tuning YOLO models.
+    This is to create the data format required for fine-tuning YOLO models.
 
     This function assumes that bounding box labels are saved as `.txt` files in
-    `obj_train_data` folders within .zip files, and that `labels_path` lists
+    `obj_train_data` folders within .zip files, and that `label_paths` lists
     relative paths to these .zip files within the `labels_root` directory.
 
     Parameters
     ----------
-    labels_path : List[str]
+    label_paths : List[str]
         List of relative paths within the labelled clips directory to
         zipped folders containing bounding box annotations for
         cross-sucking events.
@@ -347,35 +347,37 @@ def extract_labels(
         Path to the labelled clips directory containing zipped folders
         with bounding box annotations for cross-sucking events.
     frame_registry : dict
-        A dictionary folding sets of frames that have been saved for each
+        A dictionary holding sets of frames that have been saved for each
         video. Uses the unique numeric ID and part ID of each video as keys,
-        to ensures all labels have a matching frame.
+        to ensure all labels have a matching frame.
     split : str
         One of `train`, `val`. Dictates which split folder, train/ or val/, the
         labels should be extracted to.
     skip : int
-        Controls teh downsampling density; number of frames to skip. `skip=5`
+        Controls the downsampling density; number of frames to skip. `skip=5`
         will read every 5th frame.
-    force : bool
-        If True, overwritres the existing data. Defaults to False.
+    force : bool, optional
+        If True, overwrites the existing data. Defaults to False.
 
     Returns
     -------
-    dict[set] :
-        This function returns a dictionary of sets of saved labels for each
-        video in videos. This is used via set subtraction to remove any video
-        frames which do not have an associated label.
+    dict[tuple, set] or None
+        Returns a dictionary mapping video tracking keys to sets of saved frame
+        labels if processing occurs. This is used via set subtraction to remove
+        any video frames which do not have an associated label. Returns None if
+        execution is skipped via early exit bypass.
 
     Raises
     ------
     ValueError
-        If inputs are empty, or if labels_path is an empty list.
-        If split is not one of `train` or `val`.
+        If `label_paths` is an empty list.
+        If `split` is not one of 'train' or 'val'.
+        If `skip` is less than or equal to zero.
     TypeError
-        If inputs to not match the specififed types.
+        If runtime argument types do not match specified parameter declarations.
     FileNotFoundError
         If any relative paths do not lead to files for labelled data.
-        If `labels_root` does not exist.
+        If `labels_root` does not exist on disk.
         If the target folder does not exist within the .zip files.
         If there are no `.txt` files found in the target folder.
 
@@ -383,12 +385,47 @@ def extract_labels(
     -----
     `extract_labels` is meant to be used in conjunction with `extract_frames`
     to build datasets for training YOLO models. YOLO requires frames and labels
-    are split into train/val sets with corresponding files names.
-
+    are split into train/val sets with corresponding file names.
     """
-    if split not in ["train", "val"]:
-        raise ValueError("split must be either 'train' or 'val'.")
+    # Runtime Type Checking
+    if not isinstance(label_paths, list):
+        raise TypeError(
+            f"Argument 'label_paths' must be a list, received {type(label_paths).__name__}"
+        )
+    if not isinstance(working_dir, Path):
+        raise TypeError(
+            f"Argument 'working_dir' must be a Path object, received {type(working_dir).__name__}"
+        )
+    if not isinstance(labels_root, Path):
+        raise TypeError(
+            f"Argument 'labels_root' must be a Path object, received {type(labels_root).__name__}"
+        )
+    if not isinstance(frame_registry, dict):
+        raise TypeError(
+            f"Argument 'frame_registry' must be a dict, received {type(frame_registry).__name__}"
+        )
+    if not isinstance(split, str):
+        raise TypeError(
+            f"Argument 'split' must be a string, received {type(split).__name__}"
+        )
+    if not isinstance(skip, int):
+        raise TypeError(
+            f"Argument 'skip' must be an int, received {type(skip).__name__}"
+        )
+    if not isinstance(force, bool):
+        raise TypeError(
+            f"Argument 'force' must be a boolean, received {type(force).__name__}"
+        )
 
+    # Runtime Value Checking
+    if split not in ["train", "val"]:
+        raise ValueError("Argument 'split' must be either 'train' or 'val'.")
+    if not label_paths:
+        raise ValueError("Argument 'label_paths' cannot be an empty list.")
+    if skip <= 0:
+        raise ValueError(
+            f"Argument 'skip' must be a positive integer > 0, received {skip}"
+        )
     # Add subdirectories to output directory
     final_output_dir = working_dir / "labels" / split
 
