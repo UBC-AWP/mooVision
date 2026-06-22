@@ -123,6 +123,8 @@ INDEX_PATH = Path/to/your/index/file/<file>
 
 After configuring you `.env` and config files, run the following commands from your terminal in the MooVision root directory to move through a local demo of the project workflow. For more information see, project documentation.
 
+*Tip:** You can run all steps below in one command with `make run`, or individual steps
+
 1. Read in Raw index, and process for videos . Note, this will throw a lot of warnings when ran. These are telling you that the function is using the clips NOT found in fixed_clips when multiple versions of the same video are found.
 
    ```bash
