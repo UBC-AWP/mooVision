@@ -267,3 +267,52 @@ class TestValidateData:
         with pytest.raises(ValueError, match="Data validation failed"):
             validate_data(valid_df, schema)
  
+  
+# ===========================================================================
+# TestSaveData
+# ===========================================================================
+ 
+class TestSaveData:
+ 
+    # --- Fixtures ---
+ 
+    @pytest.fixture
+    def sample_df(self):
+        return pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+ 
+    # --- Happy path ---
+ 
+    def test_saves_csv_to_disk(self, tmp_path, sample_df):
+        path = tmp_path / "output.csv"
+        save_data(sample_df, path)
+        assert path.exists()
+        pd.testing.assert_frame_equal(pd.read_csv(path), sample_df)
+ 
+    def test_creates_parent_directories(self, tmp_path, sample_df):
+        path = tmp_path / "nested" / "deep" / "output.csv"
+        save_data(sample_df, path)
+        assert path.exists()
+ 
+    # --- Error cases ---
+ 
+    def test_not_a_dataframe_raises_type_error(self, tmp_path):
+        with pytest.raises(TypeError):
+            save_data("not a df", tmp_path / "output.csv")
+ 
+    def test_empty_df_raises_value_error(self, tmp_path):
+        with pytest.raises(ValueError, match="empty"):
+            save_data(pd.DataFrame(), tmp_path / "output.csv")
+ 
+    def test_non_csv_extension_raises(self, tmp_path, sample_df):
+        with pytest.raises(ValueError, match=".csv"):
+            save_data(sample_df, tmp_path / "output.parquet")
+ 
+    # --- Edge cases ---
+ 
+    def test_overwrites_existing_file(self, tmp_path, sample_df):
+        path = tmp_path / "output.csv"
+        save_data(sample_df, path)
+        save_data(pd.DataFrame({"b": [2]}), path)
+        result = pd.read_csv(path)
+        assert "b" in result.columns
+ 
