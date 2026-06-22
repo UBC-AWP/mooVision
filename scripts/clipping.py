@@ -37,14 +37,14 @@ The module relies on OpenCV for video I/O. Configuration is centralized in
 
 import sys
 import cv2
-import tempfile, os
-import time
+import tempfile
+import argparse
 import json
 import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import RESULT_CLIPS_DIR, DEMO_DATA_DIR
+from config import RESULT_CLIPS_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
@@ -339,25 +339,57 @@ def annotate_clip_with_boxes(input_clip: Path,output_clip: Path,boxes: list[dict
     
 def main():
     """
-    Run the default clipping workflow.
+    Run the clipping pipeline from the command line.
 
     Overview
     --------
-    By default, runs JSON-events mode via :func:`run_splitting`.
+    Accepts a JSON file or directory of JSON files as input and reproduces
+    annotated clips for all detected events, written under the output directory
+    mirroring the source video hierarchy.
 
     Input/Output
     ------------
     Input
-      - JSON metadata files from :root:`config.BASELINE_METADATA_DIR_NEW`.
+      - ``--input``  : A single JSON file or a directory searched recursively
+                       for ``*.json`` files produced by the detection pipeline.
 
     Output
-      - Annotated clips written to :root:`config.RESULT_CLIPS_DIR`.
+      - Annotated clips written under:
+            <output>/<split_name>/<Pen>/<Stage>/<Day>/<stem>_event###_<start>-<end>_boxed.mp4
+      - ``--output`` defaults to ``RESULT_CLIPS_DIR`` (``results/result_clips``).
+
+    Parameters
+    ----------
+    None
+        Arguments are parsed from the command line:
+          --input   Path  Required. JSON file or directory of JSON files.
+          --output  Path  Optional. Output root. Default: RESULT_CLIPS_DIR.
 
     Returns
     -------
     None
-    """
-    split_by_json_events(DEMO_DATA_DIR, RESULT_CLIPS_DIR)
 
+    Examples
+    --------
+    Clip all events from a directory of JSONs::
+
+        python src/clipping.py --input results/metadata/baseline/
+
+    Clip events from a single JSON file::
+
+        python src/clipping.py --input results/metadata/baseline/ch02_20251104034554.json
+
+    Clip to a custom output directory::
+
+        python src/clipping.py --input results/metadata/baseline/ --output /tmp/clips/
+    """
+    parser = argparse.ArgumentParser(description="Clip events from prediction JSONs.")
+    parser.add_argument("--input", type=Path, required=True,
+                        help="JSON file or directory of JSON files.")
+    parser.add_argument("--output", type=Path, default=RESULT_CLIPS_DIR,
+                        help="Output root directory. Default: results/result_clips")
+    args = parser.parse_args()
+    split_by_json_events(args.input, args.output)
+    
 if __name__ == "__main__":
     main()
