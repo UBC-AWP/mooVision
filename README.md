@@ -156,11 +156,11 @@ After configuring you `.env` and config files, run the following commands from y
 
 5. Run baseline on test videos to capture cross-sucking events and produce associated metadata:
 
-   - Cross-sucking examples (~2-3 minutes):
+    Cross-sucking examples (~2-3 minutes):
 
-      ```bash
-      uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
-      ```
+    ```bash
+    uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
+    ```
 
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
