@@ -129,22 +129,30 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     Overview
     --------
     Recursively searches `json_path` for `*.json` metadata files produced by the
-    baseline detection pipeline. For each event in each JSON, reproduces a clip
-    from the source video and writes an annotated `*_boxed.mp4` with bounding
-    boxes overlaid. The split name is inferred from the JSON directory structure
-    to mirror the baseline output hierarchy.
+    detection pipeline. For each event in each JSON, reproduces a clip from the
+    source video and writes an annotated `*_boxed.mp4` with bounding boxes
+    overlaid. The output directory structure is derived entirely from the JSON
+    file's path relative to the `metadata/` folder, so it mirrors the input
+    hierarchy regardless of how deeply nested the JSON files are.
 
     Input/Output
     ------------
     Input
       - `json_path`: A single JSON file, or a directory searched recursively
-                     for `*.json` files.
-      - Each JSON must specify `video_path` and `events`, and must live under a
-        path of the form: `.../baseline/<split_name>/<Pen>/<Stage>/<Day>/<file>.json`
+                     for `*.json` files produced by the detection pipeline.
+      - Each JSON must specify `video_path` and `events`, and must live
+        somewhere under a `metadata/` directory.
 
     Output
       - Annotated clips written under:
-            <output_dir>/<split_name>/<Pen>/<Stage>/<Day>/<video_stem>_event###_<start>-<end>_boxed.mp4
+            <output_dir>/<path_after_metadata>/<identifier_stem>/<stem>_event###_<start>-<end>_boxed.mp4
+
+        Examples:
+            input  → results/metadata/pipeline_demo/yolo/ch02_....json
+            output → results/result_clips/pipeline_demo/yolo/ch02_.../
+
+            input  → results/metadata/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_....json
+            output → results/result_clips/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_.../
 
     Parameters
     ----------
@@ -170,8 +178,8 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
       - `events`     : list[dict] with keys `start_sec`, `end_sec`
 
     Optional keys used if present:
-      - `identifier`               : str — used for output filename stem
-      - `fps`                      : float — used for annotation frame alignment
+      - `identifier`                 : str — used as the per-video output folder name
+      - `fps`                        : float — used for annotation frame alignment
       - `events[*].intersection_box` : list[dict] with keys `frame`, `x1`, `y1`,
                                        `x2`, `y2` in source-video frame coordinates
     """
