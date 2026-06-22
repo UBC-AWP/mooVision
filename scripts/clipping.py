@@ -44,7 +44,7 @@ import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import RESULT_CLIPS_DIR
+from config import RESULT_CLIPS_DIR,ROOT_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
@@ -188,9 +188,12 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     for jf in json_files:
         data = json.loads(jf.read_text(encoding="utf-8"))
         video_path = Path(data["video_path"])
+        p = re.search(r"raw_cross_sucking_datalog[\\/](.*)$", str(video_path))
+        video_path = ROOT_DIR / "raw_cross_sucking_datalog" / p.group(1) if p else video_path
         identifier = data.get("identifier", video_path.name)
         events = data.get("events", [])
         fps = float(data.get("fps", 30.0))
+        print(video_path)
 
         if not video_path.exists():
             raise FileNotFoundError(f"video_path does not exist: {video_path} (from {jf})")
@@ -198,19 +201,12 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
             print(f"No events found in {jf.name}")
             continue
         
-        # extract the relative path after "videos/" to find the raw video in RAW_DIR
-        m = re.search(r"videos[\\/](.*)$", str(video_path))
-        if m:
-            rel_parent = Path(m.group(1)).parent  # Pen/Stage/Day
-        else:
-            rel_parent = Path()
-
-        split_name = jf.parent.parent.parent.parent.name  # e.g. "day_based" — four levels up from the JSON
-        if split_name == "results":
-            split_name = jf.parent.parent.name
-        print(split_name)
-        out_folder = output_dir / split_name / rel_parent
-        
+        # extract split name from JSON path 
+        m_meta = re.search(r"metadata[\\/](.+)$", str(jf.parent))
+        rel_from_metadata = Path(m_meta.group(1)) if m_meta else Path()
+        video_stem = Path(identifier).stem
+        out_folder = output_dir / rel_from_metadata / video_stem
+                        
         out_folder.mkdir(parents=True, exist_ok=True)
         
         success = 0
@@ -389,7 +385,7 @@ def main():
     parser.add_argument("--output", type=Path, default=RESULT_CLIPS_DIR,
                         help="Output root directory. Default: results/result_clips")
     args = parser.parse_args()
-    split_by_json_events(args.input, args.output)
+    split_by_json_events(ROOT_DIR / args.input, args.output)
     
 if __name__ == "__main__":
     main()
