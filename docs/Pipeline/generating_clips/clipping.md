@@ -57,13 +57,10 @@ results/result_clips/
 │       └── ch02_20250913094601/
 │           ├── ch02_20250913094601_event001_12.3-16.8_boxed.mp4
 │           └── ch02_20250913094601_event002_22.1-25.4_boxed.mp4
-└── baseline/
-    └── pipeline_demo/
-        └── Pen 2 - Group 2/
-            └── PREWEANING/
-                └── Day 1/
-                    └── ch02_20250913094601/
-                        └── ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+│   └── baseline/
+│       └── ch02_20250913094601/
+│           ├── ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+│           └── ch02_20250913094601_event002_22.1-25.4_boxed.mp4
 ```
 
 Boxed clips are saved with the `_boxed.mp4` suffix. The unboxed intermediate clip is removed after annotation succeeds. If annotation fails, the unboxed version is kept as a fallback.
@@ -86,10 +83,10 @@ The output path is derived entirely from the JSON file's location relative to th
 
 ```text
 input  → results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json
-output → results/result_clips/pipeline_demo/yolo/ch02_20250913094601/
+output → results/result_clips/pipeline_demo/yolo/ch02_20250913094601/ch02_20250913094601_event001_12.3-16.8_boxed.mp4
 
-input  → results/metadata/baseline/pipeline_demo/Pen 2 - Group 2/PREWEANING/Day 1/ch02_20250913094601_results.json
-output → results/result_clips/baseline/pipeline_demo/Pen 2 - Group 2/PREWEANING/Day 1/ch02_20250913094601/
+input  → results/metadata/pipeline_demo/baseline/ch02_20250913094601_results.json
+output → results/result_clips/pipeline_demo/baseline/ch02_20250913094601/ch02_20250913094601_event001_12.3-16.8_boxed.mp4
 ```
 
 ### Edge Cases

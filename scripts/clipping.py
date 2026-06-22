@@ -25,16 +25,16 @@ Outputs
     everything after ``metadata/`` in the input JSON path, with one
     subfolder per video named after its ``identifier`` stem::
 
-        results/result_clips/<path_after_metadata>/<identifier>/
+        results/result_clips/<split_name>/<model_name>/<identifier>/
             <identifier>_event001_<start>-<end>_boxed.mp4
             <identifier>_event002_<start>-<end>_boxed.mp4
 
     Examples:
         input  → results/metadata/pipeline_demo/yolo/ch02_....json
-        output → results/result_clips/pipeline_demo/yolo/ch02_.../
+        output → results/result_clips/pipeline_demo/yolo/ch02_.../ch02_...mp4
 
-        input  → results/metadata/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_....json
-        output → results/result_clips/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_.../
+        input  → results/metadata/pipeline_demo/baseline/ch02_....json
+        output → results/result_clips/pipeline_demo/baseline/ch02_.../ch02_...mp4
 
 Notes
 -----
@@ -369,7 +369,7 @@ def main():
 
     Output
       - Annotated clips written under:
-            <output>/<split_name>/<Pen>/<Stage>/<Day>/<stem>_event###_<start>-<end>_boxed.mp4
+            <output>/<split_name>/<model_name>/<stem>/<stem>_event###_<start>-<end>_boxed.mp4
       - ``--output`` defaults to ``RESULT_CLIPS_DIR`` (``results/result_clips``).
 
     Parameters
@@ -387,7 +387,7 @@ def main():
     --------
     Clip all events from a directory of JSONs::
 
-        python src/clipping.py --input results/metadata/baseline/
+        python src/clipping.py --input results/metadata/<split_name>/<model_name>
 
     Clip events from a single JSON file::
 
@@ -395,7 +395,7 @@ def main():
 
     Clip to a custom output directory::
 
-        python src/clipping.py --input results/metadata/baseline/ --output /tmp/clips/
+        python src/clipping.py --input results/metadata/<split_name>/<model_name>/ --output /tmp/clips/
     """
     parser = argparse.ArgumentParser(description="Clip events from prediction JSONs.")
     parser.add_argument("--input", type=Path, required=True,
