@@ -247,7 +247,7 @@ def parse_zip_annotations(
 
         print(f"Labels Saved: {len(saved_labels_registry[video_key])}")
 
-    return label_batch, saved_labels_registry
+    return global_label_batch, saved_labels_registry
 
 
 def save_label_batch(
