@@ -15,6 +15,7 @@
 # ==============================================================================
 cd /scratch/st-nina-1/mooVision
 source .env_sockeye
+export UV_PROJECT_ENVIRONMENT="${USER_SCRATCH}/.venv"
 export UV_OFFLINE=1
 
 DATA_SPLITS=(
