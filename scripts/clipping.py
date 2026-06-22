@@ -44,7 +44,7 @@ import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import SOURCE_VIDEOS_DIR, INDEX_PATH, RESULT_CLIPS_DIR, BASELINE_METADATA_DIR_NEW, REPRODUCED_CLIPS_DIR
+from config import SOURCE_VIDEOS_DIR, INDEX_PATH, RESULT_CLIPS_DIR, YOLO_MODEL_OUTPUT_DIR, REPRODUCED_CLIPS_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
@@ -121,77 +121,6 @@ def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, outpu
     cap.release()
     writer.release()
     return True
-
-def split_by_index(index_path: Path, output_path: Path) -> None:
-    """
-    Reproduce clips defined by a CSV index file.
-
-    Overview
-    --------
-    Reads a CSV index into a pandas DataFrame, matches rows against `.mp4` source
-    videos found under :root:`config.SOURCE_VIDEOS_DIR`, and writes the resulting
-    clips to `output_path`.
-
-    Input/Output
-    ------------
-    Input
-      - `index_path`: CSV file describing clips.
-      - Source videos discovered recursively under :root:`config.SOURCE_VIDEOS_DIR`.
-
-    Output
-      - `.mp4` clips written under `output_path` (file name taken from the CSV).
-
-    Parameters
-    ----------
-    index_path : pathlib.Path
-        Path to the index CSV.
-    output_path : pathlib.Path
-        Directory to write reproduced clips to.
-
-    Returns
-    -------
-    None
-
-    Notes
-    -----
-    - The CSV is expected to include at least the columns:
-      `source_video_basename`, `source_video_path`, `clip_name`,
-      `clip_start_in_source_sec`, `clip_end_in_source_sec`.
-    - **Current behavior**: only the first matched row is processed due to
-      `matched[:1]`. Remove that slice to reproduce all matching clips.
-
-    Raises
-    ------
-    FileNotFoundError
-        If `index_path` does not exist (raised by pandas).
-    KeyError
-        If required columns are missing from the CSV.
-    """
-    index_df = pd.read_csv(index_path)
-    # get all raw videos in RAW_DIR
-    raw_videos = {f.name: f for f in SOURCE_VIDEOS_DIR.rglob("*.mp4")}
-
-    matched = index_df[index_df["source_video_basename"].isin(raw_videos.keys())]
-    print(f"Found {len(matched)} clips to reproduce from {matched['source_video_basename'].nunique()} raw videos\n")
-
-    success = 0
-    for _, row in matched[:1].iterrows():
-        source_video_path = row["source_video_path"]
-        source_relative_path = re.search(r"Pen.*", source_video_path).group(0)
-        # normalize Windows separators -> POSIX
-        source_relative_path = source_relative_path.replace("\\", "/")
-        raw_path = SOURCE_VIDEOS_DIR / "videos" / source_relative_path
-        save_path = output_path / row["clip_name"]
-        start_sec = float(row["clip_start_in_source_sec"])
-        end_sec = float(row["clip_end_in_source_sec"])
-
-        print(f"{row['clip_name']}  {start_sec:.1f}s -> {end_sec:.1f}s")
-        print(f"from: {raw_path}")
-        if reproduce_clip(raw_path, start_sec, end_sec, save_path):
-                print(f"saved to {save_path.name}")
-                success += 1
-
-        print(f"\nDone — {success} reproduced")
         
 def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     """
@@ -314,7 +243,7 @@ def split_by_json_events(json_path: Path, output_dir: Path) -> int:
                 clip_boxes.append({**b, "frame": f})
 
             boxed_path = out_folder / f"{base_name}_boxed.mp4"
-            if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
+            if annotate_clip_with_boxes(video_path, boxed_path, clip_boxes):
                 print(f"saved boxed to {boxed_path.name}")
                 if out_path.exists():
                     out_path.unlink()
@@ -404,45 +333,6 @@ def annotate_clip_with_boxes(input_clip: Path,output_clip: Path,boxes: list[dict
     cap.release()
     writer.release()
     return True
-
-def run_splitting(func) -> None:
-    """
-    Dispatch to a chosen splitting strategy.
-
-    Overview
-    --------
-    Calls either :func:`split_by_index` or :func:`split_by_json_events` using
-    project-configured input/output paths from `config.py`.
-
-    Input/Output
-    ------------
-    Input
-      - `func`: A function object indicating which strategy to run.
-
-    Output
-      - Clips written to :root:`config.RESULT_CLIPS_DIR` under
-        <split_name>/<Pen>/<Stage>/<Day>/.
-
-    Parameters
-    ----------
-    func : callable
-        Either :func:`split_by_index` or :func:`split_by_json_events`.
-
-    Returns
-    -------
-    None
-
-    Raises
-    ------
-    ValueError
-        If `func` is not a supported splitting function.
-    """
-    if func == split_by_index:
-        split_by_index(INDEX_PATH, REPRODUCED_CLIPS_DIR)
-    elif func == split_by_json_events:
-        split_by_json_events(BASELINE_METADATA_DIR_NEW, RESULT_CLIPS_DIR)
-    else:
-        raise ValueError(f"Unknown splitting function: {func}")
     
 def main():
     """
@@ -464,7 +354,7 @@ def main():
     -------
     None
     """
-    run_splitting(split_by_json_events)
+    split_by_json_events(YOLO_MODEL_OUTPUT_DIR, RESULT_CLIPS_DIR)
 
 if __name__ == "__main__":
     main()
