@@ -44,7 +44,7 @@ import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import SOURCE_VIDEOS_DIR, INDEX_PATH, RESULT_CLIPS_DIR, YOLO_MODEL_OUTPUT_DIR, REPRODUCED_CLIPS_DIR
+from config import RESULT_CLIPS_DIR, YOLO_MODEL_OUTPUT_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
