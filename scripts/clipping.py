@@ -377,7 +377,7 @@ def main():
 
     Clip events from a single JSON file::
 
-        python src/clipping.py --input results/metadata/baseline/ch02_20251104034554.json
+        python src/clipping.py --input results/metadata/pen_based/pen_3/yolo
 
     Clip to a custom output directory::
 
