@@ -21,13 +21,9 @@ OUTPUTS
 -------
     Writes one JSON metadata file per video under:
 
-        results/metadata/baseline/
-        ├── day_based/
-        │   └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
-        ├── pen_based/
-        │   └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
-        └── pipeline_demo/
-            └── <Pen>/<Stage>/<Day>/<video_stem>_results.json
+        results/metadata/split_name/
+        ├── baseline/
+        │   <video_stem>_results.json
 
     Each JSON contains detection parameters, per-event timestamps, confidence
     scores, and frame-level intersection box coordinates.
@@ -65,7 +61,7 @@ import pandas as pd
 from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
-from config import ROOT_DIR,SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_CLOUD
+from config import ROOT_DIR,SOURCE_VIDEOS_DIR,METADATA_DIR_CLOUD
 
 # Defaults
 DEFAULT_MODEL = "yolo26x.pt"    
@@ -440,29 +436,6 @@ def detect_video(
     }
     return metadata
 
-def resolve_output_path(video_path: Path, split_name: str) -> Path:
-    """
-    Resolve the output JSON path for a given video under the baseline results directory.
- 
-    Mirrors the source video's Pen/Stage/Day directory hierarchy under:
-        BASELINE_METADATA_DIR_NEW / <split_name> / <Pen> / <Stage> / <Day> /
- 
-    The relative parent is extracted from the video path by matching everything
-    after the 'videos' directory separator. Falls back to a flat output directory
-    if the expected pattern is not found.
- 
-    Args:
-        video_path: Absolute path to the source video file.
-        split_name: Name of the data split (e.g. 'day_based').
- 
-    Returns:
-        Full Path to the output JSON file (not yet created).
-    """
-    m = re.search(r"videos[\\/](.*)$", str(video_path))
-    rel_parent = Path(m.group(1)).parent if m else Path()
-    output_dir = BASELINE_METADATA_DIR_CLOUD / split_name / rel_parent
-    return output_dir / f"{video_path.stem}_results.json"   
-
 def run_all(
     csv_path:       Path,
     model_path:     str,
@@ -506,9 +479,10 @@ def run_all(
         raise ValueError(f"'{TARGET_CLASS_NAME}' not found in model: {list(model.names.values())}")
 
     for video_path in video_paths:
-        m = re.search(r"videos[\\/](.*)$", str(video_path))
-        rel_parent = Path(m.group(1)).parent if m else Path()
-        json_path = BASELINE_METADATA_DIR_CLOUD / split_name / rel_parent / f"{video_path.stem}_results.json"
+        # m = re.search(r"videos[\\/](.*)$", str(video_path))
+        # rel_parent = Path(m.group(1)).parent if m else Path()
+        
+        json_path = METADATA_DIR_CLOUD/ split_name / "baseline" / f"{video_path.stem}_results.json"
 
         if json_path.exists():
             print(f"[SKIP] {json_path.name}")

@@ -26,7 +26,7 @@ ROOT_DIR = require_dir("ROOT_DIR")
 # Path on GitHub / local workspace
 LOCAL_DIR = require_dir("LOCAL_DIR")
 BASELINE_METADATA_DIR_LOCAL = LOCAL_DIR / "results" / "metadata" / "baseline"
-BASELINE_METADATA_DIR_CLOUD = ROOT_DIR / "results" / "metadata" / "baseline"
+METADATA_DIR_CLOUD = ROOT_DIR / "results" / "metadata" 
 
 # Videos and labels
 UNLABELLED_CLIPS_DIR = ROOT_DIR / "cross_sucking_clips"

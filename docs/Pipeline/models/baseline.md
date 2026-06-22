@@ -32,11 +32,11 @@ A baseline script for detecting cross-sucking behaviour in calves using YOLO bou
 
 ## Output
 
-Results are saved to `results/metadata/baseline/` automatically. The split name is inferred from the parent folder of the input CSV (e.g. `day_based`), and the directory hierarchy mirrors the source video structure.
+Results are saved to `results/metadata/<split_name>/baseline/` automatically. The split name is inferred from the parent folder of the input CSV (e.g. `day_based`), and the directory hierarchy mirrors the source video structure.
 
-**File:** `results/metadata/baseline/<split_name>/<Pen>/<Stage>/<Day>/<video_stem>_results.json`
+**File:** `results/metadata/<split_name>/baseline/<video_stem>_results.json`
 
-**Example:** `results/metadata/baseline/day_based/Pen 2 - Group 2/POSTWEANING/Day 1/ch02_results.json`
+**Example:** `results/metadata/day_based/baseline/ch02_results.json`
 
 **Example output:**
 
@@ -144,9 +144,6 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
 ```bash
 # Example 1 (~2-3 minutes)
 uv run scripts/models/baseline/baseline.py --csv "data/processed/day_based/test.csv"
-
-# Example 2 (~4-5 minutes)
-uv run scripts/models/baseline/baseline.py --csv "data/processed/pen_based/test.csv"
 ```
 
 **Non-cross-sucking examples:** run with the same commands above — the script processes all videos in the CSV, including non-cross-sucking ones. Videos with no detected events will have `"cross_sucking_detected": false` in their JSON output.
