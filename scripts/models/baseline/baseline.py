@@ -51,7 +51,7 @@ import pandas as pd
 from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
-from config import SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW,READ_DF_PATH
+from config import ROOT_DIR,SOURCE_VIDEOS_DIR,BASELINE_METADATA_DIR_NEW,READ_DF_PATH
 
 # Defaults
 DEFAULT_DATA_ROOT = READ_DF_PATH
@@ -559,7 +559,7 @@ if __name__ == "__main__":
     
     args = parse_args()
     run_all(
-        csv_path   = args.csv,
+        csv_path   = ROOT_DIR / args.csv,
         model_path    = args.model,
         iou_threshold = args.iou_threshold,
         conf_threshold= args.conf_threshold,
