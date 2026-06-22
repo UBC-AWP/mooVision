@@ -203,6 +203,13 @@ After configuring you `.env` and config files, run the following commands from y
    ```bash
    uv run scripts/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
    ```
+   
+The distribution analysis notebook is not part of the `make run` pipeline and
+should be run manually after any model stage to explore its outputs:
+
+```bash
+uv run jupyter notebook distribution_analysis.ipynb
+```
 
 ## Running the Full Pipeline (Sockeye HPC)
 
