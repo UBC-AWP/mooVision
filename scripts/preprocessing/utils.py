@@ -2,14 +2,9 @@
 Utility Functions For Preprocessing Data into Training Sets for YOLO models
 """
 
-import sys
-from typing import List, Tuple
+from typing import List
 from pathlib import Path
 import yaml
-
-sys.path.append(str(Path(__file__).parent.parent.parent))
-
-from scripts.data_reading.matching import parse_labelled_name, parse_unlabelled_name
 
 
 def validate_file_paths(
@@ -66,7 +61,7 @@ def validate_file_paths(
         clean_path = root / raw_path.replace("\\", "/")
         if not clean_path.exists():
             raise FileNotFoundError(
-                f"Attempting clean file paths, cleaned label file not found: {paths}"
+                f"Attempting to clean file paths, cleaned label file not found: {clean_path}"
             )
 
         validated_paths.append(clean_path)
