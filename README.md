@@ -210,7 +210,8 @@ After configuring you `.env` and config files, run the following commands from y
    ```
 
 ---
-# For detailed documentation, please refer to our MkDocs site. To view it locally, run:
+## How to run MkDocs
+For detailed documentation, please refer to our MkDocs site. To view it locally, run:
    ```bash
    uv run mkdocs serve
    ```
