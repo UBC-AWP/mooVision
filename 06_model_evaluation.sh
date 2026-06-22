@@ -7,8 +7,8 @@
 #SBATCH --mem=8G
 #SBATCH --time=01:00:00
 #SBATCH --array=0-15                      # 8 splits × 2 pipelines = 16 tasks
-#SBATCH --output=/scratch/st-nina-1/moovision/logs/eval_%A_%a.out
-#SBATCH --error=/scratch/st-nina-1/moovision/logs/eval_%A_%a.err
+#SBATCH --output=logs/eval_%A_%a.out
+#SBATCH --error=logs/eval_%A_%a.err
 
 # ==============================================================================
 # ENVIRONMENT
