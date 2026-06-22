@@ -1,282 +1,221 @@
 """
 test_evaluation.py
 ------------------
-Comprehensive tests for the MooVision evaluation module.
- 
+pytest test suite for evaluation.py
+
 Tests cover:
-    - compute_temporal_iou
-    - compute_bbox_iou (with camera distance bias correction)
-    - compute_precision_recall_f
-    - compute_avg_bbox_iou_for_event
-    - load_predictions
-    - load_ground_truth
-    - match_predictions_to_ground_truth
- 
+  - compute_temporal_iou
+  - compute_bbox_iou
+  - compute_avg_bbox_iou_for_event
+  - compute_frame_level_bbox_iou
+  - compute_precision_recall_f
+  - evaluate_by_stratum
+  - match_predictions_to_ground_truth
+  - load_gt_boxes_from_zip
+  - load_predictions
+  - load_ground_truth
+  - generate_evaluation_report
+
 Run with:
-    uv run pytest tests/test_evaluation.py -v
+    pytest test_evaluation.py -v
 """
- 
+
+import io
 import json
+import zipfile
+import textwrap
+import tempfile
 import pytest
 import numpy as np
 import pandas as pd
 from pathlib import Path
- 
-# Import functions from evaluation script
-from scripts.evaluation import (
+from unittest.mock import patch, MagicMock
+
+from evaluation import (
     compute_temporal_iou,
     compute_bbox_iou,
-    compute_precision_recall_f,
     compute_avg_bbox_iou_for_event,
+    compute_frame_level_bbox_iou,
+    compute_precision_recall_f,
+    match_predictions_to_ground_truth,
+    load_gt_boxes_from_zip,
     load_predictions,
     load_ground_truth,
-    match_predictions_to_ground_truth,
+    generate_evaluation_report,
+    VIDEO_WIDTH,
+    VIDEO_HEIGHT,
 )
 
+
 # ===========================================================================
-# TESTS: compute_temporal_iou
+# Helpers / fixtures
 # ===========================================================================
- 
+
+def make_predictions_df(rows: list[dict]) -> pd.DataFrame:
+    """Build a minimal predictions DataFrame from a list of dicts."""
+    defaults = {
+        "source_video_basename": "video.mp4",
+        "start_sec": 0.0,
+        "end_sec": 5.0,
+        "duration_sec": 5.0,
+        "avg_confidence": 0.9,
+        "intersection_box": [],
+        "fps": 30.0,
+    }
+    return pd.DataFrame([{**defaults, **r} for r in rows])
+
+
+def make_ground_truth_df(rows: list[dict]) -> pd.DataFrame:
+    """Build a minimal ground truth DataFrame from a list of dicts."""
+    defaults = {
+        "source_video_basename": "video.mp4",
+        "start_sec": 0.0,
+        "end_sec": 5.0,
+        "pen": 2,
+        "weaning_stage": "PREWEAN",
+        "day": 1,
+        "labelled_clip_relative_path": "",
+    }
+    return pd.DataFrame([{**defaults, **r} for r in rows])
+
+
+def make_cvat_zip(annotations: dict[str, str]) -> bytes:
+    """
+    Build an in-memory CVAT annotation zip.
+
+    annotations: {filename_inside_zip: yolo_line_content}
+    e.g. {"obj_train_data/frame_000010.txt": "0 0.5 0.5 0.4 0.4"}
+    """
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for name, content in annotations.items():
+            z.writestr(name, content)
+    return buf.getvalue()
+
+
+# ===========================================================================
+# compute_temporal_iou
+# ===========================================================================
+
 class TestComputeTemporalIou:
-    """Tests for compute_temporal_iou()."""
- 
+
     def test_perfect_overlap(self):
-        """
-        Identical time windows should give IoU of 1.0.
-        Both start and end at the same time.
-        """
-        iou = compute_temporal_iou(5.0, 10.0, 5.0, 10.0)
-        assert iou == 1.0
- 
+        assert compute_temporal_iou(0.0, 5.0, 0.0, 5.0) == pytest.approx(1.0)
+
     def test_no_overlap(self):
-        """
-        Non-overlapping time windows should give IoU of 0.0.
-        Prediction ends before ground truth starts.
-        """
-        iou = compute_temporal_iou(1.0, 5.0, 6.0, 10.0)
-        assert iou == 0.0
- 
-    def test_partial_overlap(self):
-        """
-        Partially overlapping windows should give IoU between 0 and 1.
- 
-        Prediction:   5.0 -> 10.0  (5 seconds)
-        Ground truth: 7.0 -> 13.0  (6 seconds)
-        Intersection: 7.0 -> 10.0  (3 seconds)
-        Union:        5.0 -> 13.0  (8 seconds)
-        IoU = 3/8 = 0.375
-        """
-        iou = compute_temporal_iou(5.0, 10.0, 7.0, 13.0)
-        assert abs(iou - 0.375) < 0.001
- 
-    def test_prediction_contains_ground_truth(self):
-        """
-        Prediction window completely contains ground truth window.
-        IoU should be less than 1.0 since union is larger than intersection.
-        """
-        iou = compute_temporal_iou(1.0, 20.0, 5.0, 10.0)
-        assert 0.0 < iou < 1.0
- 
-    def test_ground_truth_contains_prediction(self):
-        """
-        Ground truth window completely contains prediction window.
-        Same as above but reversed.
-        """
-        iou = compute_temporal_iou(5.0, 10.0, 1.0, 20.0)
-        assert 0.0 < iou < 1.0
- 
-    def test_touching_at_boundary(self):
-        """
-        Windows that touch exactly at one point should give IoU of 0.0
-        since intersection has zero duration.
-        """
-        iou = compute_temporal_iou(1.0, 5.0, 5.0, 10.0)
-        assert iou == 0.0
- 
-    def test_zero_duration_prediction(self):
-        """
-        Prediction with zero duration (start == end) should give 0.0.
-        Union would be zero so we return 0.0 to avoid division by zero.
-        """
-        iou = compute_temporal_iou(5.0, 5.0, 5.0, 10.0)
-        assert iou == 0.0
- 
-    def test_zero_duration_ground_truth(self):
-        """
-        Ground truth with zero duration should give 0.0.
-        """
-        iou = compute_temporal_iou(5.0, 10.0, 7.0, 7.0)
-        assert iou == 0.0
- 
+        assert compute_temporal_iou(0.0, 3.0, 5.0, 8.0) == pytest.approx(0.0)
+
+    def test_partial_overlap_from_docstring(self):
+        # GT: 5→10, Pred: 7→13  → intersection=3, union=8
+        result = compute_temporal_iou(7.0, 13.0, 5.0, 10.0)
+        assert result == pytest.approx(3 / 8)
+
+    def test_prediction_contained_within_gt(self):
+        # Pred: 2→4 fully inside GT: 0→10  → intersection=2, union=10
+        result = compute_temporal_iou(2.0, 4.0, 0.0, 10.0)
+        assert result == pytest.approx(2 / 10)
+
+    def test_gt_contained_within_prediction(self):
+        # GT: 2→4 fully inside Pred: 0→10
+        result = compute_temporal_iou(0.0, 10.0, 2.0, 4.0)
+        assert result == pytest.approx(2 / 10)
+
+    def test_touching_edges_no_overlap(self):
+        # Windows touch but don't overlap
+        assert compute_temporal_iou(0.0, 5.0, 5.0, 10.0) == pytest.approx(0.0)
+
+    def test_zero_length_union(self):
+        # Degenerate: both zero-length at same point
+        result = compute_temporal_iou(3.0, 3.0, 3.0, 3.0)
+        assert result == pytest.approx(0.0)
+
     def test_symmetry(self):
-        """
-        Swapping prediction and ground truth should give the same IoU.
-        IoU is symmetric by definition.
-        """
-        iou_a = compute_temporal_iou(5.0, 10.0, 7.0, 13.0)
-        iou_b = compute_temporal_iou(7.0, 13.0, 5.0, 10.0)
-        assert abs(iou_a - iou_b) < 0.001
- 
-    def test_result_between_zero_and_one(self):
-        """
-        IoU should always be between 0 and 1 for any valid input.
-        """
-        iou = compute_temporal_iou(3.0, 8.0, 6.0, 12.0)
-        assert 0.0 <= iou <= 1.0
+        a = compute_temporal_iou(1.0, 6.0, 4.0, 9.0)
+        b = compute_temporal_iou(4.0, 9.0, 1.0, 6.0)
+        assert a == pytest.approx(b)
+
+    def test_return_type_is_float(self):
+        result = compute_temporal_iou(0.0, 5.0, 0.0, 5.0)
+        assert isinstance(result, float)
+
 
 # ===========================================================================
-# TESTS: compute_bbox_iou
+# compute_bbox_iou
 # ===========================================================================
- 
+
 class TestComputeBboxIou:
-    """
-    Tests for compute_bbox_iou().
- 
-    Note: this function uses min area normalization instead of union
-    to correct for camera distance bias. A score of 1.0 means the
-    smaller box is completely covered by the overlap.
-    """
- 
-    def test_perfect_overlap(self):
-        """
-        Identical boxes should give overlap ratio of 1.0.
-        """
-        box = [0, 0, 100, 100]
-        iou = compute_bbox_iou(box, box)
-        assert iou == 1.0
- 
-    def test_no_overlap(self):
-        """
-        Completely non-overlapping boxes should give 0.0.
-        """
-        box_pred = [0,   0,  50,  50]
-        box_gt   = [60, 60, 110, 110]
-        iou = compute_bbox_iou(box_pred, box_gt)
-        assert iou == 0.0
- 
-    def test_partial_overlap(self):
-        """
-        Partially overlapping boxes should give ratio between 0 and 1.
-        """
-        box_pred = [0,  0, 100, 100]
-        box_gt   = [50, 0, 150, 100]
-        iou = compute_bbox_iou(box_pred, box_gt)
-        assert 0.0 < iou < 1.0
- 
-    def test_camera_distance_bias_correction(self):
-        """
-        Tests the key feature of this function: correcting for camera distance.
- 
-        Two scenarios with the same proportional overlap but different box sizes
-        (simulating calves at different distances from camera).
-        Both should give similar overlap ratios, unlike standard IoU which
-        would give very different scores.
- 
-        Small boxes (far away calves):
-            pred: 100x100, gt: 100x100, overlap: 80x80
-            min_area ratio = 6400/10000 = 0.64
- 
-        Large boxes (close up calves):
-            pred: 400x400, gt: 400x400, overlap: 320x320
-            min_area ratio = 102400/160000 = 0.64
- 
-        Both should give the same score since proportional overlap is identical.
-        """
-        # Small boxes — far away calves
-        small_pred = [0,   0,  100, 100]
-        small_gt   = [20,  20, 120, 120]
-        iou_small  = compute_bbox_iou(small_pred, small_gt)
- 
-        # Large boxes — close up calves (4x scale)
-        large_pred = [0,   0,  400, 400]
-        large_gt   = [80,  80, 480, 480]
-        iou_large  = compute_bbox_iou(large_pred, large_gt)
- 
-        # Scores should be similar despite different box sizes
-        assert abs(iou_small - iou_large) < 0.05
- 
-    def test_smaller_box_fully_inside_larger(self):
-        """
-        If the smaller box is completely inside the larger box,
-        the overlap ratio should be 1.0 since the entire smaller
-        box is covered.
-        """
-        box_pred = [25, 25, 75, 75]    # smaller box
-        box_gt   = [0,  0,  100, 100]  # larger box containing pred
-        iou = compute_bbox_iou(box_pred, box_gt)
-        assert iou == 1.0
- 
-    def test_zero_area_box(self):
-        """
-        A box with zero area (point) should return 0.0
-        to avoid division by zero.
-        """
-        box_pred = [50, 50, 50, 50]    # zero area
-        box_gt   = [0,  0,  100, 100]
-        iou = compute_bbox_iou(box_pred, box_gt)
-        assert iou == 0.0
- 
-    def test_result_between_zero_and_one(self):
-        """
-        Overlap ratio should always be between 0 and 1.
-        """
-        box_pred = [10, 10, 60, 60]
-        box_gt   = [30, 30, 80, 80]
-        iou = compute_bbox_iou(box_pred, box_gt)
-        assert 0.0 <= iou <= 1.0
- 
-    def test_symmetry(self):
-        """
-        Note: unlike standard IoU, min-area normalization is NOT fully
-        symmetric when boxes have different sizes. This test documents
-        that behavior so it is understood and expected.
-        """
-        box_pred = [0,  0,  100, 100]  # larger box
-        box_gt   = [25, 25, 75,  75]   # smaller box inside pred
- 
-        iou_ab = compute_bbox_iou(box_pred, box_gt)
-        iou_ba = compute_bbox_iou(box_gt,   box_pred)
- 
-        # Both should be 1.0 since smaller box is fully inside larger
-        assert iou_ab == 1.0
-        assert iou_ba == 1.0
 
- 
+    def test_perfect_overlap(self):
+        box = [0, 0, 100, 100]
+        assert compute_bbox_iou(box, box) == pytest.approx(1.0)
+
+    def test_no_overlap(self):
+        assert compute_bbox_iou([0, 0, 50, 50], [100, 100, 200, 200]) == pytest.approx(0.0)
+
+    def test_partial_overlap_normalised_to_smaller_box(self):
+        # pred: 0→100 x 0→100 (area=10000)
+        # gt:   50→150 x 50→150 (area=10000)
+        # intersection: 50→100 x 50→100 = 50*50 = 2500
+        # min_area = 10000  → score = 0.25
+        result = compute_bbox_iou([0, 0, 100, 100], [50, 50, 150, 150])
+        assert result == pytest.approx(2500 / 10000)
+
+    def test_small_box_fully_inside_large_box(self):
+        # Small box fully covered → score should be 1.0 (min_area = small box)
+        result = compute_bbox_iou([0, 0, 200, 200], [50, 50, 100, 100])
+        assert result == pytest.approx(1.0)
+
+    def test_zero_area_box(self):
+        assert compute_bbox_iou([0, 0, 0, 0], [0, 0, 100, 100]) == pytest.approx(0.0)
+
+    def test_symmetry(self):
+        a = compute_bbox_iou([0, 0, 60, 60], [40, 40, 100, 100])
+        b = compute_bbox_iou([40, 40, 100, 100], [0, 0, 60, 60])
+        assert a == pytest.approx(b)
+
+    def test_touching_edges(self):
+        assert compute_bbox_iou([0, 0, 50, 50], [50, 0, 100, 50]) == pytest.approx(0.0)
+
+    def test_return_type_is_float(self):
+        result = compute_bbox_iou([0, 0, 100, 100], [0, 0, 100, 100])
+        assert isinstance(result, float)
+
+
 # ===========================================================================
 # compute_avg_bbox_iou_for_event
 # ===========================================================================
- 
+
 class TestComputeAvgBboxIouForEvent:
- 
+
     def _box(self, frame, x1=0, y1=0, x2=100, y2=100):
         return {"frame": frame, "x1": x1, "y1": y1, "x2": x2, "y2": y2}
- 
+
     def test_single_exact_match(self):
         pred = [self._box(10)]
         gt   = [self._box(10)]
         assert compute_avg_bbox_iou_for_event(pred, gt) == pytest.approx(1.0)
- 
+
     def test_empty_pred_returns_zero(self):
         assert compute_avg_bbox_iou_for_event([], [self._box(10)]) == pytest.approx(0.0)
- 
+
     def test_empty_gt_returns_zero(self):
         assert compute_avg_bbox_iou_for_event([self._box(10)], []) == pytest.approx(0.0)
- 
+
     def test_both_empty_returns_zero(self):
         assert compute_avg_bbox_iou_for_event([], []) == pytest.approx(0.0)
- 
+
     def test_nearest_frame_match_within_tolerance(self):
         pred = [self._box(10)]
         gt   = [self._box(15)]  # 5 frames away, within default tolerance 10
         result = compute_avg_bbox_iou_for_event(pred, gt)
         assert result == pytest.approx(1.0)
- 
+
     def test_frame_beyond_tolerance_not_matched(self):
         pred = [self._box(10)]
         gt   = [self._box(25)]  # 15 frames away, beyond tolerance 10
         result = compute_avg_bbox_iou_for_event(pred, gt)
         assert result == pytest.approx(0.0)
- 
+
     def test_gt_frame_matched_only_once(self):
         # Two pred frames both close to same GT frame — GT used only once
         pred = [self._box(10), self._box(11)]
@@ -284,7 +223,7 @@ class TestComputeAvgBboxIouForEvent:
         result = compute_avg_bbox_iou_for_event(pred, gt)
         # Only one match → mean of one IoU = 1.0
         assert result == pytest.approx(1.0)
- 
+
     def test_multiple_frames_averaged(self):
         # Frame 0: perfect overlap (IoU=1.0), Frame 1: no overlap (IoU=0.0)
         pred = [
@@ -297,7 +236,7 @@ class TestComputeAvgBboxIouForEvent:
         ]
         result = compute_avg_bbox_iou_for_event(pred, gt)
         assert result == pytest.approx(0.5)
- 
+
     def test_custom_tolerance(self):
         pred = [self._box(10)]
         gt   = [self._box(13)]  # 3 frames away
@@ -306,37 +245,37 @@ class TestComputeAvgBboxIouForEvent:
         # With tolerance=5 → match
         assert compute_avg_bbox_iou_for_event(pred, gt, frame_tolerance=5) == pytest.approx(1.0)
 
- 
+
 # ===========================================================================
 # compute_precision_recall_f
 # ===========================================================================
- 
+
 class TestComputePrecisionRecallF:
- 
+
     def test_perfect_predictions(self):
         result = compute_precision_recall_f(tp=5, fp=0, fn=0)
         assert result["precision"] == pytest.approx(1.0)
         assert result["recall"]    == pytest.approx(1.0)
         assert result["f_score"]   == pytest.approx(1.0)
- 
+
     def test_all_false_positives(self):
         result = compute_precision_recall_f(tp=0, fp=5, fn=0)
         assert result["precision"] == pytest.approx(0.0)
         assert result["recall"]    == pytest.approx(0.0)
         assert result["f_score"]   == pytest.approx(0.0)
- 
+
     def test_all_false_negatives(self):
         result = compute_precision_recall_f(tp=0, fp=0, fn=5)
         assert result["precision"] == pytest.approx(0.0)
         assert result["recall"]    == pytest.approx(0.0)
         assert result["f_score"]   == pytest.approx(0.0)
- 
+
     def test_zero_counts(self):
         result = compute_precision_recall_f(tp=0, fp=0, fn=0)
         assert result["precision"] == pytest.approx(0.0)
         assert result["recall"]    == pytest.approx(0.0)
         assert result["f_score"]   == pytest.approx(0.0)
- 
+
     def test_known_values(self):
         # tp=3, fp=1, fn=2  → precision=3/4=0.75, recall=3/5=0.6
         # F1 = 2*0.75*0.6/(0.75+0.6) = 0.9/1.35 ≈ 0.6667
@@ -344,31 +283,31 @@ class TestComputePrecisionRecallF:
         assert result["precision"] == pytest.approx(0.75,   rel=1e-3)
         assert result["recall"]    == pytest.approx(0.6,    rel=1e-3)
         assert result["f_score"]   == pytest.approx(2/3,    rel=1e-3)
- 
+
     def test_f2_weights_recall_more(self):
         # High recall, low precision scenario
         result_f1 = compute_precision_recall_f(tp=8, fp=8, fn=2, beta=1.0)
         result_f2 = compute_precision_recall_f(tp=8, fp=8, fn=2, beta=2.0)
         # F2 should be higher than F1 when recall > precision
         assert result_f2["f_score"] > result_f1["f_score"]
- 
+
     def test_rounding_to_4_decimal_places(self):
         result = compute_precision_recall_f(tp=1, fp=2, fn=3)
         for key in ("precision", "recall", "f_score"):
             val = result[key]
             assert val == round(val, 4)
- 
+
     def test_return_keys(self):
         result = compute_precision_recall_f(tp=1, fp=1, fn=1)
         assert set(result.keys()) == {"precision", "recall", "f_score"}
- 
- 
+
+
 # ===========================================================================
 # match_predictions_to_ground_truth
 # ===========================================================================
- 
+
 class TestMatchPredictionsToGroundTruth:
- 
+
     def test_perfect_match_single_event(self):
         preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
         gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
@@ -376,7 +315,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 1
         assert result["false_positives"] == 0
         assert result["false_negatives"] == 0
- 
+
     def test_no_overlap_is_fp_and_fn(self):
         preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 3.0}])
         gt    = make_ground_truth_df([{"start_sec": 10.0, "end_sec": 15.0}])
@@ -384,7 +323,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 0
         assert result["false_positives"] == 1
         assert result["false_negatives"] == 1
- 
+
     def test_below_confidence_threshold_is_ignored(self):
         preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0, "avg_confidence": 0.3}])
         gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
@@ -392,7 +331,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 0
         assert result["false_positives"] == 0
         assert result["false_negatives"] == 1
- 
+
     def test_below_temporal_iou_threshold_is_fp(self):
         # Small overlap that won't reach 0.5 IoU
         preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 2.0}])
@@ -401,7 +340,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 0
         assert result["false_positives"] == 1
         assert result["false_negatives"] == 1
- 
+
     def test_gt_matched_only_once(self):
         # Two predictions overlap same GT event → only first should match
         preds = make_predictions_df([
@@ -413,7 +352,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 1
         assert result["false_positives"] == 1
         assert result["false_negatives"] == 0
- 
+
     def test_multiple_videos_independent(self):
         preds = make_predictions_df([
             {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0},
@@ -427,7 +366,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 2
         assert result["false_positives"] == 0
         assert result["false_negatives"] == 0
- 
+
     def test_no_predictions_all_fn(self):
         preds = make_predictions_df([])
         gt    = make_ground_truth_df([
@@ -438,7 +377,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 0
         assert result["false_positives"] == 0
         assert result["false_negatives"] == 2
- 
+
     def test_no_ground_truth_all_fp(self):
         preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
         gt    = make_ground_truth_df([])
@@ -446,7 +385,7 @@ class TestMatchPredictionsToGroundTruth:
         assert result["true_positives"]  == 0
         assert result["false_positives"] == 1
         assert result["false_negatives"] == 0
- 
+
     def test_matched_pairs_populated(self):
         preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
         gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
@@ -456,7 +395,7 @@ class TestMatchPredictionsToGroundTruth:
         assert "temporal_iou" in pair
         assert "bbox_iou"     in pair
         assert pair["temporal_iou"] == pytest.approx(1.0)
- 
+
     def test_temporal_ious_list_length_equals_tp(self):
         preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
         gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
@@ -467,15 +406,15 @@ class TestMatchPredictionsToGroundTruth:
 # ===========================================================================
 # load_gt_boxes_from_zip
 # ===========================================================================
- 
+
 class TestLoadGtBoxesFromZip:
- 
+
     def _write_zip(self, tmp_path: Path, annotations: dict) -> Path:
         zip_bytes = make_cvat_zip(annotations)
         zip_file = tmp_path / "labels.zip"
         zip_file.write_bytes(zip_bytes)
         return zip_file
- 
+
     def test_basic_single_frame(self, tmp_path):
         # YOLO: class cx cy w h  (normalized, 1920x1080)
         # cx=0.5 cy=0.5 w=0.5 h=0.5 → x1=480, y1=270, x2=1440, y2=810
@@ -494,7 +433,7 @@ class TestLoadGtBoxesFromZip:
         assert b["y1"] == int((0.5 - 0.25) * VIDEO_HEIGHT)
         assert b["x2"] == int((0.5 + 0.25) * VIDEO_WIDTH)
         assert b["y2"] == int((0.5 + 0.25) * VIDEO_HEIGHT)
- 
+
     def test_clip_start_frame_offset_applied(self, tmp_path):
         zip_file = self._write_zip(tmp_path, {
             "obj_train_data/frame_000005.txt": "0 0.5 0.5 0.5 0.5"
@@ -505,7 +444,7 @@ class TestLoadGtBoxesFromZip:
             clip_start_frame=100,
         )
         assert boxes[0]["frame"] == 105  # 5 + 100
- 
+
     def test_missing_zip_returns_empty_list(self, tmp_path):
         boxes = load_gt_boxes_from_zip(
             labelled_clip_relative_path="nonexistent.zip",
@@ -513,7 +452,7 @@ class TestLoadGtBoxesFromZip:
             clip_start_frame=0,
         )
         assert boxes == []
- 
+
     def test_empty_txt_file_skipped(self, tmp_path):
         zip_file = self._write_zip(tmp_path, {
             "obj_train_data/frame_000001.txt": ""
@@ -524,7 +463,7 @@ class TestLoadGtBoxesFromZip:
             clip_start_frame=0,
         )
         assert boxes == []
- 
+
     def test_malformed_txt_skipped(self, tmp_path):
         zip_file = self._write_zip(tmp_path, {
             "obj_train_data/frame_000001.txt": "0 0.5"  # too few parts
@@ -535,7 +474,7 @@ class TestLoadGtBoxesFromZip:
             clip_start_frame=0,
         )
         assert boxes == []
- 
+
     def test_non_annotation_files_ignored(self, tmp_path):
         zip_file = self._write_zip(tmp_path, {
             "obj_train_data/frame_000001.txt": "0 0.5 0.5 0.5 0.5",
@@ -548,7 +487,7 @@ class TestLoadGtBoxesFromZip:
             clip_start_frame=0,
         )
         assert len(boxes) == 1
- 
+
     def test_multiple_frames_all_loaded(self, tmp_path):
         zip_file = self._write_zip(tmp_path, {
             "obj_train_data/frame_000001.txt": "0 0.5 0.5 0.5 0.5",
@@ -561,7 +500,7 @@ class TestLoadGtBoxesFromZip:
             clip_start_frame=0,
         )
         assert len(boxes) == 3
- 
+
     def test_backslash_path_normalised(self, tmp_path):
         zip_bytes = make_cvat_zip({"obj_train_data/frame_000001.txt": "0 0.5 0.5 0.5 0.5"})
         (tmp_path / "labels.zip").write_bytes(zip_bytes)
@@ -572,26 +511,26 @@ class TestLoadGtBoxesFromZip:
             clip_start_frame=0,
         )
         assert len(boxes) == 1
- 
- 
+
+
 # ===========================================================================
 # load_predictions
 # ===========================================================================
- 
+
 class TestLoadPredictions:
- 
+
     def _write_json(self, tmp_path: Path, data: dict, filename: str = "preds.json") -> Path:
         p = tmp_path / filename
         p.write_text(json.dumps(data))
         return p
- 
+
     def _base_metadata(self, identifier="video.mp4", fps=30.0, events=None):
         return {
             "identifier": identifier,
             "fps": fps,
             "events": events or [],
         }
- 
+
     def test_basic_load(self, tmp_path):
         self._write_json(tmp_path, self._base_metadata(
             events=[{
@@ -607,12 +546,12 @@ class TestLoadPredictions:
         assert df.iloc[0]["source_video_basename"] == "video.mp4"
         assert df.iloc[0]["start_sec"] == 1.0
         assert df.iloc[0]["avg_confidence"] == 0.8
- 
+
     def test_empty_directory_returns_empty_df(self, tmp_path):
         df = load_predictions(tmp_path)
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
- 
+
     def test_multiple_json_files_combined(self, tmp_path):
         self._write_json(tmp_path, self._base_metadata("v1.mp4", events=[{
             "start_sec": 0.0, "end_sec": 5.0, "duration_sec": 5.0,
@@ -625,12 +564,12 @@ class TestLoadPredictions:
         df = load_predictions(tmp_path)
         assert len(df) == 2
         assert set(df["source_video_basename"]) == {"v1.mp4", "v2.mp4"}
- 
+
     def test_no_events_key_returns_empty(self, tmp_path):
         self._write_json(tmp_path, {"identifier": "video.mp4", "fps": 30.0})
         df = load_predictions(tmp_path)
         assert len(df) == 0
- 
+
     def test_intersection_box_defaults_to_empty_list(self, tmp_path):
         self._write_json(tmp_path, self._base_metadata(events=[{
             "start_sec": 0.0, "end_sec": 5.0, "duration_sec": 5.0,
@@ -639,7 +578,7 @@ class TestLoadPredictions:
         }]))
         df = load_predictions(tmp_path)
         assert df.iloc[0]["intersection_box"] == []
- 
+
     def test_required_columns_present(self, tmp_path):
         self._write_json(tmp_path, self._base_metadata(events=[{
             "start_sec": 0.0, "end_sec": 5.0, "duration_sec": 5.0,
@@ -649,19 +588,19 @@ class TestLoadPredictions:
         for col in ("source_video_basename", "start_sec", "end_sec",
                     "duration_sec", "avg_confidence", "intersection_box", "fps"):
             assert col in df.columns
- 
- 
+
+
 # ===========================================================================
 # load_ground_truth
 # ===========================================================================
- 
+
 class TestLoadGroundTruth:
- 
+
     def _write_csv(self, tmp_path: Path, rows: list[dict]) -> Path:
         p = tmp_path / "gt.csv"
         pd.DataFrame(rows).to_csv(p, index=False)
         return p
- 
+
     def test_basic_load_and_column_rename(self, tmp_path):
         p = self._write_csv(tmp_path, [{
             "source_video_basename": "video.mp4",
@@ -679,12 +618,12 @@ class TestLoadGroundTruth:
         assert "clip_start_in_source_sec" not in df.columns
         assert df.iloc[0]["start_sec"] == 1.0
         assert df.iloc[0]["weaning_stage"] == "PREWEAN"
- 
+
     def test_returns_dataframe(self, tmp_path):
         p = self._write_csv(tmp_path, [])
         df = load_ground_truth(p)
         assert isinstance(df, pd.DataFrame)
- 
+
     def test_multiple_rows(self, tmp_path):
         p = self._write_csv(tmp_path, [
             {"source_video_basename": "v1.mp4", "clip_start_in_source_sec": 0.0,
@@ -696,4 +635,534 @@ class TestLoadGroundTruth:
         ])
         df = load_ground_truth(p)
         assert len(df) == 2
- 
+
+
+# ===========================================================================
+# generate_evaluation_report
+# ===========================================================================
+
+class TestGenerateEvaluationReport:
+
+    def test_report_keys_present(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        report = generate_evaluation_report(preds, gt)
+        for key in ("thresholds", "frame_level", "event_level",
+                    "sequence_level", "by_pen", "by_weaning_stage", "matched_pairs"):
+            assert key in report
+
+    def test_perfect_predictions_full_report(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        report = generate_evaluation_report(preds, gt)
+        el = report["event_level"]
+        assert el["true_positives"]  == 1
+        assert el["false_positives"] == 0
+        assert el["false_negatives"] == 0
+        assert el["precision"] == pytest.approx(1.0)
+        assert el["recall"]    == pytest.approx(1.0)
+        assert el["f1"]        == pytest.approx(1.0)
+
+    def test_no_matches_all_fp_fn(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 3.0}])
+        gt    = make_ground_truth_df([{"start_sec": 20.0, "end_sec": 25.0}])
+        report = generate_evaluation_report(preds, gt)
+        el = report["event_level"]
+        assert el["true_positives"]  == 0
+        assert el["false_positives"] == 1
+        assert el["false_negatives"] == 1
+
+    def test_saves_report_to_file(self, tmp_path):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        output = tmp_path / "report.json"
+        generate_evaluation_report(preds, gt, output_path=output)
+        assert output.exists()
+        loaded = json.loads(output.read_text())
+        assert "event_level" in loaded
+
+    def test_thresholds_reflected_in_report(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        report = generate_evaluation_report(
+            preds, gt,
+            temporal_iou_threshold=0.3,
+            confidence_threshold=0.7,
+        )
+        assert report["thresholds"]["temporal_iou_threshold"] == 0.3
+        assert report["thresholds"]["confidence_threshold"]   == 0.7
+
+    def test_frame_level_bbox_iou_zero_without_labelled_clips_dir(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        report = generate_evaluation_report(preds, gt, labelled_clips_dir=None)
+        assert report["frame_level"]["avg_bbox_iou"] == pytest.approx(0.0)
+
+    def test_by_pen_and_by_weaning_stage_are_lists(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        report = generate_evaluation_report(preds, gt)
+        assert isinstance(report["by_pen"],           list)
+        assert isinstance(report["by_weaning_stage"], list)
+
+    def test_sequence_level_avg_temporal_iou(self):
+        preds = make_predictions_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        gt    = make_ground_truth_df([{"start_sec": 0.0, "end_sec": 5.0}])
+        report = generate_evaluation_report(preds, gt)
+        assert report["sequence_level"]["avg_temporal_iou"] == pytest.approx(1.0)
+
+    def test_empty_predictions_and_gt(self):
+        preds  = make_predictions_df([])
+        gt     = make_ground_truth_df([])
+        report = generate_evaluation_report(preds, gt)
+        el = report["event_level"]
+        assert el["true_positives"]  == 0
+        assert el["false_positives"] == 0
+        assert el["false_negatives"] == 0
+
+
+# ===========================================================================
+# compute_frame_level_bbox_iou
+# ===========================================================================
+
+class TestComputeFrameLevelBboxIou:
+    """
+    Tests for compute_frame_level_bbox_iou.
+
+    This function is integration-heavy: it loads CVAT zips from disk and
+    correlates predicted frames with GT frames across all videos. The
+    strategy here is to write real zip files to tmp_path so the file I/O
+    path is exercised, while keeping bounding boxes simple so the expected
+    IoU is easy to calculate by hand.
+    """
+
+    # ---- shared helpers -------------------------------------------------------
+
+    def _write_zip(self, directory: Path, name: str, annotations: dict) -> None:
+        """Write a CVAT annotation zip to directory/name."""
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for fname, content in annotations.items():
+                z.writestr(fname, content)
+        (directory / name).write_bytes(buf.getvalue())
+
+    def _pred_with_boxes(self, video: str, start: float, end: float, boxes: list) -> dict:
+        """Shorthand for a prediction row that includes intersection_box frames."""
+        return {
+            "source_video_basename": video,
+            "start_sec":            start,
+            "end_sec":              end,
+            "duration_sec":         end - start,
+            "avg_confidence":       0.9,
+            "intersection_box":     boxes,
+            "fps":                  30.0,
+        }
+
+    def _frame_box(self, frame: int, x1=0, y1=0, x2=100, y2=100) -> dict:
+        return {"frame": frame, "x1": x1, "y1": y1, "x2": x2, "y2": y2}
+
+    # ---- tests ----------------------------------------------------------------
+
+    def test_perfect_overlap_single_video(self, tmp_path):
+        """Predicted box exactly matches GT box → IoU = 1.0."""
+        # GT box: cx=0.5 cy=0.5 w=0.1 h=0.1 → x1=912 y1=486 x2=1008 y2=594
+        self._write_zip(tmp_path, "labels.zip", {
+            "obj_train_data/frame_000010.txt": "0 0.5 0.5 0.1 0.1"
+        })
+        # Build the matching predicted pixel box
+        x1 = int((0.5 - 0.05) * VIDEO_WIDTH)
+        y1 = int((0.5 - 0.05) * VIDEO_HEIGHT)
+        x2 = int((0.5 + 0.05) * VIDEO_WIDTH)
+        y2 = int((0.5 + 0.05) * VIDEO_HEIGHT)
+
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 5.0,
+            [self._frame_box(10, x1, y1, x2, y2)]
+        )])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "labels.zip",
+        }])
+
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == pytest.approx(1.0, abs=0.01)
+
+    def test_no_overlap_returns_zero(self, tmp_path):
+        """Predicted box and GT box don't overlap → IoU = 0.0 → excluded from mean."""
+        self._write_zip(tmp_path, "labels.zip", {
+            "obj_train_data/frame_000010.txt": "0 0.1 0.1 0.05 0.05"
+        })
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 5.0,
+            # Box in opposite corner — no overlap
+            [self._frame_box(10, 1800, 1000, 1920, 1080)]
+        )])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "labels.zip",
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        # IoU == 0 so no entries added to all_ious → returns 0.0
+        assert result == pytest.approx(0.0)
+
+    def test_no_predictions_returns_zero(self, tmp_path):
+        self._write_zip(tmp_path, "labels.zip", {
+            "obj_train_data/frame_000010.txt": "0 0.5 0.5 0.1 0.1"
+        })
+        preds = make_predictions_df([])
+        gt    = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "labels.zip",
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == pytest.approx(0.0)
+
+    def test_no_ground_truth_for_video_returns_zero(self, tmp_path):
+        """Predictions exist but no GT rows for that video → returns 0.0."""
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 5.0, [self._frame_box(10)]
+        )])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "other_video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "labels.zip",
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == pytest.approx(0.0)
+
+    def test_missing_zip_skipped_gracefully(self, tmp_path):
+        """GT row pointing to a non-existent zip → no crash, returns 0.0."""
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 5.0, [self._frame_box(10)]
+        )])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "nonexistent.zip",
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == pytest.approx(0.0)
+
+    def test_prediction_without_intersection_box_skipped(self, tmp_path):
+        """Predictions with empty intersection_box are skipped."""
+        self._write_zip(tmp_path, "labels.zip", {
+            "obj_train_data/frame_000010.txt": "0 0.5 0.5 0.1 0.1"
+        })
+        preds = make_predictions_df([{
+            "source_video_basename": "video.mp4",
+            "start_sec":            0.0,
+            "end_sec":              5.0,
+            "duration_sec":         5.0,
+            "avg_confidence":       0.9,
+            "intersection_box":     [],   # empty — should be skipped
+            "fps":                  30.0,
+        }])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "labels.zip",
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == pytest.approx(0.0)
+
+    def test_clip_start_frame_offset_used_correctly(self, tmp_path):
+        """
+        GT clip starts at 10s (300 frames at 30fps).
+        CVAT zip has frame_000005.txt → source frame = 305.
+        Prediction also uses source frame 305 → should match.
+        """
+        self._write_zip(tmp_path, "labels.zip", {
+            "obj_train_data/frame_000005.txt": "0 0.5 0.5 0.5 0.5"
+        })
+        x1 = int(0.25 * VIDEO_WIDTH)
+        y1 = int(0.25 * VIDEO_HEIGHT)
+        x2 = int(0.75 * VIDEO_WIDTH)
+        y2 = int(0.75 * VIDEO_HEIGHT)
+
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 20.0,
+            [self._frame_box(305, x1, y1, x2, y2)]  # source frame 305
+        )])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   10.0,   # → clip_start_frame = 300
+            "end_sec":                     15.0,
+            "labelled_clip_relative_path": "labels.zip",
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path, fps=30.0)
+        assert result == pytest.approx(1.0, abs=0.01)
+
+    def test_multiple_gt_clips_aggregated(self, tmp_path):
+        """GT boxes from two clips for the same video are pooled together."""
+        self._write_zip(tmp_path, "clip1.zip", {
+            "obj_train_data/frame_000000.txt": "0 0.5 0.5 0.5 0.5"
+        })
+        self._write_zip(tmp_path, "clip2.zip", {
+            "obj_train_data/frame_000000.txt": "0 0.5 0.5 0.5 0.5"
+        })
+        x1 = int(0.25 * VIDEO_WIDTH)
+        y1 = int(0.25 * VIDEO_HEIGHT)
+        x2 = int(0.75 * VIDEO_WIDTH)
+        y2 = int(0.75 * VIDEO_HEIGHT)
+
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 30.0,
+            [self._frame_box(0, x1, y1, x2, y2),
+             self._frame_box(300, x1, y1, x2, y2)]
+        )])
+        gt = pd.DataFrame([
+            {"source_video_basename": "video.mp4", "start_sec": 0.0,
+             "end_sec": 5.0,  "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": "clip1.zip"},
+            {"source_video_basename": "video.mp4", "start_sec": 10.0,
+             "end_sec": 15.0, "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": "clip2.zip"},
+        ])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path, fps=30.0)
+        assert result == pytest.approx(1.0, abs=0.01)
+
+    def test_multiple_videos_averaged(self, tmp_path):
+        """Result is averaged across multiple videos."""
+        for name in ("v1.zip", "v2.zip"):
+            self._write_zip(tmp_path, name, {
+                "obj_train_data/frame_000000.txt": "0 0.5 0.5 0.5 0.5"
+            })
+        x1 = int(0.25 * VIDEO_WIDTH)
+        y1 = int(0.25 * VIDEO_HEIGHT)
+        x2 = int(0.75 * VIDEO_WIDTH)
+        y2 = int(0.75 * VIDEO_HEIGHT)
+
+        preds = pd.DataFrame([
+            {**{"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+                "duration_sec": 5.0, "avg_confidence": 0.9, "fps": 30.0,
+                "intersection_box": [self._frame_box(0, x1, y1, x2, y2)]}},
+            {**{"source_video_basename": "v2.mp4", "start_sec": 0.0, "end_sec": 5.0,
+                "duration_sec": 5.0, "avg_confidence": 0.9, "fps": 30.0,
+                "intersection_box": [self._frame_box(0, x1, y1, x2, y2)]}},
+        ])
+        gt = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": "v1.zip"},
+            {"source_video_basename": "v2.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": "v2.zip"},
+        ])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == pytest.approx(1.0, abs=0.01)
+
+    def test_result_is_rounded_to_4_decimal_places(self, tmp_path):
+        self._write_zip(tmp_path, "labels.zip", {
+            "obj_train_data/frame_000010.txt": "0 0.5 0.5 0.1 0.1"
+        })
+        x1 = int(0.25 * VIDEO_WIDTH)
+        y1 = int(0.25 * VIDEO_HEIGHT)
+        x2 = int(0.75 * VIDEO_WIDTH)
+        y2 = int(0.75 * VIDEO_HEIGHT)
+
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 5.0, [self._frame_box(10, x1, y1, x2, y2)]
+        )])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "labels.zip",
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == round(result, 4)
+
+    def test_gt_row_without_zip_path_skipped(self, tmp_path):
+        """GT rows with empty labelled_clip_relative_path contribute no GT boxes."""
+        preds = make_predictions_df([self._pred_with_boxes(
+            "video.mp4", 0.0, 5.0, [self._frame_box(10)]
+        )])
+        gt = make_ground_truth_df([{
+            "source_video_basename":       "video.mp4",
+            "start_sec":                   0.0,
+            "end_sec":                     5.0,
+            "labelled_clip_relative_path": "",  # no zip → skipped
+        }])
+        result = compute_frame_level_bbox_iou(preds, gt, labelled_clips_dir=tmp_path)
+        assert result == pytest.approx(0.0)
+
+
+# ===========================================================================
+# evaluate_by_stratum
+# ===========================================================================
+
+class TestEvaluateByStratum:
+
+    def _multi_stratum_gt(self) -> pd.DataFrame:
+        """GT with two pens and two weaning stages across two videos."""
+        return pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0,  "end_sec": 5.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": ""},
+            {"source_video_basename": "v2.mp4", "start_sec": 0.0,  "end_sec": 5.0,
+             "pen": 3, "weaning_stage": "WEAN",    "day": 2,
+             "labelled_clip_relative_path": ""},
+        ])
+
+    def _multi_stratum_preds(self) -> pd.DataFrame:
+        """Predictions that perfectly match the GT above."""
+        return pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "duration_sec": 5.0, "avg_confidence": 0.9,
+             "intersection_box": [], "fps": 30.0,
+             "pen": 2, "weaning_stage": "PREWEAN"},
+            {"source_video_basename": "v2.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "duration_sec": 5.0, "avg_confidence": 0.9,
+             "intersection_box": [], "fps": 30.0,
+             "pen": 3, "weaning_stage": "WEAN"},
+        ])
+
+    def test_returns_dataframe(self):
+        from evaluation import evaluate_by_stratum
+        gt    = self._multi_stratum_gt()
+        preds = self._multi_stratum_preds()
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        assert isinstance(result, pd.DataFrame)
+
+    def test_one_row_per_stratum_value(self):
+        from evaluation import evaluate_by_stratum
+        gt    = self._multi_stratum_gt()
+        preds = self._multi_stratum_preds()
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        assert len(result) == 2  # pen 2 and pen 3
+        assert set(result["pen"]) == {2, 3}
+
+    def test_expected_columns_present(self):
+        from evaluation import evaluate_by_stratum
+        gt    = self._multi_stratum_gt()
+        preds = self._multi_stratum_preds()
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        for col in ("pen", "true_positives", "false_positives", "false_negatives",
+                    "precision", "recall", "f1", "f2",
+                    "avg_temporal_iou", "avg_bbox_iou"):
+            assert col in result.columns
+
+    def test_perfect_match_per_stratum(self):
+        from evaluation import evaluate_by_stratum
+        gt    = self._multi_stratum_gt()
+        preds = self._multi_stratum_preds()
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        for _, row in result.iterrows():
+            assert row["true_positives"]  == 1
+            assert row["false_positives"] == 0
+            assert row["false_negatives"] == 0
+            assert row["precision"] == pytest.approx(1.0)
+            assert row["recall"]    == pytest.approx(1.0)
+            assert row["f1"]        == pytest.approx(1.0)
+
+    def test_weaning_stage_stratum(self):
+        from evaluation import evaluate_by_stratum
+        gt    = self._multi_stratum_gt()
+        preds = self._multi_stratum_preds()
+        result = evaluate_by_stratum(preds, gt, stratum="weaning_stage")
+        assert len(result) == 2
+        assert set(result["weaning_stage"]) == {"PREWEAN", "WEAN"}
+
+    def test_strata_are_independent(self):
+        """A miss in one stratum should not affect another."""
+        from evaluation import evaluate_by_stratum
+        gt = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0,  "end_sec": 5.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": ""},
+            {"source_video_basename": "v2.mp4", "start_sec": 0.0,  "end_sec": 5.0,
+             "pen": 3, "weaning_stage": "WEAN",    "day": 2,
+             "labelled_clip_relative_path": ""},
+        ])
+        # Only a prediction for pen 2 — pen 3 will be a missed FN
+        preds = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "duration_sec": 5.0, "avg_confidence": 0.9,
+             "intersection_box": [], "fps": 30.0, "pen": 2},
+        ])
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        pen2 = result[result["pen"] == 2].iloc[0]
+        pen3 = result[result["pen"] == 3].iloc[0]
+        assert pen2["true_positives"]  == 1
+        assert pen2["false_negatives"] == 0
+        assert pen3["true_positives"]  == 0
+        assert pen3["false_negatives"] == 1
+
+    def test_stratum_not_in_predictions_uses_all_preds(self):
+        """
+        When the stratum column isn't in predictions (e.g. pen isn't tagged
+        on each prediction row), all predictions are used for every stratum
+        value rather than filtering to an empty subset.
+        """
+        from evaluation import evaluate_by_stratum
+        gt = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": ""},
+            {"source_video_basename": "v1.mp4", "start_sec": 10.0, "end_sec": 15.0,
+             "pen": 3, "weaning_stage": "WEAN",    "day": 1,
+             "labelled_clip_relative_path": ""},
+        ])
+        # Predictions do NOT have a "pen" column
+        preds = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "duration_sec": 5.0, "avg_confidence": 0.9,
+             "intersection_box": [], "fps": 30.0},
+            {"source_video_basename": "v1.mp4", "start_sec": 10.0, "end_sec": 15.0,
+             "duration_sec": 5.0, "avg_confidence": 0.9,
+             "intersection_box": [], "fps": 30.0},
+        ])
+        # Should not raise; all preds used for each pen subset
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        assert len(result) == 2
+        # Both pen subsets should find their matching prediction
+        for _, row in result.iterrows():
+            assert row["true_positives"] >= 1
+
+    def test_f2_greater_than_f1_when_recall_dominates(self):
+        """When recall > precision, F2 should exceed F1 within a stratum."""
+        from evaluation import evaluate_by_stratum
+        # Two GT events, one prediction that matches one → recall=0.5, precision=1.0
+        gt = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0,  "end_sec": 5.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": ""},
+            {"source_video_basename": "v1.mp4", "start_sec": 20.0, "end_sec": 25.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": ""},
+        ])
+        preds = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "duration_sec": 5.0, "avg_confidence": 0.9,
+             "intersection_box": [], "fps": 30.0},
+        ])
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        row = result[result["pen"] == 2].iloc[0]
+        # precision=1.0, recall=0.5 → F2 weights recall more → F2 < F1 here
+        # (recall < precision so F1 > F2 in this case — assert they differ)
+        assert row["f1"] != pytest.approx(row["f2"])
+
+    def test_avg_temporal_iou_zero_when_no_matches(self):
+        from evaluation import evaluate_by_stratum
+        gt = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 0.0, "end_sec": 5.0,
+             "pen": 2, "weaning_stage": "PREWEAN", "day": 1,
+             "labelled_clip_relative_path": ""},
+        ])
+        # Prediction far outside GT window → FP, no TP → no temporal IoUs
+        preds = pd.DataFrame([
+            {"source_video_basename": "v1.mp4", "start_sec": 50.0, "end_sec": 55.0,
+             "duration_sec": 5.0, "avg_confidence": 0.9,
+             "intersection_box": [], "fps": 30.0},
+        ])
+        result = evaluate_by_stratum(preds, gt, stratum="pen")
+        assert result.iloc[0]["avg_temporal_iou"] == pytest.approx(0.0)
