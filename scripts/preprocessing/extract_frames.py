@@ -176,6 +176,7 @@ def process_single_video(
                         video_ended_early = True
                         break
                 if video_ended_early:
+                    semaphore.release()
                     break
                 frame_pointer += skip
             else:
@@ -296,7 +297,7 @@ def extract_frames(
 
             saved_frames_registry[video_key] = video_saved_frames
 
-    print("\nExtraction Complete. Waiting for final thread queue to clear...\m")
+    print("\nExtraction Complete. Waiting for final thread queue to clear...\n")
     executor.shutdown(wait=True)
     print(f"\nFrames successfully saved to disk at {final_output_dir}\n")
 
