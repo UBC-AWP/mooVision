@@ -199,7 +199,7 @@ After configuring you `.env` and config files, run the following commands from y
 8. Clip frames from results:
 
    ```bash
-   uv run python scripts/clipping.py
+   uv run scripts/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
    ```
 
 ## Running the Full Pipeline (Sockeye HPC)
