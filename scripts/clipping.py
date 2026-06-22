@@ -2,37 +2,47 @@
 scripts.clipping
 ================
 
-Reproduce short video clips from longer source videos.
+Reproduce short annotated video clips from longer source videos.
 
 Overview
 --------
-This module provides a small pipeline for reproducing clip video segments from
-source `.mp4` files using one of two input formats:
+This module provides a pipeline for reproducing clip video segments from
+source `.mp4` files using JSON event metadata produced by any stage of the
+detection pipeline (baseline, fine-tuned YOLO, or sequence-linked).
 
-1. CSV index mode (`split_by_index`):
-   Reads a CSV index describing clip start/end times in the source video.
-
-2. JSON events mode (`split_by_json_events`):
-   Reads one JSON file (or a directory of JSON files) describing events to clip,
-   optionally producing an additional annotated version of each clip with
-   bounding boxes.
+For each event in each JSON, a clip is reproduced from the source video and
+an annotated ``*_boxed.mp4`` is written with per-frame bounding boxes overlaid.
 
 Input/Output
 ------------
 Inputs
-  - Source videos (`*.mp4`) located under :root:`config.SOURCE_VIDEOS_DIR`.
-  - A CSV index at :root:`config.INDEX_PATH` (index mode), or JSON metadata files
-    under :root:`config.BASELINE_METADATA_DIR_NEW` (JSON events mode).
+  - Source videos (``*.mp4``) resolved via ``ROOT_DIR`` in ``config.py``.
+  - A single JSON file, or a directory searched recursively for ``*.json``
+    metadata files, passed via ``--input`` on the command line.
 
 Outputs
-  - Clips written to :root:`config.RESULT_CLIPS_DIR` under
-    <split_name>/<Pen>/<Stage>/<Day>/ mirroring the baseline metadata structure.
+  - Annotated clips written under ``results/result_clips/``, preserving
+    everything after ``metadata/`` in the input JSON path, with one
+    subfolder per video named after its ``identifier`` stem::
+
+        results/result_clips/<path_after_metadata>/<identifier>/
+            <identifier>_event001_<start>-<end>_boxed.mp4
+            <identifier>_event002_<start>-<end>_boxed.mp4
+
+    Examples:
+        input  → results/metadata/pipeline_demo/yolo/ch02_....json
+        output → results/result_clips/pipeline_demo/yolo/ch02_.../
+
+        input  → results/metadata/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_....json
+        output → results/result_clips/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_.../
 
 Notes
 -----
-The module relies on OpenCV for video I/O. Configuration is centralized in
-`config.py` and typically driven by environment variables in a `.env` file.
-
+  - Relies on OpenCV for video I/O.
+  - Configuration is centralised in ``config.py``, driven by environment
+    variables in a ``.env`` file at the repo root.
+  - If annotation fails for an event, the unboxed intermediate clip is kept
+    as a fallback and a warning is printed.
 """
 
 import sys
