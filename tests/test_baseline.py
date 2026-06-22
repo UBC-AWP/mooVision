@@ -2,222 +2,309 @@ import os
 import sys
 import pytest
 import numpy as np
+from pathlib import Path
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from scripts.baseline.baseline import compute_iou, frame_has_overlap, extract_events, run_detection
+sys.path.append(str(Path(__file__).parent.parent)) 
+from scripts.models.baseline.baseline import compute_iou, frame_has_overlap, extract_events, detect_video
 
-# Compute IoU tests
+
+# ---------------------------------------------------------------------------
+# compute_iou
+# ---------------------------------------------------------------------------
+
 def test_compute_iou_perfect_overlap():
-    """Verify that identical boxes yield an IoU of 1.0 and correct intersection."""
+    """Identical boxes yield IoU of 1.0 and correct intersection."""
     box_a = [100, 100, 200, 200]
     box_b = [100, 100, 200, 200]
     iou, inter_box = compute_iou(box_a, box_b)
-    
+
     assert iou == 1.0
     assert inter_box == [100, 100, 200, 200]
 
 
 def test_compute_iou_partial_overlap():
-    """Verify standard box math for partial overlap."""
-    box_a = [0, 0, 10, 10]    # Area = 100
-    box_b = [5, 0, 15, 10]    # Area = 100
-    # Intersection is from x=5 to 10, y=0 to 10 -> Area = 50
-    # Union = 100 + 100 - 50 = 150
-    # Expected IoU = 50 / 150
+    """Standard box math for partial overlap."""
+    box_a = [0, 0, 10, 10]   # Area = 100
+    box_b = [5, 0, 15, 10]   # Area = 100
+    # Intersection x=5..10, y=0..10 → Area = 50; Union = 150
     iou, inter_box = compute_iou(box_a, box_b)
-    
-    assert pytest.approx(iou, rel=1e-4) == 50/150
+    assert pytest.approx(iou, rel=1e-4) == 50 / 150
     assert inter_box == [5, 0, 10, 10]
 
-    # test just overlap with area value of 1
-    box_a = [0, 0, 10, 10]    # Area = 100
-    box_b = [9, 9, 11, 11]    # Area = 4
-    # Intersection is from x=9 to 10, y=9 to 10 -> Area = 1
-    # Union = 100 + 4 - 1 = 103
-    # Expected IoU = 1 / 103
+    # Minimal overlap (area = 1)
+    box_a = [0, 0, 10, 10]   # Area = 100
+    box_b = [9, 9, 11, 11]   # Area = 4
+    # Intersection x=9..10, y=9..10 → Area = 1; Union = 103
     iou, inter_box = compute_iou(box_a, box_b)
-    
-    assert pytest.approx(iou, rel=1e-4) == 1/103
+    assert pytest.approx(iou, rel=1e-4) == 1 / 103
     assert inter_box == [9, 9, 10, 10]
 
-    # box is inside another box
-    box_a = [0, 0, 10, 10]    # Area = 100
-    box_b = [1, 9, 9, 10]    # Area = 4
-    # Intersection is from x=1 to 9, y=9 to 10 -> Area = 8
-    # Union = 100 + 8 - 8 = 100
-    # Expected IoU = 8/100
+    # Box fully inside another box
+    box_a = [0, 0, 10, 10]   # Area = 100
+    box_b = [1, 9,  9, 10]   # Area = 8
+    # Intersection x=1..9, y=9..10 → Area = 8; Union = 100
     iou, inter_box = compute_iou(box_a, box_b)
-    
-    assert pytest.approx(iou, rel=1e-4) == 8/100
+    assert pytest.approx(iou, rel=1e-4) == 8 / 100
     assert inter_box == [1, 9, 9, 10]
 
 
 def test_compute_iou_no_overlap():
-    """Verify that completely disconnected boxes yield 0.0 IoU."""
-    box_a = [0, 0, 50, 50]
+    """Completely disconnected boxes yield IoU of 0.0."""
+    box_a = [0,   0,  50,  50]
     box_b = [100, 100, 150, 150]
     iou, inter_box = compute_iou(box_a, box_b)
-    
     assert iou == 0.0
     assert inter_box is None
 
-    # edge cases where the boxes are next to each other
-    box_a = [0, 0, 50, 50]
+    # Touching edges (no actual overlap)
+    box_a = [0,  0, 50, 50]
     box_b = [50, 0, 100, 50]
     iou, inter_box = compute_iou(box_a, box_b)
-    
     assert iou == 0.0
     assert inter_box is None
 
-# Frame. has overlap tests
+
+# ---------------------------------------------------------------------------
+# frame_has_overlap
+# ---------------------------------------------------------------------------
 
 def test_frame_has_overlap_picks_highest_iou_pair():
-    """Ensure frame parsing identifies the highest overlapping pair correctly."""
+    """frame_has_overlap identifies the highest-IoU pair correctly."""
     boxes = [
-        [0, 0, 100, 100],     # Box 0
-        [90, 90, 190, 190],   # Box 1 (Tiny overlap with Box 0)
-        [10, 10, 90, 90]      # Box 2 (Massive overlap inside Box 0)
+        [0,  0,  100, 100],   # Box 0
+        [90, 90, 190, 190],   # Box 1 — tiny overlap with Box 0
+        [10, 10,  90,  90],   # Box 2 — large overlap inside Box 0
     ]
-    # The pair (Box 0, Box 2) should easily beat the pair (Box 0, Box 1)
     has_overlap, best_box = frame_has_overlap(boxes, iou_threshold=0.2)
-    
     assert has_overlap is True
     assert best_box == [10, 10, 90, 90]
 
 
-# Extract events tests
+def test_frame_has_overlap_returns_false_for_single_box():
+    """A single box cannot form a pair — should return (False, None)."""
+    boxes = [[0, 0, 100, 100]]
+    has_overlap, best_box = frame_has_overlap(boxes, iou_threshold=0.1)
+    assert has_overlap is False
+    assert best_box is None
 
-def test_extract_events_filters_out_short_noise_durations():
-    """Verify events shorter than min_duration are successfully discarded."""
-    fps = 10.0
-    min_duration = 1.0  # Requires at least 10 consecutive frames to qualify
-    
-    # Sequence: 12 true frames (Keep), 5 false frames, 3 true frames (Discard as noise)
-    frame_flags = [True] * 12 + [False] * 5 + [True] * 3
-    confidences = [0.9] * len(frame_flags)
-    frame_boxes = [[10, 20, 30, 40]] * len(frame_flags)
+
+def test_frame_has_overlap_returns_false_for_empty_boxes():
+    """Empty box list should return (False, None) without error."""
+    has_overlap, best_box = frame_has_overlap([], iou_threshold=0.1)
+    assert has_overlap is False
+    assert best_box is None
+
+
+def test_frame_has_overlap_below_threshold():
+    """Overlap below threshold should not be flagged."""
+    box_a = [0, 0, 10, 10]
+    box_b = [9, 9, 11, 11]   # IoU = 1/103 ≈ 0.0097
+    has_overlap, _ = frame_has_overlap([box_a, box_b], iou_threshold=0.1)
+    assert has_overlap is False
+
+
+# ---------------------------------------------------------------------------
+# extract_events
+# ---------------------------------------------------------------------------
+
+def test_extract_events_filters_short_noise():
+    """Events shorter than min_duration are discarded."""
+    fps          = 10.0
+    min_duration = 1.0   # requires ≥ 10 consecutive frames
+    frame_skip   = 1
+
+    # 12 flagged (keep) + 5 gap + 3 flagged (discard)
+    frame_flags  = [True] * 12 + [False] * 5 + [True] * 3
+    confidences  = [0.9] * len(frame_flags)
+    frame_boxes  = [[10, 20, 30, 40]] * len(frame_flags)
     frame_indices = list(range(len(frame_flags)))
 
-    events = extract_events(frame_flags, fps, min_duration, confidences, frame_boxes, frame_indices)
-
-    # Only 1 valid event should have survived the filter
-    assert len(events) == 1
-    assert events[0]["start_sec"] == 0.0
-    assert events[0]["end_sec"] == 12.0 / fps  # 11th index frame
-    assert events[0]["duration_sec"] == 1.2
-
-
-# Validation tests
-
-def test_run_detection_raises_file_not_found_on_missing_video(mocker):
-    """Ensure pipeline breaks gracefully if the video path doesn't point to a file."""
-    # Mock os.path.exists to simulate that the model exists but the video doesn't
-    mocker.patch("os.path.exists", side_effect=lambda path: path == "valid_model.pt")
-    
-    with pytest.raises(FileNotFoundError, match="Video file not found"):
-        run_detection("missing_video.mp4", "valid_model.pt", 0.1, 0.5, 1.0, 1)
-
-def test_run_detection_raises_file_not_found_on_missing_model(mocker):
-    """Ensure pipeline breaks gracefully if the model path doesn't exist."""
-    # First call (video check) returns True. Second call (model check) returns False.
-    mocker.patch("os.path.exists", side_effect=[True, False])
-    
-    with pytest.raises(FileNotFoundError, match="Model file not found"):
-        run_detection("valid_video.mp4", "missing_model.pt", 0.1, 0.5, 1.0, 1)
-
-def test_run_detection_raises_value_error_on_missing_model_classes(mocker):
-    """Ensure pipeline crashes cleanly if the user attempts to find a cow using an ML model not trained on cows."""
-    mocker.patch("os.path.exists", return_value=True)
-    
-    # Stub out YOLO completely
-    mock_yolo = mocker.patch("scripts.baseline.baseline.YOLO")
-    mock_instance = mock_yolo.return_value
-    # Give it an arbitrary class map lacking "cow"
-    mock_instance.names = {0: "person", 1: "dog"}
-
-    with pytest.raises(ValueError, match="cow is not found in model classes"):
-        run_detection("valid_video.mp4", "valid_model.pt", 0.1, 0.5, 1.0, 1)
-
-# Test full pipeline
-
-def test_run_detection_full_pipeline_success(mocker):
-    """
-    Executes an end-to-end integration loop of the full pipeline logic.
-    Mocks away the heavy hardware/disk dependencies (OpenCV, YOLO, Disk Write).
-    """
-    # 1. Mock IO Safety checks
-    mocker.patch("os.path.exists", return_value=True)
-    mocker.patch("os.makedirs")
-    
-    mock_open = mocker.patch("builtins.open", mocker.mock_open())
-
-    # 2. Mock YOLO setup
-    mock_yolo_class = mocker.patch("scripts.baseline.baseline.YOLO")
-    mock_model_instance = mocker.MagicMock()
-    # Provide the necessary class names dictionary mapping containing our target
-    mock_model_instance.names = {0: "person", 42: "cow"}
-    mock_yolo_class.return_value = mock_model_instance
-
-    # 3. Mock OpenCV Video Engine
-    mock_cv2_cap_class = mocker.patch("cv2.VideoCapture")
-    mock_cap_instance = mocker.MagicMock()
-    mock_cap_instance.isOpened.return_value = True
-    
-    # Route Cap property queries (FPS, Width, Height, Frame Count) safely
-    mock_cap_instance.get.side_effect = lambda prop: {
-        5: 10.0,   # cv2.CAP_PROP_FPS
-        3: 640,    # cv2.CAP_PROP_FRAME_WIDTH
-        4: 480,    # cv2.CAP_PROP_FRAME_HEIGHT
-        7: 2       # cv2.CAP_PROP_FRAME_COUNT
-    }.get(prop, 0.0)
-    
-    # Configure video reader to yield 2 valid empty image frames, then signal EOF (False)
-    mock_cap_instance.read.side_effect = [
-        (True, np.zeros((480, 640, 3), dtype=np.uint8)),
-        (True, np.zeros((480, 640, 3), dtype=np.uint8)),
-        (False, None)
-    ]
-    mock_cv2_cap_class.return_value = mock_cap_instance
-
-    # Intercept window renderings so UI dialogue boxes don't pop up on the monitor
-    mocker.patch("cv2.imshow")
-    mocker.patch("cv2.waitKey", return_value=1)
-
-    # 4. Mock Artificial YOLO Inference Results 
-    # Construct two dummy bounding boxes positioned right on top of each other
-    mock_box_a = mocker.MagicMock()
-    mock_box_a.cls = [mocker.MagicMock(item=lambda: 42)]  # Class 42 matches our cow target
-    mock_box_a.xyxy = [np.array([10, 10, 100, 100])]
-    mock_box_a.conf = [mocker.MagicMock(item=lambda: 0.88)]
-
-    mock_box_b = mocker.MagicMock()
-    mock_box_b.cls = [mocker.MagicMock(item=lambda: 42)]
-    mock_box_b.xyxy = [np.array([15, 15, 105, 105])]
-    mock_box_b.conf = [mocker.MagicMock(item=lambda: 0.92)]
-
-    mock_result_frame = mocker.MagicMock()
-    mock_result_frame.boxes = [mock_box_a, mock_box_b]
-    mock_result_frame.plot.return_value = np.zeros((480, 640, 3), dtype=np.uint8)
-
-    # The pipeline reads element [0] of the object list returned by calling the model
-    mock_model_instance.return_value = [mock_result_frame]
-
-    # Run pipeline processing with min_duration set very low so 2 frames easily make an event
-    metadata = run_detection(
-        video_path="test_pasture_video.mp4",
-        model_path="fake_yolo.pt",
-        iou_threshold=0.1,
-        conf_threshold=0.5,
-        min_duration=0.1,
-        frame_skip=1
+    events = extract_events(
+        frame_flags, fps, min_duration, frame_skip,
+        confidences, frame_boxes, frame_indices,
     )
 
-    # Validate metadata object structures
-    assert metadata["identifier"] == "test_pasture_video.mp4"
-    assert metadata["fps"] == 10.0
-    assert metadata["total_frames"] == 2
+    assert len(events) == 1
+    assert events[0]["start_sec"]   == 0.0
+    assert events[0]["end_sec"]     == pytest.approx(12.0 / fps)
+    assert events[0]["duration_sec"] == pytest.approx(1.2)
+
+
+def test_extract_events_keeps_event_at_end_of_video():
+    """An event running to the last frame is not dropped."""
+    fps          = 10.0
+    min_duration = 0.5
+    frame_skip   = 1
+
+    frame_flags   = [False] * 5 + [True] * 10
+    confidences   = [0.8] * len(frame_flags)
+    frame_boxes   = [[0, 0, 50, 50]] * len(frame_flags)
+    frame_indices = list(range(len(frame_flags)))
+
+    events = extract_events(
+        frame_flags, fps, min_duration, frame_skip,
+        confidences, frame_boxes, frame_indices,
+    )
+
+    assert len(events) == 1
+    assert events[0]["start_sec"] == pytest.approx(5.0 / fps)
+
+
+def test_extract_events_no_flags():
+    """All-False flags produce no events."""
+    fps          = 10.0
+    n            = 20
+    frame_flags  = [False] * n
+    confidences  = [0.0] * n
+    frame_boxes  = [None] * n
+    frame_indices = list(range(n))
+
+    events = extract_events(
+        frame_flags, fps, 0.5, 1,
+        confidences, frame_boxes, frame_indices,
+    )
+    assert events == []
+
+
+def test_extract_events_respects_frame_skip():
+    """frame_skip > 1 raises the min_frames bar proportionally."""
+    fps          = 10.0
+    min_duration = 1.0   # needs ≥ 10 source-video frames worth
+    frame_skip   = 2     # each processed frame = 2 source frames
+                         # → min_frames = round(1.0 * 10 / 2) = 5 processed frames
+
+    # 4 processed frames flagged — should be discarded (4 < 5)
+    frame_flags   = [True] * 4
+    confidences   = [0.9] * 4
+    frame_boxes   = [[0, 0, 10, 10]] * 4
+    frame_indices = [0, 2, 4, 6]   # every 2nd source frame
+
+    events = extract_events(
+        frame_flags, fps, min_duration, frame_skip,
+        confidences, frame_boxes, frame_indices,
+    )
+    assert events == []
+
+
+# ---------------------------------------------------------------------------
+# detect_video — validation
+# ---------------------------------------------------------------------------
+
+def test_detect_video_raises_on_missing_video(mocker):
+    """detect_video raises FileNotFoundError if OpenCV cannot open the video."""
+    mock_cap = mocker.patch("cv2.VideoCapture")
+    mock_cap.return_value.isOpened.return_value = False
+
+    with pytest.raises(FileNotFoundError, match="Cannot open video"):
+        detect_video(
+            video_path     = Path("missing.mp4"),
+            model          = mocker.MagicMock(),
+            target_ids     = {42},
+            iou_threshold  = 0.1,
+            conf_threshold = 0.5,
+            min_duration   = 1.0,
+            frame_skip     = 1,
+        )
+
+
+# ---------------------------------------------------------------------------
+# detect_video — full pipeline
+# ---------------------------------------------------------------------------
+
+def test_detect_video_full_pipeline_success(mocker):
+    """
+    End-to-end integration test of detect_video.
+    Mocks OpenCV and YOLO; asserts metadata structure and event detection.
+    """
+    mock_model = mocker.MagicMock()
+    target_ids = {42}
+
+    mock_cap = mocker.MagicMock()
+    mock_cap.isOpened.return_value = True
+    mock_cap.get.side_effect = lambda prop: {
+        5: 10.0,  # CAP_PROP_FPS
+        3: 640,   # CAP_PROP_FRAME_WIDTH
+        4: 480,   # CAP_PROP_FRAME_HEIGHT
+        7: 2,     # CAP_PROP_FRAME_COUNT
+    }.get(prop, 0.0)
+    mock_cap.read.side_effect = [
+        (True,  np.zeros((480, 640, 3), dtype=np.uint8)),
+        (True,  np.zeros((480, 640, 3), dtype=np.uint8)),
+        (False, None),
+    ]
+    mocker.patch("cv2.VideoCapture", return_value=mock_cap)
+
+    # Two overlapping cow boxes
+    def make_box(xyxy, conf):
+        b = mocker.MagicMock()
+        b.cls  = [mocker.MagicMock(item=lambda: 42)]
+        b.xyxy = [np.array(xyxy)]
+        b.conf = [mocker.MagicMock(item=lambda: conf)]
+        return b
+
+    mock_result = mocker.MagicMock()
+    mock_result.boxes = [
+        make_box([10, 10, 100, 100], 0.88),
+        make_box([15, 15, 105, 105], 0.92),
+    ]
+    mock_model.return_value = [mock_result]
+
+    metadata = detect_video(
+        video_path     = Path("test_video.mp4"),
+        model          = mock_model,
+        target_ids     = target_ids,
+        iou_threshold  = 0.1,
+        conf_threshold = 0.5,
+        min_duration   = 0.1,
+        frame_skip     = 1,
+    )
+
+    assert metadata["identifier"]             == "test_video.mp4"
+    assert metadata["fps"]                    == 10.0
+    assert metadata["total_frames"]           == 2
     assert metadata["cross_sucking_detected"] is True
-    assert metadata["num_events"] == 1
-    
-    # Assert JSON file save protocol was triggered correctly
-    mock_open.assert_called_once()
+    assert metadata["num_events"]             == 1
+
+
+def test_detect_video_no_events_when_below_threshold(mocker):
+    """No events produced when IoU is always below threshold."""
+    mock_model = mocker.MagicMock()
+    target_ids = {42}
+
+    mock_cap = mocker.MagicMock()
+    mock_cap.isOpened.return_value = True
+    mock_cap.get.side_effect = lambda prop: {5: 10.0, 3: 640, 4: 480, 7: 2}.get(prop, 0.0)
+    mock_cap.read.side_effect = [
+        (True,  np.zeros((480, 640, 3), dtype=np.uint8)),
+        (True,  np.zeros((480, 640, 3), dtype=np.uint8)),
+        (False, None),
+    ]
+    mocker.patch("cv2.VideoCapture", return_value=mock_cap)
+
+    # Two boxes far apart — IoU ≈ 0
+    def make_box(xyxy, conf):
+        b = mocker.MagicMock()
+        b.cls  = [mocker.MagicMock(item=lambda: 42)]
+        b.xyxy = [np.array(xyxy)]
+        b.conf = [mocker.MagicMock(item=lambda: conf)]
+        return b
+
+    mock_result = mocker.MagicMock()
+    mock_result.boxes = [
+        make_box([0,   0,  50,  50], 0.9),
+        make_box([200, 200, 250, 250], 0.9),
+    ]
+    mock_model.return_value = [mock_result]
+
+    metadata = detect_video(
+        video_path     = Path("test_video.mp4"),
+        model          = mock_model,
+        target_ids     = target_ids,
+        iou_threshold  = 0.1,
+        conf_threshold = 0.5,
+        min_duration   = 0.1,
+        frame_skip     = 1,
+    )
+
+    assert metadata["cross_sucking_detected"] is False
+    assert metadata["num_events"]             == 0

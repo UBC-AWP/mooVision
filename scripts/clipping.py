@@ -22,10 +22,11 @@ Input/Output
 Inputs
   - Source videos (`*.mp4`) located under :root:`config.SOURCE_VIDEOS_DIR`.
   - A CSV index at :root:`config.INDEX_PATH` (index mode), or JSON metadata files
-    under :root:`config.BASELINE_METADATA_DIR` (JSON events mode).
+    under :root:`config.BASELINE_METADATA_DIR_NEW` (JSON events mode).
 
 Outputs
-  - Reproduced clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
+  - Clips written to :root:`config.RESULT_CLIPS_DIR` under
+    <split_name>/<Pen>/<Stage>/<Day>/ mirroring the baseline metadata structure.
 
 Notes
 -----
@@ -36,13 +37,14 @@ The module relies on OpenCV for video I/O. Configuration is centralized in
 
 import sys
 import cv2
+import tempfile, os
 import time
 import json
 import re
 import pandas as pd
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent)) 
-from config import SOURCE_VIDEOS_DIR,INDEX_PATH,REPRODUCED_CLIPS_DIR,BASELINE_METADATA_DIR
+from config import SOURCE_VIDEOS_DIR, INDEX_PATH, RESULT_CLIPS_DIR, BASELINE_METADATA_DIR_NEW, REPRODUCED_CLIPS_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
     """
@@ -191,63 +193,62 @@ def split_by_index(index_path: Path, output_path: Path) -> None:
 
         print(f"\nDone — {success} reproduced")
         
-def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = True) -> int:
+def split_by_json_events(json_path: Path, output_dir: Path) -> int:
     """
-    Reproduce clips defined by JSON event metadata, optionally with annotations.
+    Reproduce annotated clips defined by JSON event metadata files.
 
     Overview
     --------
-    Loads one JSON metadata file or processes all `*.json` files in a directory.
-    For each event (`start_sec`, `end_sec`), a clip is reproduced. If
-    `annotate=True`, an additional `*_boxed.mp4` is written with bounding boxes
-    overlaid.
+    Recursively searches `json_path` for `*.json` metadata files produced by the
+    baseline detection pipeline. For each event in each JSON, reproduces a clip
+    from the source video and writes an annotated `*_boxed.mp4` with bounding
+    boxes overlaid. The split name is inferred from the JSON directory structure
+    to mirror the baseline output hierarchy.
 
     Input/Output
     ------------
     Input
-      - `json_path`: A JSON file or a directory of JSON files.
-      - Each JSON must specify `video_path` and `events`.
+      - `json_path`: A single JSON file, or a directory searched recursively
+                     for `*.json` files.
+      - Each JSON must specify `video_path` and `events`, and must live under a
+        path of the form: `.../baseline/<split_name>/<Pen>/<Stage>/<Day>/<file>.json`
 
     Output
-      - Clips written under `output_dir`.
-      - If `annotate=True`, additional annotated clips are written beside the
-        unboxed clips.
+      - Annotated clips written under:
+            <output_dir>/<split_name>/<Pen>/<Stage>/<Day>/<video_stem>_event###_<start>-<end>_boxed.mp4
 
     Parameters
     ----------
     json_path : pathlib.Path
-        A single JSON file, or a directory containing JSON files (non-recursive).
+        A single JSON file, or a root directory to search recursively for JSON files.
     output_dir : pathlib.Path
-        Output root directory where clips will be created.
-    annotate : bool, default=True
-        Whether to also produce annotated clips with bounding boxes.
+        Output root directory (e.g. RESULT_CLIPS_DIR).
 
     Returns
     -------
     int
-        Total number of successfully reproduced (unboxed) clips across all
-        processed JSON files.
+        Total number of successfully reproduced clips across all JSON files.
 
     Raises
     ------
     FileNotFoundError
-        If a JSON references a `video_path` that does not exist.
+        If a JSON references a `video_path` that does not exist on disk.
 
     Notes
     -----
     Expected JSON schema (minimum):
       - `video_path` : str
-      - `events` : list[dict] with keys `start_sec`, `end_sec`
+      - `events`     : list[dict] with keys `start_sec`, `end_sec`
 
-    Optional keys:
-      - `identifier` : str
-      - `fps` : float (used for annotation alignment)
+    Optional keys used if present:
+      - `identifier`               : str — used for output filename stem
+      - `fps`                      : float — used for annotation frame alignment
       - `events[*].intersection_box` : list[dict] with keys `frame`, `x1`, `y1`,
-        `x2`, `y2` (frames are in source-video coordinates)
+                                       `x2`, `y2` in source-video frame coordinates
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     if json_path.is_dir():
-        json_files = sorted(json_path.glob("*.json"))  # non-recursive: only this folder
+        json_files = sorted(json_path.rglob("*.json"))  # recursive search for JSON files
         if not json_files:
             print(f"No .json files found in {json_path}")
             return 0
@@ -268,17 +269,18 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
         if not events:
             print(f"No events found in {jf.name}")
             continue
-        # extract the relative path after "cross_sucking_clips/" to find the raw video in RAW_DIR
-        m = re.search(r"cross_sucking_clips[\\/](.*)$", str(video_path))
+        
+        # extract the relative path after "videos/" to find the raw video in RAW_DIR
+        m = re.search(r"videos[\\/](.*)$", str(video_path))
         if m:
-            rel = Path(m.group(1))  # Pen 2 - Group 2/POSTWEANING/Day 1/<file>.mp4
-            rel_parent = rel.parent  # Pen 2 - Group 2/POSTWEANING/Day 1
+            rel_parent = Path(m.group(1)).parent  # Pen/Stage/Day
         else:
-            # fallback if pattern not found
             rel_parent = Path()
 
-        # Create a per-video folder using the video stem
-        out_folder = output_dir / rel_parent
+        split_name = jf.parent.parent.parent.parent.name  # e.g. "day_based" — four levels up from the JSON
+        print(split_name)
+        out_folder = output_dir / split_name / rel_parent
+        
         out_folder.mkdir(parents=True, exist_ok=True)
         
         success = 0
@@ -291,28 +293,34 @@ def split_by_json_events(json_path: Path, output_dir: Path, annotate: bool = Tru
 
             print(f"{out_path.name} {start_sec:.1f}s -> {end_sec:.1f}s")
             print(f"from: {video_path.name}")
-
-            if not reproduce_clip(video_path, start_sec, end_sec, out_path):
+            
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+                tmp_path = Path(tmp.name)
+            
+            if not reproduce_clip(video_path, start_sec, end_sec, tmp_path):
+                tmp_path.unlink(missing_ok=True)
                 continue
 
-            # annotate (optional)
-            if annotate:
-                event_start_frame = int(start_sec * fps)
-                boxes = ev.get("intersection_box", [])
 
-                # convert source-video frames -> clip frames
-                clip_boxes = []
-                for b in boxes:
-                    f = int(b["frame"]) - event_start_frame
-                    if f < 0:
-                        continue
-                    clip_boxes.append({**b, "frame": f})
+            event_start_frame = int(start_sec * fps)
+            boxes = ev.get("intersection_box", [])
 
-                boxed_path = out_folder / f"{base_name}_boxed.mp4"
-                if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
-                    print(f"saved boxed to {boxed_path.name}")
+            # convert source-video frames -> clip frames
+            clip_boxes = []
+            for b in boxes:
+                f = int(b["frame"]) - event_start_frame
+                if f < 0:
+                    continue
+                clip_boxes.append({**b, "frame": f})
 
-            print(f"saved to {out_path.name}")
+            boxed_path = out_folder / f"{base_name}_boxed.mp4"
+            if annotate_clip_with_boxes(out_path, boxed_path, clip_boxes):
+                print(f"saved boxed to {boxed_path.name}")
+                if out_path.exists():
+                    out_path.unlink()
+            else:
+                print(f"Warning: Failed to annotate {out_path.name}, keeping unboxed version.")
+                
             success += 1
             total_success += 1
 
@@ -412,7 +420,8 @@ def run_splitting(func) -> None:
       - `func`: A function object indicating which strategy to run.
 
     Output
-      - Reproduced clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
+      - Clips written to :root:`config.RESULT_CLIPS_DIR` under
+        <split_name>/<Pen>/<Stage>/<Day>/.
 
     Parameters
     ----------
@@ -431,7 +440,7 @@ def run_splitting(func) -> None:
     if func == split_by_index:
         split_by_index(INDEX_PATH, REPRODUCED_CLIPS_DIR)
     elif func == split_by_json_events:
-        split_by_json_events(BASELINE_METADATA_DIR, REPRODUCED_CLIPS_DIR)
+        split_by_json_events(BASELINE_METADATA_DIR_NEW, RESULT_CLIPS_DIR)
     else:
         raise ValueError(f"Unknown splitting function: {func}")
     
@@ -446,10 +455,10 @@ def main():
     Input/Output
     ------------
     Input
-      - JSON metadata from :root:`config.BASELINE_METADATA_DIR`.
+      - JSON metadata files from :root:`config.BASELINE_METADATA_DIR_NEW`.
 
     Output
-      - Clips written to :root:`config.REPRODUCED_CLIPS_DIR`.
+      - Annotated clips written to :root:`config.RESULT_CLIPS_DIR`.
 
     Returns
     -------

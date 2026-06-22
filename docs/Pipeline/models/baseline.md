@@ -1,4 +1,3 @@
-
 # Baseline Cross-Sucking Detector
 
 A baseline script for detecting cross-sucking behaviour in calves using YOLO bounding box overlap. For each input video, the script produces a JSON metadata file containing the time windows where cross-sucking may have occurred, along with the per-frame intersection box coordinates of the overlapping region.
@@ -6,30 +5,32 @@ A baseline script for detecting cross-sucking behaviour in calves using YOLO bou
 ## How It Works
 
 1. Loads a pretrained YOLO26 model by default (the model works on COCO dataset which detects `cow` class as a proxy for calves)
-2. Loads one video at a time (this setting might be changed in the future)
-3. Reads every Nth frame as set by `--frame_skip` (default: 1 = every frame). This will be seen while running `baseline.py`
-4. For each frame, detects all calves and identifies the pair with the highest overlap (IoU). If IoU ≥ threshold, flags the frame and records that pair's intersection box.
+2. Reads a test CSV (e.g. `data/processed/day_based/test.csv`), deduplicates video paths, and processes each video sequentially. Videos whose JSON output already exists are skipped automatically
+3. Reads every Nth frame as set by `--frame_skip` (default: 1 = every frame). Progress is printed while running `baseline.py`
+4. For each frame, detects all calves and identifies the pair with the highest overlap (IoU). If IoU ≥ threshold, flags the frame and records that pair's intersection box
 5. Groups consecutive flagged frames into events and filters out events shorter than a minimum duration
-6. Saves a JSON metadata file with the flagged events and their intersection box coordinates
+6. Saves a JSON metadata file per video with the flagged events and their intersection box coordinates
 
 **Notes:**
 
 1. The COCO-pretrained model was trained on adult cattle outdoors. Detection accuracy will improve significantly once fine-tuned on your own labelled calf footage
-2. The model, IoU threshold, confidence threshold, and number of skipped frames can be changed into other baseline models using arguments which will be described below
-3. The argument `skip_frame` allows to skip N number of frames at a time (e.g. `skip_frame = 5` means processing every 5 frames instead of just 1 frame each)
+2. The model, IoU threshold, confidence threshold, and number of skipped frames can be changed using arguments described below
+3. The argument `--frame_skip` allows skipping N frames at a time (e.g. `--frame_skip 5` means processing every 5th frame instead of every frame)
 
 ## Input (baseline)
 
 | Property | Details |
 |---|---|
-| Format | `.mp4`, `.avi`, or any format supported by OpenCV |
-| Content | Single video clip of calves in a pen |
+| Format | A test CSV file (e.g. `data/processed/day_based/test.csv`) containing a `source_video_path` column |
+| Content | Each row points to a single `.mp4` or `.avi` video clip of calves in a pen |
 
 ## Output (baseline)
 
-Results are saved to `results/metadata/baseline/` automatically.
+Results are saved to `results/metadata/baseline/` automatically. The split name is inferred from the parent folder of the input CSV (e.g. `day_based`), and the directory hierarchy mirrors the source video structure.
 
-**File:** `results/metadata/baseline/<video_name>_results.json`
+**File:** `results/metadata/baseline/<split_name>/<Pen>/<Stage>/<Day>/<video_stem>_results.json`
+
+**Example:** `results/metadata/baseline/day_based/Pen 2 - Group 2/POSTWEANING/Day 1/ch02_results.json`
 
 **Example output:**
 
@@ -86,27 +87,27 @@ Results are saved to `results/metadata/baseline/` automatically.
 1. Using the default parameters:
 
     ```bash
-    uv run scripts/baseline/baseline.py --video "<path/to/video.mp4>"
+    uv run scripts/baseline/baseline.py --csv "<path/to/split/test.csv>"
     ```
 
 2. Using custom parameters:
 
     ```bash
-    uv run baseline.py --video "<path/to/video.mp4>" \
+    uv run scripts/baseline/baseline.py --csv "<path/to/split/test.csv>" \
                     --iou_threshold <insert_threshold> \
                     --conf_threshold <insert_threshold> \
                     --min_duration <insert_in_seconds> \
                     --model <insert_model_name> \
-                    --frame_skip <insert_integer> 
+                    --frame_skip <insert_integer>
     ```
 
-**Note:** If your file path contains spaces, wrapping it in quotes will avoid shell parsing errors. The file path should look like `"\Users\mickeymouse\data\video_cross_sucking.mp4"`
+**Note:** If your file path contains spaces, wrap it in quotes. The script infers the split name (e.g. `day_based`) from the parent folder of the CSV and writes results automatically to the corresponding subfolder under `results/metadata/baseline/`.
 
 ## Arguments
 
 | Argument | Type | Default | Description |
 |---|---|---|---|
-| `--video` | str | - | Path to input video file (required) |
+| `--csv` | str | - | Path to a split test CSV (e.g. `data/processed/day_based/test.csv`). Required. |
 | `--model` | str | `yolo26x.pt` | YOLO model weights filename e.g. `yolo26n.pt`, `yolo26m.pt`, `yolo26l.pt` |
 | `--iou_threshold` | float | `0.1` | Minimum IoU overlap to flag a frame. Must be between `0.0` and `1.0` |
 | `--conf_threshold` | float | `0.5` | Minimum YOLO detection confidence to keep a box. Must be between `0.0` and `1.0` |
@@ -129,28 +130,16 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
     1. Example 1 (~2-3 minutes):
 
         ```bash
-        uv run scripts/baseline/baseline.py --video "sample_videos/cross_sucking_clip_sample/CS_0276_WEAN_d1_p2_cowT_16102025_ch02-20251016124717_19033_19045.mp4"
+        uv run scripts/baseline/baseline.py --csv "data/processed/day_based/test.csv"
         ```
 
     2. Example 2 (~4-5 minutes):
 
         ```bash
-        uv run scripts/baseline/baseline.py --video "sample_videos/cross_sucking_clip_sample/CS_0002_POSTWEAN_d1_p2_cow3_02112025_ch02-20251103001956_60818_60835.mp4"
+        uv run scripts/baseline/baseline.py --csv "data/processed/pen_based/test.csv"
         ```
 
-- Non-cross-sucking examples
-
-    1. Example 1 (~1-2 minutes):
-
-        ```bash
-        uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch05_20251114073451_15s.mp4"
-        ```
-
-    2. Example 2 (~3-4 minutes):
-
-        ```bash
-        uv run scripts/baseline/baseline.py --video "sample_videos/non_cross_sucking_clip_sample/ch04_20250828075551_15s.mp4"
-        ```
+- Non-cross-sucking examples: run with the same commands above — the script processes all videos in the CSV, including non-cross-sucking ones. Videos with no detected events will have `"cross_sucking_detected": false` in their JSON output.
 
 ## Limitation
 
@@ -173,15 +162,15 @@ For demonstration purposes, we provide 2 clip samples each for cross-sucking and
   - **Frame skip (`--frame_skip`):**
     - Too high: Misses short events entirely, event boundaries become imprecise
     - Too low: Increases processing time
-  - No universal defaults exist, tuning is dataset, model, and camera-dependent
+  - No universal defaults exist; tuning is dataset, model, and camera-dependent
 
-- **Model limitation:** The COCO-pretrained model were trained on outdoor cattle, not calves. Hence, the accuracy performance to detect calves can be limited. Accuracy would improves significantly after fine-tuning on your own labeled calf footage, especially in varied lighting or pen angles
+- **Model limitation:** The COCO-pretrained model was trained on outdoor cattle, not calves. Hence, the accuracy performance to detect calves can be limited. Accuracy improves significantly after fine-tuning on your own labeled calf footage, especially in varied lighting or pen angles
 
 ## Future Improvements
 
-- Consider using other proportion-based overlaps (e.g. intersection over minimum, etc.) as a better alternative or an addition to using overlapping area which is sensitive to camera angle and distance.
+- Consider using other proportion-based overlaps (e.g. intersection over minimum, etc.) as a better alternative or addition to using overlapping area, which is sensitive to camera angle and distance
 
-- Use a "grace period" for handling the brief detection gaps (0.5–1.0 seconds) due to YOLO's missed break event continuity, splitting a single cross-sucking into multiple fragmented events. This will allow events separated by brief gaps to be treated as a single continuous interaction
+- Use a "grace period" for handling brief detection gaps (0.5–1.0 seconds) due to YOLO missed detections that break event continuity, splitting a single cross-sucking event into multiple fragmented events. This will allow events separated by brief gaps to be treated as a single continuous interaction
 
 - Output all detected bounding boxes, IoU values for all pairs, and confidence scores per frame (not just the highest pair). This enables offline algorithm refinement and re-analysis without re-running YOLO inference
 

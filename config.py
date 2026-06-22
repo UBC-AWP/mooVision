@@ -26,6 +26,8 @@ ROOT_DIR = require_dir("ROOT_DIR")
 # Path on GitHub / local workspace
 LOCAL_DIR = require_dir("LOCAL_DIR")
 BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"
+BASELINE_METADATA_DIR_NEW = ROOT_DIR / "results" / "metadata" / "baseline"
+# Clip folders
 
 # Videos and labels
 UNLABELLED_CLIPS_DIR = ROOT_DIR / "cross_sucking_clips"
@@ -38,9 +40,18 @@ PROCESSED_INDEX = ROOT_DIR / "data" / "processed" / "processed_clips_index.csv"
 
 # Data / metadata
 DATA_FOLDER_DIR = ROOT_DIR / "data"
+EVALUATION_DATA_DIR = DATA_FOLDER_DIR / "results" 
+BASELINE_MODEL_OUTPUT_DIR = DATA_FOLDER_DIR / "results" / "metadata" / "baseline"
+YOLO_MODEL_OUTPUT_DIR = ROOT_DIR / "results" / "metadata" / "random" / "yolo"
+SEQ_MODEL_OUTPUT_DIR = ROOT_DIR / "results" / "metadata" / "random" / "seq-nms"
 METADATA_DIR = DATA_FOLDER_DIR / "clips_metadata"
 METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Output clips
 REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"
 REPRODUCED_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+READ_DF_PATH = ROOT_DIR / "data" / "processed" 
+RESULT_CLIPS_DIR = ROOT_DIR  / "results" / "result_clips"
+

@@ -18,6 +18,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "scikit-learn>=1.8.0",
     "ultralytics>=8.4.51",
+    "altair>=6.2.1",
     # --- DYNAMIC PYTORCH ROUTING MATRIX ---
     # On the Sockeye Cluster (Linux), target stable production weights
     "torch==2.5.1; sys_platform == 'linux'",
