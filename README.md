@@ -209,7 +209,22 @@ After configuring you `.env` and config files, run the following commands from y
    uv run python scripts/clipping.py
    ```
 
----
+## Running the Full Pipeline (Sockeye HPC)
+
+The demo workflow above is intended for local testing on a small subset of data. The actual research pipeline is run on [Sockeye](https://arc.ubc.ca/compute-storage/ubc-arc-sockeye), UBC's high-performance computing cluster, due to the size of the raw video data and the compute requirements of model training and inference.
+
+**Data flow:**
+
+1. **Raw data origin — OneDrive.** The original raw pen videos and annotation files are stored in a shared UBC OneDrive library. These were transferred to Sockeye's scratch storage prior to running the pipeline.
+
+2. **Pipeline execution — Sockeye.** All computationally intensive steps (preprocessing, YOLO training, and inference on test data for both YOLO and Seq-NMS) are run on Sockeye via SLURM array jobs.
+
+3. **Metadata Results — saved to both Sockeye and OneDrive.** Pipeline outputs (metadata) are saved to Sockeye scratch and synced back to the shared OneDrive library so the full team can access results in the future.
+
+For a summary of findings, see the [final report](placeholder_path).
+
+> **Note for Sockeye users:** See the Sockeye documentation in the MkDocs for more information.
+
 ## How to run MkDocs
 For detailed documentation, please refer to our MkDocs site. To view it locally, run:
    ```bash
