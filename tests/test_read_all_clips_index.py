@@ -315,4 +315,73 @@ class TestSaveData:
         save_data(pd.DataFrame({"b": [2]}), path)
         result = pd.read_csv(path)
         assert "b" in result.columns
+
+ 
+# ===========================================================================
+# TestFilterExistingClips
+# ===========================================================================
+ 
+class TestFilterExistingClips:
+ 
+    # --- Fixtures ---
+ 
+    @pytest.fixture
+    def clips_dir(self, tmp_path):
+        clips = tmp_path / "clips"
+        clips.mkdir()
+        (clips / "clip_0.mp4").touch()
+        (clips / "clip_1.mp4").touch()
+        return clips
+ 
+    @pytest.fixture
+    def df_all_exist(self):
+        df = make_valid_df(n=2)
+        df["clip_relative_path"] = ["clip_0.mp4", "clip_1.mp4"]
+        return df
+ 
+    @pytest.fixture
+    def df_some_missing(self):
+        df = make_valid_df(n=2)
+        df["clip_relative_path"] = ["clip_0.mp4", "missing_clip.mp4"]
+        return df
+ 
+    # --- Happy path ---
+ 
+    def test_all_clips_exist_returns_full_df(self, df_all_exist, clips_dir):
+        result = filter_existing_clips(df_all_exist, clips_dir)
+        assert len(result) == 2
+ 
+    def test_missing_clips_filtered_out(self, df_some_missing, clips_dir):
+        result = filter_existing_clips(df_some_missing, clips_dir)
+        assert len(result) == 1
+        assert "clip_0.mp4" in result["clip_relative_path"].values
+ 
+    # --- Error cases ---
+ 
+    def test_not_a_dataframe_raises_type_error(self, clips_dir):
+        with pytest.raises(TypeError):
+            filter_existing_clips("not a df", clips_dir)
+ 
+    def test_empty_df_raises_value_error(self, clips_dir):
+        with pytest.raises(ValueError):
+            filter_existing_clips(pd.DataFrame(), clips_dir)
+ 
+    def test_clips_dir_not_found_raises(self):
+        with pytest.raises(FileNotFoundError):
+            filter_existing_clips(make_valid_df(), Path("/nonexistent/path"))
+ 
+    # --- Edge cases ---
+ 
+    def test_all_missing_returns_empty_with_warning(self, clips_dir):
+        df = make_valid_df(n=2)
+        df["clip_relative_path"] = ["missing_1.mp4", "missing_2.mp4"]
+        with pytest.warns(UserWarning):
+            result = filter_existing_clips(df, clips_dir)
+        assert result.empty
+ 
+    def test_missing_clips_raises_warning(self, df_some_missing, clips_dir):
+        with pytest.warns(UserWarning, match="Dropped"):
+            filter_existing_clips(df_some_missing, clips_dir)
+ 
+ 
  
