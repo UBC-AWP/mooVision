@@ -350,3 +350,248 @@ class TestParseZipAnnotations:
         assert "Structural naming mismatch" in str(exc_info.value)
         # Verify execution stopped immediately on the second file and didn't try to continue
         assert mock_extract.call_count == 2
+
+
+class TestSaveLabelBatch:
+    """Comprehensive suite validating I/O batch file writes, directories, and type guards."""
+
+    # --- HAPPY PATH TESTS (Successful Disk IO) ---
+
+    def test_save_label_batch_success(self, tmp_path):
+        """Ensure standard dictionary payloads are correctly written to disk as binary data."""
+        # Arrange
+        label_batch = {
+            "0001_part01_frame_000000.txt": b"0 0.5 0.5 0.2 0.2\n",
+            "0001_part01_frame_000005.txt": b"1 0.1 0.2 0.3 0.4\n",
+        }
+
+        # Ensure target directory exists
+        output_dir = tmp_path / "labels"
+        output_dir.mkdir()
+
+        # Act
+        result = save_label_batch(label_batch, output_dir)
+
+        # Assert: Check that the return value is explicitly None
+        assert result is None
+
+        # Assert: Verify files physically exist on disk and check their raw byte content
+        file1_path = output_dir / "0001_part01_frame_000000.txt"
+        file2_path = output_dir / "0001_part01_frame_000005.txt"
+
+        assert file1_path.exists()
+        assert file2_path.exists()
+
+        assert file1_path.read_bytes() == b"0 0.5 0.5 0.2 0.2\n"
+        assert file2_path.read_bytes() == b"1 0.1 0.2 0.3 0.4\n"
+
+    def test_save_label_batch_empty_dictionary(self, tmp_path):
+        """Passing an empty batch should execute gracefully without modifying the filesystem."""
+        output_dir = tmp_path / "empty_run"
+        output_dir.mkdir()
+
+        # Act
+        save_label_batch({}, output_dir)
+
+        # Assert: Ensure no files were generated inside the sandbox directory
+        assert len(list(output_dir.iterdir())) == 0
+
+    def test_save_label_batch_periodic_logging_boundary(self, tmp_path, capsys):
+        """Verify the progress printing loop works smoothly when batch sizes exceed 1000 items."""
+        # Arrange: Build exactly 1001 dummy file data strings to cross the print threshold
+        large_batch = {f"frame_{i:06d}.txt": b"0 0 0 0 0" for i in range(1001)}
+
+        # Act
+        save_label_batch(large_batch, tmp_path)
+
+        # Assert: Intercept terminal print outputs via capsys
+        captured = capsys.readouterr()
+
+        assert "Executing batch-write for 1001 annotation labels" in captured.out
+        assert "Writing label: (1000/1001)" in captured.out
+        assert "All labels saved at:" in captured.out
+
+    # --- ERROR & TYPE BOUNDARY TESTS ---
+
+    def test_save_label_batch_raises_type_error_for_invalid_batch_type(self, tmp_path):
+        """Verify a TypeError is raised immediately if label_batch is not a dictionary."""
+        invalid_batch = [("file.txt", b"bytes")]  # Passed a list instead of a dict
+
+        with pytest.raises(TypeError) as exc_info:
+            save_label_batch(invalid_batch, tmp_path)
+
+        assert "Argument 'label_batch' must be a dict" in str(exc_info.value)
+
+    def test_save_label_batch_raises_type_error_for_invalid_path_type(self):
+        """Verify a TypeError is raised immediately if final_output_dir is a raw string path."""
+        label_batch = {"file.txt": b"bytes"}
+        string_path = (
+            "/tmp/data/labels"  # Passed a string instead of a pathlib.Path object
+        )
+
+        with pytest.raises(TypeError) as exc_info:
+            save_label_batch(label_batch, string_path)
+
+        assert "Argument 'final_output_dir' must be a Path object" in str(
+            exc_info.value
+        )
+
+    def test_save_label_batch_raises_file_not_found_if_directory_missing(
+        self, tmp_path
+    ):
+        """Verify that a FileNotFoundError is raised if the target output directory does not exist on disk."""
+        # Arrange: Point to a subdirectory that we explicitly DO NOT create
+        non_existent_dir = tmp_path / "ghost_labels_folder"
+        label_batch = {"0001_frame_000000.txt": b"0 0.5 0.5 0.2 0.2\n"}
+
+        # Act & Assert
+        # Since save_label_batch does not call mkdir internally, open() will throw FileNotFoundError
+        with pytest.raises(FileNotFoundError):
+            save_label_batch(label_batch, non_existent_dir)
+
+    def test_save_label_batch_raises_type_error_for_string_values(self, tmp_path):
+        """Ensure a TypeError is raised if dictionary values are strings instead of bytes."""
+        # Arrange: Pass a string instead of bytes
+        invalid_value_batch = {"0001_frame_000000.txt": "not bytes, I am a string"}
+
+        # Ensure target directory exists so we don't trip FileNotFoundError first
+        output_dir = tmp_path / "labels_type_check"
+        output_dir.mkdir()
+
+        # Act & Assert
+        with pytest.raises(TypeError) as exc_info:
+            save_label_batch(invalid_value_batch, output_dir)
+
+        # Python's native open write throws: "a bytes-like object is required, not 'str'"
+        assert "bytes-like object is required" in str(exc_info.value)
+
+
+# =========================== REVIEW THESE vvvvvv ========================================
+class TestExtractLabels:
+    """Comprehensive orchestration tests validating directory switches, overrides, and empty constraints."""
+
+    # =====================================================================
+    # 1. ORCHESTRATION & STATE SWITCH TESTS
+    # =====================================================================
+
+    @patch("data_utils.yolo_prep.utils.save_label_batch")
+    @patch("data_utils.yolo_prep.utils.parse_zip_annotations")
+    @patch("data_utils.yolo_prep.utils.validate_file_paths")
+    def test_extract_labels_happy_path_flow(
+        self, mock_validate, mock_parse, mock_save, tmp_path
+    ):
+        """Ensure standard execution routes directories properly and returns the registry."""
+        # Arrange
+        working_dir = tmp_path / "workspace"
+        labels_root = tmp_path / "raw_labels"
+        label_paths = ["file1.zip"]
+        f_registry = {(1, None): {0, 5}}
+
+        # Setup child mocks to match expected pipeline throughput signatures
+        mock_validate.return_value = [labels_root / "file1.zip"]
+        mock_parse.return_value = ({"target.txt": b"data"}, {(1, None): {0}})
+
+        # Act
+        registry_out = extract_labels(
+            label_paths=label_paths,
+            working_dir=working_dir,
+            labels_root=labels_root,
+            frame_registry=f_registry,
+            split="train",
+            skip=5,
+            force=False,
+        )
+
+        # Assert: Check that target routing subdirectory was automatically provisioned
+        expected_dir = working_dir / "labels" / "train"
+        assert expected_dir.exists()
+
+        # Assert: Verify that the pipeline passed data forward accurately
+        mock_validate.assert_called_once_with(label_paths, labels_root)
+        mock_parse.assert_called_once_with([labels_root / "file1.zip"], f_registry, 5)
+        mock_save.assert_called_once_with({"target.txt": b"data"}, expected_dir)
+
+        assert registry_out == {(1, None): {0}}
+
+    @patch("data_utils.yolo_prep.utils.validate_file_paths")
+    def test_extract_labels_early_exit_bypass(self, mock_validate, tmp_path):
+        """If final directory exists and force=False, function must early-exit and return None."""
+        # Arrange: Pre-create the destination directory to trigger the condition
+        working_dir = tmp_path / "workspace"
+        existing_dir = working_dir / "labels" / "val"
+        existing_dir.mkdir(parents=True, exist_ok=True)
+
+        # Act
+        result = extract_labels(
+            label_paths=["file.zip"],
+            working_dir=working_dir,
+            labels_root=tmp_path / "raw",
+            frame_registry={},
+            split="val",
+            skip=5,
+            force=False,  # Switch off overwrite protection trigger
+        )
+
+        # Assert: Confirms bare return evaluates to None safely
+        assert result is None
+        # Verify execution stopped short before running file paths validations
+        mock_validate.assert_not_called()
+
+    @patch("data_utils.yolo_prep.utils.save_label_batch")
+    @patch("data_utils.yolo_prep.utils.parse_zip_annotations")
+    @patch("data_utils.yolo_prep.utils.validate_file_paths")
+    def test_extract_labels_force_override_execution(
+        self, mock_validate, mock_parse, mock_save, tmp_path
+    ):
+        """If directory exists but force=True, pipeline must ignore early-exit and re-run execution."""
+        # Arrange
+        working_dir = tmp_path / "workspace"
+        existing_dir = working_dir / "labels" / "train"
+        existing_dir.mkdir(parents=True, exist_ok=True)
+
+        mock_validate.return_value = [tmp_path / "raw/file.zip"]
+        mock_parse.return_value = ({}, {})
+
+        # Act
+        extract_labels(
+            label_paths=["file.zip"],
+            working_dir=working_dir,
+            labels_root=tmp_path / "raw",
+            frame_registry={},
+            split="train",
+            skip=5,
+            force=True,  # Force recompute switch triggered
+        )
+
+        # Assert: Verify that execution ignored the existing folder and proceeded
+        mock_validate.assert_called_once()
+
+    # =====================================================================
+    # 2. ERROR BOUNDARY TESTS
+    # =====================================================================
+
+    def test_extract_labels_raises_value_error_for_invalid_split(self, tmp_path):
+        """Verify explicit validation guardrails drop invalid folder partition keywords instantly."""
+        with pytest.raises(ValueError) as exc_info:
+            extract_labels(
+                label_paths=["file.zip"],
+                working_dir=tmp_path,
+                labels_root=tmp_path,
+                frame_registry={},
+                split="invalid_split_name",  # Malformed keyword entry
+                skip=5,
+            )
+        assert "split must be either 'train' or 'val'" in str(exc_info.value)
+
+    def test_extract_labels_raises_value_error_for_empty_paths_list(self, tmp_path):
+        """Verify that passing an empty list of paths triggers a ValueError as documented."""
+        with pytest.raises(ValueError) as exc_info:
+            extract_labels(
+                label_paths=[],  # Violates the non-empty input contract
+                working_dir=tmp_path,
+                labels_root=tmp_path,
+                frame_registry={},
+                split="train",
+                skip=5,
+            )
+        assert "cannot be an empty list" in str(exc_info.value)
