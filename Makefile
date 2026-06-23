@@ -53,7 +53,7 @@ read_index:
 
 # 2. Split data into train/val/test
 split:
-	$(PY) $(SPLIT) --FORCE
+	$(PY) $(SPLIT) --force
 
 # 3. Preprocess for YOLO fine-tuning
 preprocess:
@@ -62,7 +62,7 @@ preprocess:
 		--val_path=$(VAL_PATH) \
 		--output_path=$(PREPROCESS_OUT) \
 		--skip=10 \
-		--FORCE
+		--force
 
 # 4. Train YOLO object detection model
 train:
