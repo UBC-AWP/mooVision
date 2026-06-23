@@ -24,11 +24,39 @@ TRAIN_JOB_ID=$(echo "$TRAIN_MSG" | awk '{print $4}')
 
 echo "Dispatched Parallel GPU Training Array: Job ID is $TRAIN_JOB_ID (Waiting on $PREPROCESS_JOB_ID)"
 
-# 5. Parallel model application on test sets Array (80 tasks, waits for corresponding preprocessing tasks)
-TEST_MSG=$(sbatch --dependency=afterok:$TRAIN_JOB_ID 05_model_testing.sh)
-TEST_JOB_ID=$(echo "$TEST_MSG" | awk '{print $4}')
-
-echo "Dispatched Parallel GPU Training Array: Job ID is $TEST_JOB_ID (Waiting on $TRAIN_JOB_ID)"
-
+# 5. Baseline inference (8 tasks, waits for preprocessing — does not need training)
+BASELINE_INFER_MSG=$(sbatch --dependency=afterok:$PREPROCESS_JOB_ID 05_baseline_testing.sh)
+BASELINE_INFER_JOB_ID=$(echo "$BASELINE_INFER_MSG" | awk '{print $4}')
+ 
+echo "Dispatched Baseline Inference Array: Job ID is $BASELINE_INFER_JOB_ID (Waiting on $PREPROCESS_JOB_ID)"
+ 
+# 6. YOLO model inference on test sets (80 tasks, waits for training)
+YOLO_INFER_MSG=$(sbatch --dependency=afterok:$TRAIN_JOB_ID 06_yolo_testing.sh)
+YOLO_INFER_JOB_ID=$(echo "$YOLO_INFER_MSG" | awk '{print $4}')
+ 
+echo "Dispatched YOLO Inference Array: Job ID is $YOLO_INFER_JOB_ID (Waiting on $TRAIN_JOB_ID)"
+ 
+# 7. Baseline evaluation (8 tasks, waits for baseline inference)
+BASELINE_EVAL_MSG=$(sbatch --dependency=afterok:$BASELINE_INFER_JOB_ID 07_baseline_evaluation.sh)
+BASELINE_EVAL_JOB_ID=$(echo "$BASELINE_EVAL_MSG" | awk '{print $4}')
+ 
+echo "Dispatched Baseline Evaluation Array: Job ID is $BASELINE_EVAL_JOB_ID (Waiting on $BASELINE_INFER_JOB_ID)"
+ 
+# 8. YOLO evaluation (16 tasks: 8 splits × 2 pipelines, waits for YOLO inference)
+YOLO_EVAL_MSG=$(sbatch --dependency=afterok:$YOLO_INFER_JOB_ID 08_yolo_evaluation.sh)
+YOLO_EVAL_JOB_ID=$(echo "$YOLO_EVAL_MSG" | awk '{print $4}')
+ 
+echo "Dispatched YOLO Evaluation Array: Job ID is $YOLO_EVAL_JOB_ID (Waiting on $YOLO_INFER_JOB_ID)"
+ 
 echo "--------------------------------------------------------"
-echo "Full 8-Split Processing and Training Matrix Successfully Queued!"
+echo "Full Pipeline Successfully Queued!"
+echo ""
+echo "Job dependency chain:"
+echo "  $READ_DATA_JOB_ID (read+split)"
+echo "    └── $PREPROCESS_JOB_ID (preprocess)"
+echo "          ├── $TRAIN_JOB_ID (train YOLO)"
+echo "          │     └── $YOLO_INFER_JOB_ID (YOLO inference)"
+echo "          │           └── $YOLO_EVAL_JOB_ID (YOLO evaluation)"
+echo "          └── $BASELINE_INFER_JOB_ID (baseline inference)"
+echo "                └── $BASELINE_EVAL_JOB_ID (baseline evaluation)"
+ 
