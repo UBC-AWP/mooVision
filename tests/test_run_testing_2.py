@@ -77,17 +77,18 @@ class TestLoadTestCsv:
 # ---------------------------------------------------------------------------
 
 class TestGetSplitLabel:
-    def test_simple_split(self):
-        assert rt.get_split_label("data/processed/random/test.csv") == "random"
+    def test_simple_split(self, fake_root):
+        # Anchor the input path relative to our fake_root
+        data_path = "data/processed/random/test.csv"
+        assert rt.get_split_label(data_path) == "random"
 
-    def test_nested_split(self):
-        assert (
-            rt.get_split_label("data/processed/pen_based/pen_2/test.csv")
-            == "pen_based/pen_2"
-        )
+    def test_nested_split(self, fake_root):
+        # Anchor a nested path relative to our fake_root
+        data_path = "data/processed/pen_based/pen_2/test.csv"
+        assert rt.get_split_label(data_path) == "pen_based/pen_2"
 
-    def test_relative_to_mismatch_raises(self):
-        # path doesn't contain data/processed -> relative_to should fail
+    def test_relative_to_mismatch_raises(self, fake_root):
+        # An absolute or relative path outside 'data/processed' will now trigger a ValueError
         with pytest.raises(ValueError):
             rt.get_split_label("some/other/path/test.csv")
 

@@ -62,6 +62,7 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
 from config import ROOT_DIR,SOURCE_VIDEOS_DIR,METADATA_DIR_CLOUD
+from scripts.run_testing_2 import get_split_label
 
 # Defaults
 DEFAULT_MODEL = "yolo26x.pt"    
@@ -463,7 +464,7 @@ def run_all(
     Raises:
         ValueError: If the target class is not present in the loaded model.
     """
-    split_name = csv_path.parent.name  # e.g. "day_based" from .../day_based/test.csv
+    split_name = get_split_label(csv_path)
     video_paths = load_split_from_csv(csv_path)
     if not video_paths:
         print("[ERROR] No videos loaded.")

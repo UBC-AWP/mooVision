@@ -71,7 +71,18 @@ def get_split_label(data_path: str) -> str:
     str
         The split label.
     """
-    return str(Path(data_path).parent.relative_to("data/processed"))
+    # Ensure the csv path is an absolute Path object
+    csv_path = Path(data_path)
+    if not csv_path.is_absolute():
+        abs_csv_path = (ROOT_DIR / csv_path).resolve()
+    else:
+        abs_csv_path = csv_path.resolve()
+    
+    # Build the absolute path to your data/processed directory
+    abs_processed_dir = (ROOT_DIR / "data" / "processed").resolve()
+    
+    # Safely find the relative difference between the two absolute paths
+    return str(abs_csv_path.parent.relative_to(abs_processed_dir))
 
 def clean_video_paths(video_paths: pd.Series) -> list[str]:
     """
