@@ -134,7 +134,7 @@ After configuring you `.env` and config files, run the following commands from y
 2. Split Data into train and test splits. This outputs the 8 main train/val/test splits tested to the `data/processed/` folder within the root directory. For more information, see the project documentation.
 
    ```bash
-   uv run scripts/data_splitting/split_data.py --FORCE
+   uv run scripts/data_splitting/split_data.py --force
    ```
 
 3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set). Note that the train_path, val_path, and output_path are relative to the root directory `ROOT_DIR` here. Here we run only the demo training set for efficiency purposes as running all 8 splits is a long process. A similar command can be used to run any of the other splits, for more information see project documentation.
