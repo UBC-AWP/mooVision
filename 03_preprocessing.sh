@@ -38,7 +38,7 @@ uv run scripts/preprocessing/preprocessing_yolo.py \
     --val_path="$VAL_PATH" \
     --output_path="$OUTPUT_PATH" \
     --skip=${SKIP} \
-    --FORCE 
+    --force 
 
 echo "========================================================"
 echo "SUCCESS: Task $SLURM_ARRAY_TASK_ID finished cleanly."
