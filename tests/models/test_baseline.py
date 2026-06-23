@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent)) 
+sys.path.append(str(Path(__file__).parent.parent.parent)) 
 from scripts.models.baseline.baseline import compute_iou, frame_has_overlap, extract_events, detect_video
 
 
