@@ -19,9 +19,46 @@ from config import ROOT_DIR
 
 def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
     """
-    Extracts and isolates datasets to process-specific node directories,
-    preventing file collisions if multiple tasks run on the same node.
-    Dynamically configures unique absolute routing paths inside the local YAML file.
+    Extract and isolate datasets to process-specific local compute node directories.
+
+    This function sets up a task-isolated staging workspace inside high-speed
+    node-local storage (e.g., SSD/NVMe scratch spaces mapped via `SLURM_TMPDIR`)
+    to prevent file collisions when multi-task array jobs run concurrently on the
+    same physical hardware node. It extracts the raw dataset tarball via native system
+    utilities, checks the data structure for YOLO formatting compatibility, and
+    dynamically overwrites the dataset's internal configuration file (`dataset.yaml`)
+    with absolute pathing strings.
+
+    Parameters
+    ----------
+    dataset : str
+        The path string targeting the dataset. On an HPC cluster loop, this maps
+        to the target `.tar` input file path. On local local dev systems, this maps
+        to a directory relative to `ROOT_DIR`.
+    base_name : str, default "dataset"
+        An identifier appended to the directory isolation signature naming convention
+        (`job_X_task_Y_<base_name>`).
+
+    Returns
+    -------
+    local_yaml_path : pathlib.Path
+        The absolute path pointing to the dynamically updated and isolated configuration
+        `dataset.yaml` file.
+    on_cluster : bool
+        Flags whether execution environments evaluated as an HPC cluster loop or a
+        local fallback run.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the target dataset tar file is missing on a cluster, or if the internal
+        `dataset.yaml` configuration template cannot be located.
+    ValueError
+        If cluster execution conditions are true but `SLURM_TMPDIR` is missing,
+        or if an image directory component is found completely empty during audit loops.
+    RuntimeError
+        If native system `tar` sub-processes crash or return non-zero exit codes,
+        or if structural validation fails (missing both `images` and `labels` trees).
     """
     # GENERATE AN ABSOLUTE ISOLATION SIGNATURE PER ARRAY TASK
     # This ensures that even if Task 1 and Task 2 share the same physical server node,
@@ -178,7 +215,7 @@ def setup_node_dataset(dataset: str, base_name: str = "dataset") -> Path:
         # ────────────────────────────────────────────────────────────────
     else:
         # Laptop fallback strategy
-        data_path = ROOT_DIR / dataset
+        data_path = Path(ROOT_DIR) / dataset
         isolated_node_dir = data_path.parent
 
     # CONFIGURE INDEPENDENT PATHS IN THE LOCAL YAML FILE
@@ -372,7 +409,7 @@ def train_yolo_model(
         model.train(
             data=yaml_path,
             name=name,
-            project=ROOT_DIR / "data" / "yolo_training_runs" / project,
+            project=Path(ROOT_DIR) / "data" / "yolo_training_runs" / project,
             device=device,
             exist_ok=exist_ok,
             epochs=epochs,
@@ -394,7 +431,7 @@ def parse_args():
         "--dataset",
         type=str,
         required=True,
-        help="Path to data file.",
+        help="Relative path to data file. Locally, realative path to dataset.yaml.",
     )
     parser.add_argument(
         "--device",
