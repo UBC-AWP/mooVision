@@ -50,6 +50,27 @@ This project uses `uv` for package management.
 
 5. Run scripts with `uv run python <script.py>`
 
+## Running Tests
+
+To run all tests:
+```bash
+uv run pytest tests/ -v
+```
+
+To run tests for a specific module:
+```bash
+# read_all_clips_index.py tests
+uv run pytest tests/test_read_all_clips_index.py -v
+
+# evaluation.py tests
+uv run pytest tests/test_evaluation.py -v
+```
+
+To run a specific test class:
+```bash
+uv run pytest tests/test_read_all_clips_index.py::TestReadData -v
+```
+
 ---
 
 ## Local `.env` configuration (required)
