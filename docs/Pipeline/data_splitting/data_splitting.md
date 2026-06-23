@@ -9,7 +9,7 @@ This page documents how to use `scripts/splitting.py` to create train and test s
 To answer different research questions about the effectiveness of a cross-sucking detection model, this project creates four different train test splits by default. These are as follows:
 
 1. Random shuffle split
-2. Day-based split
+2. Time-based split
 3. Pen-based split
 4. Period-based split
 
@@ -19,22 +19,25 @@ Since video files are large, splits are created as train and test csv's from the
 
 **Answers:** How well does the model perform when training and test data come from very similar distributions?
 
-**Splitting Approach:** Randomly Shuffle clips into train and test.
+**Splitting Approach:** Randomly Shuffle clips into train, val and test (70% train, 20% val, 10% test)
 
-Both train and test clips will contain clips from different pens, days, and periods (preweaning, weaning, and postweaning). This will likely give the highest performance, but may overestimate real-world generalization.
+Both train and test clips will contain clips from different pens, days, and periods (preweaning, weaning, and postweaning). e expect a model trained on this split to overfit due to leaked spatial information on pens, calf appearances, and behavioural tendencies. This will likely give the highest performance, but may overestimate real-world generalization. 
 
-### Day-based split
+### Time-based split
 
-**Answers:** How well does the model work when the deployment environment looks similar to training, but on unseen days?
+**Answers:** How well does the model work when the deployment environment looks similar to training, but on unseen time periods?
 
-**Splitting Approach:** Train/test split within the same pens and periods, but grouped by day.
+**Splitting Approach:** Train/test split within the same pens and periods, but grouped by time period.
 
 Example:
 
-Train: Day 1 and Day 2 from each pen/period.  
-Test: Day 3 from each pen/period.
+Train: 70% of the total time period (Day 1 + Day 2 + first 8640s of Day 3).  
+Val: 20% of total time period (Day 3: 8640s - 60480s)
+Test: 10% of total time period (Day 3 60480s - end)
 
-This reduces leakage from highly similar clips recorded on the same day and provides a more realistic evaluation. This aims to test model performance in an established environment.
+This reduces leakage from highly similar clips recorded on the same day and provides a more realistic evaluation. This aims to test model performance in an established environment. We expect this model may overfit to the pen environments due to leaked spatial information on pens, calf appearances, and calf behaviours. Moreover, while this split was chosen to provide more training data for the model, we expect this may overfit to validation time periods. 86402 corresponds to about 02:30 AM, and 60480s to about 5:00PM. This may leave time periods will differing lighting conditions and behavioural environments that could affect model performance.
+
+Another appraoch which gives less training data to the model is to provide a split based fully on days: train (day 1), val (day 2), test (day 3). This was not implemented but is a suggestion for future studies.
 
 ### Pen-based split (new environment generalization)
 
@@ -44,11 +47,11 @@ This reduces leakage from highly similar clips recorded on the same day and prov
 
 Example:
 
-- Train Pen2 + Pen3 and Test Pen5
-- Train Pen2 + Pen5 and Test Pen3
-- Train Pen3 + Pen5 and Test Pen2
+- Train Pen3; Val: Pen2; Test Pen5
+- Train Pen2; Val: Pen5; Test Pen3
+- Train Pen5; Val: Pen3; Test Pen2
 
-This approach eliminates leakage of spatial and behavioural information from training clips to testing clips. This simulates model performance on a new farm, answering how well does the model generalize to a new environment.
+This approach eliminates leakage of spatial and behavioural information from training clips to testing clips. This simulates model performance on a new farm, answering how well does the model generalize to a new environment. We note that camera angles are fairly consistent and pens exist in controlled environment, thus results may not indicate performance on new farm environments.
 
 ### Period-based split (behavioural/age generalization)
 
@@ -58,11 +61,11 @@ This approach eliminates leakage of spatial and behavioural information from tra
 
 Example:
 
-- Train: preweaning + weaning; Test: postweaning
-- Train: weaning + postweaning; Test: preweaning
-- Train: preweaning + postweaning; Test: weaning
+- Train: postweaning; Val: weaning; Test: preweaning
+- Train: weaning; Val: preweaning; Test: postweaning
+- Train: preweaning; Val: postweaning; Test: weaning
 
-We expect that frequency and characteristics of cross-sucking behaviour may differ across periods, and this could affect model performance.
+We expect that frequency and characteristics of cross-sucking behaviour may differ across periods, and this could affect model performance. For instance, calf growth changing appearances may result in the inability of learned edges (etc.) to transfer across weaning periods, resulting in poor
 
 ---
 
@@ -78,44 +81,53 @@ in the terminal, or by defining your own preprocessed data file and passing it a
 
 ---
 
-## Outputs 
+## Outputs
 
 Data is split into train and test csv files rather than datasets with videos to save space and remove redundancy.
 
-As a default, this script outputs `train.csv` and `test.csv` files locally in folders corresponding to different split types within `data/processed/`. The default output structure is as follows. 
+As a default, this script outputs `train.csv` and `test.csv` files locally in folders corresponding to different split types within `data/processed/`. The default output structure is as follows.
 
 ```{bash}
 data/
 └── processed/
+    ├── processed_clips_index.csv
     ├── random/
     │   ├── train.csv
+    │   ├── val.csv
     │   └── test.csv
     ├── day_based/
     │   ├── train.csv
+    │   ├── val.csv
     │   └── test.csv
     ├── pen_based/
     │   ├── Pen_2/
     │   │   ├── train.csv
+    │   │   ├── val.csv
     │   │   └── test.csv
     │   ├── Pen_3/
     │   │   ├── train.csv
+    │   │   ├── val.csv
     │   │   └── test.csv
     │   └── Pen_5/
     │       ├── train.csv
+    │       ├── val.csv
     │       └── test.csv
     └── period_based/
         ├── PREWEANING/
         │   ├── train.csv
+        │   ├── val.csv
         │   └── test.csv
         ├── WEANING/
         │   ├── train.csv
+        │   ├── val.csv
         │   └── test.csv
         └── POSTWEANING/
             ├── train.csv
+            ├── val.csv
             └── test.csv
 ```
 
-Train and test csv's must contain relative paths to cross-sucking clips, source videos, and annotated outputs. These are used to find appropriate videos for model training when needed.
+Train, val, and test csv's must contain relative paths to cross-sucking clips, source videos, and annotated outputs. These are used to find appropriate videos for model training when needed.
 
 ---
 
