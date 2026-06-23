@@ -17,7 +17,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-from evaluation import (
+from scripts.evaluation import (
     compute_temporal_iou,
     compute_bbox_iou,
     compute_avg_bbox_iou_for_event,
