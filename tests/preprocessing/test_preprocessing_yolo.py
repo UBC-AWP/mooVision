@@ -15,6 +15,8 @@ from scripts.preprocessing.preprocessing_yolo import (
     resolve_working_directory,
     process_single_split,
     validate_dataset,
+    package_tar_file,
+    run_yolo_preprocessing,
 )
 
 from scripts.preprocessing import extract_frames as extract_frames_mod
@@ -502,3 +504,236 @@ class TestValidateDataset:
             exc_info.value
         )
         assert type(invalid_input).__name__ in str(exc_info.value)
+
+
+class TestPackageTarFile:
+
+    @pytest.fixture
+    def mock_env(self, tmp_path):
+        """Builds valid temporary paths to mock local disk behavior."""
+        base_local = tmp_path / "slurm_tmp"
+        working = base_local / "dataset"
+        output = tmp_path / "scratch_storage"
+
+        working.mkdir(parents=True)
+        (working / "dummy.txt").touch()
+
+        return {
+            "base_local_dir": base_local,
+            "working_dir": working,
+            "output_dir": output,
+        }
+
+    # --- TYPE CHECKING TESTS ---
+
+    def test_package_tar_raises_type_error_on_invalid_base_local_dir(self, mock_env):
+        mock_env["base_local_dir"] = "/string/paths/fail"
+        with pytest.raises(TypeError) as exc:
+            package_tar_file(**mock_env)
+        assert "Argument 'base_local_dir' must be a pathlib.Path instance" in str(
+            exc.value
+        )
+
+    def test_package_tar_raises_type_error_on_invalid_working_dir(self, mock_env):
+        mock_env["working_dir"] = None
+        with pytest.raises(TypeError) as exc:
+            package_tar_file(**mock_env)
+        assert "Argument 'working_dir' must be a pathlib.Path instance" in str(
+            exc.value
+        )
+
+    def test_package_tar_raises_type_error_on_invalid_output_dir(self, mock_env):
+        mock_env["output_dir"] = {"path": "invalid"}
+        with pytest.raises(TypeError) as exc:
+            package_tar_file(**mock_env)
+        assert "Argument 'output_dir' must be a pathlib.Path instance" in str(exc.value)
+
+    # --- DISK BOUNDARY EXISTENCE TESTS ---
+
+    def test_package_tar_raises_file_not_found_on_missing_working_dir(self, mock_env):
+        # Delete the path fixture created beforehand
+        import shutil
+
+        shutil.rmtree(mock_env["working_dir"])
+
+        with pytest.raises(FileNotFoundError) as exc:
+            package_tar_file(**mock_env)
+        assert "Working dataset directory to archive does not exist" in str(exc.value)
+
+    # --- FUNCTIONAL FUNCTION EXECUTION TEST ---
+
+    def test_package_tar_file_compiles_transfers_and_cleans_up_successfully(
+        self, mock_env
+    ):
+        base_dir = mock_env["base_local_dir"]
+        output_dir = mock_env["output_dir"]
+
+        # Run the real packing pipeline inside our sandbox
+        package_tar_file(**mock_env)
+
+        # 1. The target scratch directory should have received the compiled dataset archive
+        assert (output_dir / "dataset.tar").exists()
+
+        # 2. The temporary compute-node scratch folder must be purged entirely
+        assert not base_dir.exists()
+
+
+class TestRunYoloPreprocessing:
+
+    @pytest.fixture
+    def setup_mock_csvs(self, tmp_path):
+        """Constructs synthetic temporary dataset files to satisfy existence boundaries."""
+        train_csv = tmp_path / "mock_train.csv"
+        val_csv = tmp_path / "mock_val.csv"
+
+        # Build minimal index layouts
+        df = pd.DataFrame(
+            {
+                "clip_relative_path": ["v1.mp4"],
+                "labelled_clip_relative_path": ["l1.zip"],
+            }
+        )
+        df.to_csv(train_csv)
+        df.to_csv(val_csv)
+
+        return {
+            "train_path": "mock_train.csv",
+            "val_path": "mock_val.csv",
+            "output_path": "output_runs",
+            "skip": 2,
+            "force": False,
+        }
+
+    # ==============================================================================
+    # RUNTIME TYPE INTERCEPT CHECK TESTS
+    # ==============================================================================
+
+    @pytest.mark.parametrize(
+        "param_key, invalid_value, expected_msg",
+        [
+            ("train_path", 12345, "Argument 'train_path' must be a str"),
+            ("val_path", Path("val.csv"), "Argument 'val_path' must be a str"),
+            ("output_path", None, "Argument 'output_path' must be a str"),
+            ("skip", "three", "Argument 'skip' must be an int"),
+            (
+                "skip",
+                True,
+                "Argument 'skip' must be an int",
+            ),  # Booleans caught explicitly
+            ("force", "True", "Argument 'force' must be a bool"),
+        ],
+    )
+    def test_raises_type_errors_on_invalid_argument_signatures(
+        self, param_key, invalid_value, expected_msg, setup_mock_csvs
+    ):
+        args = setup_mock_csvs
+        args[param_key] = invalid_value
+
+        # Patch ROOT_DIR string path targeting to isolate execution frame inside testing sandbox
+        with patch("scripts.preprocessing.preprocessing_yolo.ROOT_DIR", "."):
+            with pytest.raises(TypeError) as exc:
+                run_yolo_preprocessing(**args)
+            assert expected_msg in str(exc.value)
+
+    # ==============================================================================
+    # BOUNDARY EXISTENCE VERIFICATION TESTS
+    # ==============================================================================
+
+    def test_raises_file_not_found_when_train_csv_missing(self, setup_mock_csvs):
+        args = setup_mock_csvs
+        args["train_path"] = "missing_file_index_path.csv"
+
+        with patch(
+            "scripts.preprocessing.preprocessing_yolo.ROOT_DIR", str(Path("/tmp"))
+        ):
+            with pytest.raises(FileNotFoundError) as exc:
+                run_yolo_preprocessing(**args)
+            assert "Missing required training configuration metadata" in str(exc.value)
+
+    def test_raises_file_not_found_when_val_csv_missing(
+        self, setup_mock_csvs, tmp_path
+    ):
+        args = setup_mock_csvs
+        args["val_path"] = "missing_val_index_path.csv"
+
+        with patch("scripts.preprocessing.preprocessing_yolo.ROOT_DIR", str(tmp_path)):
+            with pytest.raises(FileNotFoundError) as exc:
+                run_yolo_preprocessing(**args)
+            assert "Missing required validation configuration metadata" in str(
+                exc.value
+            )
+
+    # ==============================================================================
+    # ORCHESTRATION PIPELINE SEQUENCE FLOW TESTS (MOCKED)
+    # ==============================================================================
+
+    @patch("scripts.preprocessing.preprocessing_yolo.package_tar_file")
+    @patch("scripts.preprocessing.preprocessing_yolo.validate_dataset")
+    @patch("scripts.preprocessing.preprocessing_yolo.create_yaml")
+    @patch("scripts.preprocessing.preprocessing_yolo.process_single_split")
+    @patch("scripts.preprocessing.preprocessing_yolo.resolve_working_directory")
+    def test_orchestrator_coordinates_pipeline_correctly_on_local(
+        self,
+        mock_resolve,
+        mock_process,
+        mock_yaml,
+        mock_validate,
+        mock_tar,
+        setup_mock_csvs,
+        tmp_path,
+    ):
+        """Verifies full execution mapping tree behaviors when operating locally."""
+        args = setup_mock_csvs
+
+        # Route mock configurations
+        mock_resolve.return_value = (
+            tmp_path / "dataset",
+            tmp_path,
+            False,
+        )  # on_cluster = False
+
+        with patch("scripts.preprocessing.preprocessing_yolo.ROOT_DIR", str(tmp_path)):
+            run_yolo_preprocessing(**args)
+
+        # Confirm working directory mapped accurately
+        mock_resolve.assert_called_once_with(output_dir=tmp_path / args["output_path"])
+
+        # Confirm process_single_split was called exactly twice (Train and Val)
+        assert mock_process.call_count == 2
+
+        # Confirm tracking cleanup loops and configurations fired in order
+        mock_yaml.assert_called_once_with(str(tmp_path / "dataset"))
+        mock_validate.assert_called_once_with(tmp_path / "dataset")
+
+        # Local runner must skip compiling structural tar files
+        mock_tar.assert_not_called()
+
+    @patch("scripts.preprocessing.preprocessing_yolo.package_tar_file")
+    @patch("scripts.preprocessing.preprocessing_yolo.validate_dataset")
+    @patch("scripts.preprocessing.preprocessing_yolo.create_yaml")
+    @patch("scripts.preprocessing.preprocessing_yolo.process_single_split")
+    @patch("scripts.preprocessing.preprocessing_yolo.resolve_working_directory")
+    def test_orchestrator_triggers_tarball_packaging_on_hpc_cluster(
+        self,
+        mock_resolve,
+        mock_process,
+        mock_yaml,
+        mock_validate,
+        mock_tar,
+        setup_mock_csvs,
+        tmp_path,
+    ):
+        """Verifies that archive extraction triggers whenever running inside cluster loops."""
+        args = setup_mock_csvs
+        working_dir = tmp_path / "dataset"
+        base_local = tmp_path / "base"
+
+        mock_resolve.return_value = (working_dir, base_local, True)  # on_cluster = True
+
+        with patch("scripts.preprocessing.preprocessing_yolo.ROOT_DIR", str(tmp_path)):
+            run_yolo_preprocessing(**args)
+
+        # Archive packaging tracking verification check
+        mock_tar.assert_called_once_with(
+            base_local, working_dir, tmp_path / args["output_path"]
+        )
