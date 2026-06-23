@@ -32,6 +32,7 @@ dependencies = [
     "vegafusion>=2.0.3",
     "vl-convert-python>=1.9.0.post1",
     "pyarrow>=24.0.0",
+    "openpyxl>=3.1.5",
 ]
 
 [dependency-groups]

@@ -16,13 +16,13 @@ from pathlib import Path
 import sys
 import pandas as pd
 import warnings
-from matching import is_match
 import argparse
 import pandera.pandas as pa
+from .matching import is_match
+from .schema import schema, processed_schema
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from schema import schema, processed_schema
 from config import (
     UNLABELLED_CLIPS_DIR,
     LABELLED_CLIPS_DIR,

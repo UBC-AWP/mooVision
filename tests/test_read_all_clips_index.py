@@ -522,7 +522,7 @@ class TestAddLabelPaths:
  
     def test_none_values_added_correctly(self, simple_df):
         result = add_label_paths(simple_df, ["path/0001.zip", None])
-        assert result["labelled_clip_relative_path"].iloc[1] is None
+        assert pd.isna(result["labelled_clip_relative_path"].iloc[1])
  
  
 # ===========================================================================
