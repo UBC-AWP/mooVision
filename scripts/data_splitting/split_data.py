@@ -20,7 +20,7 @@ def train_test_to_csv(
     val: pd.DataFrame,
     test: pd.DataFrame,
     output_dir: Path,
-    FORCE: bool = False,
+    force: bool = False,
 ):
     """
     Save train and test df's as csv' with correct names.
@@ -43,8 +43,8 @@ def train_test_to_csv(
 
     Raises
     ------
-    ???
-    # Enforces column structure Test functionality, test bad or good inputs, edge cases
+    ValueError
+        If any of the dataframes is empty
 
     Notes
     -----
@@ -84,7 +84,7 @@ def train_test_to_csv(
     test_path = output_dir / "test.csv"
 
     # Save train to csv
-    if train_path.exists() and not FORCE:
+    if train_path.exists() and not force:
         print(f"{train_path} already exists.")
     else:
         train_path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,7 +92,7 @@ def train_test_to_csv(
         print(f"Training set saved to {train_path}")
 
     # Save train to csv
-    if val_path.exists() and not FORCE:
+    if val_path.exists() and not force:
         print(f"{val_path} already exists.")
     else:
         val_path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,7 +100,7 @@ def train_test_to_csv(
         print(f"Validation set saved to {val_path}")
 
     # Save test to csv
-    if test_path.exists() and not FORCE:
+    if test_path.exists() and not force:
         print(f"{test_path} already exists.")
     else:
         test_path.parent.mkdir(parents=True, exist_ok=True)
@@ -109,7 +109,7 @@ def train_test_to_csv(
 
 
 def random_shuffle_split(
-    input_path: Path, output_dir: Path, FORCE=False, exectute=True
+    input_path: Path, output_dir: Path, force=False, exectute=True
 ):
     """
      Random Shuffle clips into train, val, and test sets.
@@ -183,7 +183,7 @@ def random_shuffle_split(
     # Output Path target configuration
     target_output_dir = output_dir / "random"
 
-    if target_output_dir.exists() and not FORCE:
+    if target_output_dir.exists() and not force:
         print(f"{target_output_dir} already exists.")
         return
 
@@ -223,10 +223,10 @@ def random_shuffle_split(
     # Save to csv
     print("\n--------------------------------\n")
     print("--- Saving Random Split ---\n")
-    train_test_to_csv(train_df, val_df, test_df, target_output_dir, FORCE)
+    train_test_to_csv(train_df, val_df, test_df, target_output_dir, force)
 
 
-def time_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=True):
+def time_based_split(input_path: Path, output_dir: Path, force=False, exectute=True):
     """
      Split data using a time-based holdout strategy.
 
@@ -300,7 +300,7 @@ def time_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=T
     # Output Path
     target_output_dir = output_dir / "day_based"
 
-    if target_output_dir.exists() and not FORCE:
+    if target_output_dir.exists() and not force:
         print(f"{target_output_dir} already exists.")
         return
 
@@ -332,10 +332,10 @@ def time_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=T
     # Save to csv
     print("\n--------------------------------\n")
     print("--- Saving Time-Based Split ---\n")
-    train_test_to_csv(train_df, val_df, test_df, target_output_dir, FORCE)
+    train_test_to_csv(train_df, val_df, test_df, target_output_dir, force)
 
 
-def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=True):
+def pen_based_split(input_path: Path, output_dir: Path, force=False, exectute=True):
     """
     Split data using a Pen-based holdout strategy.
 
@@ -410,7 +410,7 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
     # Output Path
     target_output_dir = output_dir / "pen_based"
 
-    if target_output_dir.exists() and not FORCE:
+    if target_output_dir.exists() and not force:
         print(f"{target_output_dir} already exists.")
         return
 
@@ -469,7 +469,7 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
             val_df,
             test_df,
             target_output_dir / f"pen_{test_pen}",
-            FORCE,
+            force,
         )
 
         print()
@@ -479,7 +479,7 @@ def pen_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=Tr
     )
 
 
-def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute=True):
+def period_based_split(input_path: Path, output_dir: Path, force=False, exectute=True):
     """
     Split data using a Pen-based holdout strategy.
 
@@ -554,7 +554,7 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute
     # Output Path
     target_output_dir = output_dir / "period_based"
 
-    if target_output_dir.exists() and not FORCE:
+    if target_output_dir.exists() and not force:
         print(f"{target_output_dir} already exists.")
         return
 
@@ -602,12 +602,12 @@ def period_based_split(input_path: Path, output_dir: Path, FORCE=False, exectute
         print(f"  -> Testing Period:    [{test_period}]\n")
 
         # Save to csv with all three distinct sets
-        train_test_to_csv(train_df, val_df, test_df, profile_save_dir, FORCE)
+        train_test_to_csv(train_df, val_df, test_df, profile_save_dir, force)
 
         print()
 
 
-def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True):
+def pipeline_demo(input_path: Path, output_dir: Path, force=False, exectute=True):
     """
     Random Shuffle clips into train/test sets.
 
@@ -621,7 +621,7 @@ def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True
     # Output Path
     output_dir = output_dir / "pipeline_demo"
 
-    if output_dir.exists() and not FORCE:
+    if output_dir.exists() and not force:
         print(f"{output_dir} already exists.")
         return
 
@@ -652,7 +652,7 @@ def pipeline_demo(input_path: Path, output_dir: Path, FORCE=False, exectute=True
     # Save to csv
     print("\n--------------------------------\n")
     print("--- Saving Demo Splits ---\n")
-    train_test_to_csv(train, val, test, output_dir, FORCE)
+    train_test_to_csv(train, val, test, output_dir, force)
 
 
 def parse_args():
@@ -669,7 +669,7 @@ def parse_args():
         help=f"Output directory for train/test splits (default: {OUTPUT_DIR})",
     )
     parser.add_argument(
-        "--FORCE",
+        "--force",
         default=False,
         action="store_true",
         help="Overwrite existing file folders (default: False)",
@@ -715,31 +715,31 @@ if __name__ == "__main__":
     random_shuffle_split(
         input_path=args.data_path,
         output_dir=args.output_dir,
-        FORCE=args.FORCE,
+        force=args.force,
         exectute=args.no_random_split,
     )
     time_based_split(
         input_path=args.data_path,
         output_dir=args.output_dir,
-        FORCE=args.FORCE,
+        force=args.force,
         exectute=args.no_time_split,
     )
     pen_based_split(
         input_path=args.data_path,
         output_dir=args.output_dir,
-        FORCE=args.FORCE,
+        force=args.force,
         exectute=args.no_pen_split,
     )
     period_based_split(
         input_path=args.data_path,
         output_dir=args.output_dir,
-        FORCE=args.FORCE,
+        force=args.force,
         exectute=args.no_period_split,
     )
     pipeline_demo(
         input_path=args.data_path,
         output_dir=args.output_dir,
-        FORCE=args.FORCE,
+        force=args.force,
         exectute=args.no_pipeline_testing,
     )
     print("Checking files created...")
