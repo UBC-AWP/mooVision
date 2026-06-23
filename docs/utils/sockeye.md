@@ -83,7 +83,7 @@ uv sync
 ## Running the Whole Pipeline
 
 ```bash
-sbatch run_training_pipeline.sh
+bash run_training_pipeline.sh
 ```
 
 ---

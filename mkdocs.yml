@@ -44,10 +44,10 @@ nav:
   - Model Pipeline:
     - Reading In Data: pipeline/reading_in_data/read_all_clips_index.md
     - Splitting Data: pipeline/data_splitting/data_splitting.md
+    - Baseline: pipeline/models/baseline.md
     - Preprocessing: pipeline/preprocessing/preprocessing.md
     - Training:
       - YOLO: pipeline/training/training_yolo.md
-    - Baseline: pipeline/models/baseline.md
     - Model Evaluation: pipeline/evaluation/evaluation.md
     - Clipping: pipeline/generating_clips/clipping.md
   - Utils:
