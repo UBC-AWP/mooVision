@@ -14,6 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from scripts.data_reading.matching import parse_unlabelled_name
 from scripts.preprocessing.utils import validate_file_paths
+from typing import Callable
 
 
 def generate_video_metadata(video_name: str) -> Tuple[Tuple[int, str | None], str]:
@@ -71,7 +72,7 @@ def process_single_video(
     skip: int,
     executor: ThreadPoolExecutor,
     semaphore: threading.BoundedSemaphore,
-    safe_write_func: callable[[str, cv2.Mat], None],
+    safe_write_func: Callable[[str, cv2.Mat], None],
 ) -> Set[int]:
     """
     Extract and process downsampled frames from a single video stream.
