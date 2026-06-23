@@ -50,7 +50,8 @@ nav:
       - YOLO: Pipeline/Training/training_yolo.md
     - Model Evaluation: Pipeline/evaluation/evaluation.md
     - Clipping: Pipeline/generating_clips/clipping.md
-    - Analysis: Pipeline/analysis/analysis.md 
+    - Analysis: Pipeline/analysis/analysis.md
+  - Testing: testing/testing.md
   - Utils:
     - Utils: utils/get_video.md
     - Sockeye: utils/sockeye.md
