@@ -18,8 +18,10 @@ import pandas as pd
 import warnings
 import argparse
 import pandera.pandas as pa
-from .matching import is_match
-from .schema import schema, processed_schema
+
+sys.path.insert(0, str(Path(__file__).parent))
+from matching import is_match
+from schema import schema, processed_schema
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
