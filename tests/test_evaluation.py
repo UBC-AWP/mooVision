@@ -178,22 +178,22 @@ def test_frame_level_bbox_iou_missing_zip_no_crash(tmp_path):
 # ===========================================================================
 
 def test_precision_recall_f_perfect():
-    result = compute_precision_recall_f(tp=5, fp=0, fn=0)
+    result = compute_precision_recall_f(true_positives=5, false_positives=0, false_negatives=0)
     assert result["precision"] == pytest.approx(1.0)
     assert result["recall"] == pytest.approx(1.0)
     assert result["f_score"] == pytest.approx(1.0)
 
 
 def test_precision_recall_f_zero_counts():
-    result = compute_precision_recall_f(tp=0, fp=0, fn=0)
+    result = compute_precision_recall_f(true_positives=0, false_positives=0, false_negatives=0)
     assert result["precision"] == pytest.approx(0.0)
     assert result["recall"] == pytest.approx(0.0)
     assert result["f_score"] == pytest.approx(0.0)
 
 
 def test_precision_recall_f2_weights_recall_more():
-    f1 = compute_precision_recall_f(tp=8, fp=8, fn=2, beta=1.0)
-    f2 = compute_precision_recall_f(tp=8, fp=8, fn=2, beta=2.0)
+    f1 = compute_precision_recall_f(true_positives=8, false_positives=8, false_negatives=2, beta=1.0)
+    f2 = compute_precision_recall_f(true_positives=8, false_positives=8, false_negatives=2, beta=2.0)
     assert f2["f_score"] > f1["f_score"]
 
 
