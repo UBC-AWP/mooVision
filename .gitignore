@@ -2,6 +2,9 @@
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache
+.ruff_cache
+.vscode
 
 # --- Tooling / version managers ---
 .python-version
@@ -14,6 +17,20 @@ __pycache__/
 
 # --- R (if any EDA uses R) ---
 .Rhistorysite/
+.Rhistory
 
 # --- Site ---
 site/
+
+# --- Models ---
+*.pt
+weights/
+
+# --- Data ---
+data/
+
+# --- YOLO OUTPUT ---
+runs/
+
+# --- Sockeye ---
+logs/

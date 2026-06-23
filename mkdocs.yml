@@ -1,10 +1,60 @@
 site_name: MooVision
 
+theme:
+  name: material
+  highlightjs: true
+  hljs_languages:
+    - yaml
+    - rust
+    
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.tabbed
+  - pymdownx.details
+  - pymdownx.arithmatex
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_javascript:
+  - https://unpkg.com/@mermaid-js/layout-elk@0.1.7/dist/mermaid-layout-elk.js
+  - https://unpkg.com/mermaid@11/dist/mermaid.min.js
+  - javascripts/mermaid-init.js
+
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
+          paths: [.]
           options:
             show_source: true
             docstring_style: numpy
+
+nav:
+  - Home: index.md
+  - Model Pipeline:
+    - Reading In Data: Pipeline/reading_in_data/read_all_clips_index.md
+    - Splitting Data: Pipeline/data_splitting/data_splitting.md
+    - Baseline: Pipeline/models/baseline.md
+    - Preprocessing: Pipeline/preprocessing/preprocessing.md
+    - Training:
+      - YOLO: Pipeline/Training/training_yolo.md
+    - Model Evaluation: Pipeline/evaluation/evaluation.md
+    - Clipping: Pipeline/generating_clips/clipping.md
+    - Analysis: Pipeline/analysis/analysis.md 
+  - Utils:
+    - Utils: utils/get_video.md
+    - Sockeye: utils/sockeye.md
+  - About:
+    - About: about/about.md
+    - License: about/license.md
+    - Release Notes: about/release_notes.md
