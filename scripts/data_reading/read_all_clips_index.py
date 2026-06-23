@@ -16,22 +16,23 @@ from pathlib import Path
 import sys
 import pandas as pd
 import warnings
-from matching import is_match
 import argparse
 import pandera.pandas as pa
+from .matching import is_match
+from .schema import schema, processed_schema
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from schema import schema, processed_schema
 from config import (
     UNLABELLED_CLIPS_DIR,
     LABELLED_CLIPS_DIR,
     SOURCE_VIDEOS_DIR,
     INDEX_PATH,
+    ROOT_DIR,
 )
 
-PROCESSED_INDEX_OUTPUT = Path("data/processed/processed_clips_index.csv").absolute()
-RAW_INDEX_OUTPUT = Path("data/raw/all_clips_index_raw.csv").absolute()
+PROCESSED_INDEX_OUTPUT = ROOT_DIR / "data/processed/processed_clips_index.csv"
+RAW_INDEX_OUTPUT = ROOT_DIR / "data/raw/all_clips_index_raw.csv"
 
 
 def read_data(
@@ -724,9 +725,10 @@ def read_data_from_index_file(
             paths = get_label_paths(labels_dir=labels_dir)
             label_paths = match_label_paths(df_filtered, label_paths=paths)
             df_labels = add_label_paths(df=df_filtered, label_paths=label_paths)
-            df_labels_validated = validate_data(df_labels, processed_schema)
-            df_processed = filter_label_paths(df_labels_validated)
-            save_data(df=df_processed, path=processed_output)
+            df_processed = filter_label_paths(df_labels)
+            df_labels_validated = validate_data(df_processed, processed_schema)
+
+            save_data(df=df_labels_validated, path=processed_output)
 
 
 def parse_args():

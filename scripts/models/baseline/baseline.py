@@ -1,18 +1,76 @@
+"""
+baseline.py — Cross-sucking detection baseline (YOLO bounding-box overlap method)
+
+USAGE
+-----
+    uv run scripts/models/baseline/baseline.py --csv <path/to/test.csv> [OPTIONS]
+
+INPUTS
+------
+    Reads a test split CSV specified via --csv, e.g.:
+
+        data/processed/pipeline_demo/test.csv
+        data/processed/day_based/test.csv
+        data/processed/pen_based/test.csv
+
+    The CSV must contain a `source_video_path` column with paths to source
+    videos. Duplicate video paths within the CSV are dropped before processing.
+    The split name is inferred from the parent folder of the CSV (e.g. `day_based`).
+
+OUTPUTS
+-------
+    Writes one JSON metadata file per video under:
+
+        results/metadata/split_name/
+        ├── baseline/
+        │   <video_stem>_results.json
+
+    Each JSON contains detection parameters, per-event timestamps, confidence
+    scores, and frame-level intersection box coordinates.
+
+    Videos whose JSON already exists are skipped (safe to re-run).
+
+ARGUMENTS
+---------
+    --csv             str    Required. Path to a split test CSV.
+    --model           str    YOLO model weights filename. Default: yolo26x.pt
+    --iou_threshold   float  Minimum IoU to flag a frame. Default: 0.1
+    --conf_threshold  float  Minimum YOLO confidence to keep a box. Default: 0.5
+    --min_duration    float  Minimum event duration in seconds. Default: 1.0
+    --frame_skip      int    Process every Nth frame. Default: 1
+
+EXAMPLES
+--------
+    # Run with defaults on the pipeline demo split
+    uv run scripts/models/baseline/baseline.py --csv data/processed/pipeline_demo/test.csv
+
+    # Run with frame skipping for faster processing
+    uv run scripts/models/baseline/baseline.py --csv data/processed/day_based/test.csv --frame_skip 30
+
+    # Run with custom thresholds
+    uv run scripts/models/baseline/baseline.py --csv data/processed/day_based/test.csv \
+        --iou_threshold 0.05 --conf_threshold 0.4 --min_duration 2.0
+"""
 import argparse
 import json
 import os
 import cv2
+import re
 import numpy as np
-from ultralytics import YOLO
+import pandas as pd
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
+from config import ROOT_DIR,SOURCE_VIDEOS_DIR,METADATA_DIR_CLOUD
+from scripts.run_testing_2 import get_split_label
 
-
+# Defaults
 DEFAULT_MODEL = "yolo26x.pt"    
-DEFAULT_IOU_THRESHOLD = 0.1     # Minimum IoU to consider two boxes "overlapping"
-DEFAULT_MIN_DURATION = 1       # Minimum seconds of continuous overlap to flag an event
-DEFAULT_CONF_THRESHOLD = 0.5       # Minimum YOLO detection confidence to keep a box
+DEFAULT_IOU_THRESHOLD = 0.1    # Minimum IoU to consider two boxes "overlapping"
+DEFAULT_MIN_DURATION = 0.5       # Minimum seconds of continuous overlap to flag an event
+DEFAULT_CONF_THRESHOLD = 0.5      # Minimum YOLO detection confidence to keep a box
 TARGET_CLASS_NAME = "cow"
 DEFAULT_FRAME_SKIP = 1
-
 
 def compute_iou(box_a, box_b):
     """
@@ -97,207 +155,275 @@ def frame_has_overlap(boxes, iou_threshold):
 
     return (max_iou >= iou_threshold), best_inter_box
 
-
-def extract_events(frame_flags, fps, min_duration, confidences, frame_boxes, frame_indices):
+# Event extraction
+def extract_events(
+    frame_flags:   list[bool],
+    fps:           float,
+    min_duration:  float,
+    frame_skip:    int,
+    confidences:   list[float],
+    frame_boxes:   list,        # list[list | None] — None for non-flagged frames
+    frame_indices: list[int],
+) -> list[dict]:
     """
-    Flagging frames into events with start/end timestamps and collect the 
-    intersection box coordinates for every flagged frame within each event.
-
+    Group consecutive flagged frames into discrete cross-sucking events and
+    collect per-frame intersection box coordinates for each event.
+ 
+    A frame is "flagged" when its IoU exceeds the overlap threshold. Consecutive
+    flagged frames are merged into a single event. Events shorter than
+    `min_duration` seconds are discarded as noise.
+ 
     Args:
-        frame_flags (list[bool]): Per-frame overlap flag — True if overlap detected
-        fps (float): Frames per second of the video, used to convert frame
-                     numbers into timestamps in seconds
-        min_duration (float): Minimum event length in seconds to keep
-        confidences (list[float]): Per-frame max YOLO detection confidence
-        frame_boxes (list): Per-frame intersection box [x1, y1, x2, y2],
-                            or None if that frame was not flagged
-        frame_indices (list): Actual frame indices in the video (accounting for frame skip)
-
+        frame_flags:
+            Per-frame overlap flag. True when bounding-box overlap was detected.
+        fps:
+            Frames per second of the source video, used to convert frame
+            numbers to timestamps in seconds.
+        min_duration:
+            Minimum event length in seconds. Events below this are dropped.
+        frame_skip:
+            The frame-skip factor used during inference, needed to correctly
+            compute the minimum frame count threshold.
+        confidences:
+            Per-frame maximum YOLO detection confidence (0.0 when no detections).
+        frame_boxes:
+            Per-frame intersection box [x1, y1, x2, y2], or None for frames
+            where no overlap was detected. Must be the same length as
+            `frame_flags`.
+        frame_indices:
+            Actual frame indices in the source video (accounts for frame skip).
+ 
     Returns:
-        list[dict]: Each dict represents one flagged event:
-            - start_sec (float): Event start time in seconds
-            - end_sec (float): Event end time in seconds
-            - duration_sec (float): Total event duration in seconds
-            - avg_confidence (float): Average YOLO detection confidence
-                                      across all frames in the event
-            - intersection_box (list[dict]): Per-frame intersection coordinates,
-                                             each entry has 'frame', 'x1', 'y1',
-                                             'x2', 'y2'
+        List of event dicts, each containing:
+            start_sec (float):          Event start time in seconds.
+            end_sec (float):            Event end time in seconds.
+            duration_sec (float):       Total duration of the event.
+            avg_confidence (float):     Mean YOLO confidence across event frames.
+            intersection_box (list):    Per-frame dicts with keys
+                                        'frame', 'x1', 'y1', 'x2', 'y2'.
     """
-    events = []
-    in_event = False
-    start_frame = 0
-    event_confs = []
+    events    = []
+    in_event  = False
+    start_frame   = 0
+    event_confs   = []
     event_interbox = []
-    min_frames = max(1, round(min_duration * fps / DEFAULT_FRAME_SKIP))
-
+    min_frames = max(1, round(min_duration * fps / frame_skip))
+ 
     for idx, flagged in enumerate(frame_flags):
         actual_frame = frame_indices[idx]
-
+ 
         if flagged and not in_event:
-            # Event starts
-            in_event = True
+            in_event    = True
             start_frame = actual_frame
             event_confs = [confidences[idx]]
-            event_interbox.append({"frame": actual_frame, "x1": frame_boxes[idx][0], "y1": frame_boxes[idx][1],
-                                    "x2": frame_boxes[idx][2], "y2": frame_boxes[idx][3]})
-
+            box = frame_boxes[idx]
+            event_interbox = [{"frame": actual_frame,
+                                "x1": box[0], "y1": box[1],
+                                "x2": box[2], "y2": box[3]}]
+ 
         elif flagged and in_event:
-            # Event continues
             event_confs.append(confidences[idx])
-            event_interbox.append({"frame": actual_frame, "x1": frame_boxes[idx][0], "y1": frame_boxes[idx][1],
-                                    "x2": frame_boxes[idx][2], "y2": frame_boxes[idx][3]})
-
+            box = frame_boxes[idx]
+            if box is not None:
+                event_interbox.append({"frame": actual_frame,
+                                        "x1": box[0], "y1": box[1],
+                                        "x2": box[2], "y2": box[3]})
+ 
         elif not flagged and in_event:
-            # Event just ended — evaluate it
             end_frame = actual_frame
-            duration = (end_frame - start_frame) / fps
-            
             if len(event_confs) >= min_frames:
                 events.append({
                     "start_sec":        round(start_frame / fps, 2),
                     "end_sec":          round(end_frame / fps, 2),
-                    "duration_sec":     round(duration, 2),
+                    "duration_sec":     round((end_frame - start_frame) / fps, 2),
                     "avg_confidence":   round(float(np.mean(event_confs)), 3),
                     "intersection_box": event_interbox,
                 })
-
-            in_event = False
-            event_confs = []
-
-    # Handle event that runs to the very last frame
-    if in_event:
+            in_event       = False
+            event_confs    = []
+            event_interbox = []
+ 
+    # Flush event that runs to the very last frame
+    if in_event and len(event_confs) >= min_frames:
         end_frame = frame_indices[-1]
-        duration = (end_frame - start_frame) / fps
-        if len(event_confs) >= min_frames:
-            events.append({
-                "start_sec":      round(start_frame / fps, 2),
-                "end_sec":        round(end_frame / fps, 2),
-                "duration_sec":   round(duration, 2),
-                "avg_confidence": round(float(np.mean(event_confs)), 3),
-                "intersection_box": event_interbox,
-            })
-
+        events.append({
+            "start_sec":        round(start_frame / fps, 2),
+            "end_sec":          round(end_frame / fps, 2),
+            "duration_sec":     round((end_frame - start_frame) / fps, 2),
+            "avg_confidence":   round(float(np.mean(event_confs)), 3),
+            "intersection_box": event_interbox,
+        })
+ 
     return events
 
-
-def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_duration, frame_skip):
+def extract_video_path(video_path):
     """
-    Full detection pipeline:
-        load model → open video → detect calves per frame →
-        check IoU overlap → collect intersection boxes →
-        group into events → save JSON metadata
+    Extract the video name from the full path for use in output naming.
 
     Args:
-        video_path (str): Path to the input video file (.mp4, .avi, etc.)
-        model_path (str): YOLO model weights filename (e.g. 'yolo26m.pt').
-                          Downloaded automatically on first run.
-        iou_threshold (float): IoU threshold to flag a frame as overlapping
-        conf_threshold (float): Minimum YOLO detection confidence to keep a box.
-                                Detections below this are ignored before IoU check.
-        min_duration (float): Minimum event duration in seconds. Events shorter
-                              than this are discarded as noise.
-        frame_skip (int): Process every Nth frame
+        video_path (str): Full path to the input video file
+    Returns:
+        list: [video_path (str), video_path (str)]
+    """
+    # enforece Path object for consistent handling
+    video_path = Path(video_path)
+    # 
+    return [video_path.joinpath(f.name) for f in video_path.glob("*.mp4")]
+
+
+ # Data loading      
+def load_split_from_csv(csv_path: Path) -> list[Path]:
+    """
+    Load video paths from a single split CSV.
+
+    Args:
+        csv_path: Path to a test.csv file (e.g. data/processed/day_based/test.csv).
 
     Returns:
-        dict: Full metadata dict 
-            also written to JSON at results/metadata/baseline/<video_name>_results.json
-
-    Raises:
-        FileNotFoundError: If video or model file cannot be found
-        ValueError: If target class is not in model
+        List of resolved absolute video paths, deduplicated.
     """
-    # Download and loading the model
-    print(f"[INFO] Loading model: {model_path}")
-    model = YOLO(model_path)
+    df = pd.read_csv(csv_path, index_col=0)
+    df = df.drop_duplicates(subset=["source_video_path"])
+    if df.empty:
+        raise ValueError(f"No rows in {csv_path} after deduplication.")
 
-    # Validate inputs
-    if not os.path.exists(video_path):
-        raise FileNotFoundError(f"Video file not found: {video_path}")
-    
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found: {model_path}")
+    clean_paths = []
+    for raw in df["source_video_path"]:
+        cln = Path(raw.replace("\\", "/"))
+        rel = Path(*cln.parts[-4:])
+        clean_paths.append(SOURCE_VIDEOS_DIR / rel)
+    return clean_paths
 
-    class_name_to_id = {v: k for k, v in model.names.items()}
-    target_ids = {class_name_to_id[TARGET_CLASS_NAME]} if TARGET_CLASS_NAME in class_name_to_id else set()
-
-    if not target_ids:
-        raise ValueError(
-            f"{TARGET_CLASS_NAME} is not found in model classes: {list(model.names.values())}"
-        )
-    print(f"[INFO] Tracking class IDs: {target_ids}  ({TARGET_CLASS_NAME})")
-
-    # Opening the video
-    cap = cv2.VideoCapture(video_path)
+# Detection pipeline
+def detect_video(
+    video_path:    Path,
+    model,
+    target_ids:    set,
+    iou_threshold: float,
+    conf_threshold:float,
+    min_duration:  float,
+    frame_skip:    int,
+) -> dict:
+    """
+    Run the full detection pipeline on a single video file.
+ 
+    Pipeline:
+        open video → detect calves per frame (YOLO) →
+        check pairwise IoU overlap → collect intersection boxes →
+        group consecutive flagged frames into events →
+        build and return metadata dict
+ 
+    Args:
+        video_path:
+            Absolute path to the input video file.
+        model:
+            Loaded YOLO model instance (ultralytics.YOLO).
+        target_ids:
+            Set of YOLO class IDs corresponding to the target animal class.
+        iou_threshold:
+            Minimum IoU to flag a frame as containing an overlap event.
+        conf_threshold:
+            Minimum YOLO detection confidence to keep a bounding box.
+        min_duration:
+            Minimum event duration in seconds; shorter events are discarded.
+        frame_skip:
+            Process every Nth frame. Frame indices in output reflect the
+            actual source video frame numbers.
+ 
+    Returns:
+        Metadata dict written to JSON, containing:
+            identifier (str):               Video filename.
+            video_path (str):               Absolute path to the source video.
+            model (str):                    Model weights filename.
+            iou_threshold (float):          IoU threshold used.
+            conf_threshold (float):         Confidence threshold used.
+            min_duration_sec (float):       Minimum event duration used.
+            fps (float):                    Source video frame rate.
+            total_frames (int):             Total frame count of source video.
+            total_duration_sec (float):     Total video duration in seconds.
+            frame_skip (int):               Frame-skip factor used.
+            cross_sucking_detected (bool):  True if at least one event found.
+            num_events (int):               Number of events detected.
+            events (list[dict]):            Per-event metadata (see extract_events).
+ 
+    Raises:
+        FileNotFoundError: If the video file cannot be opened by OpenCV.
+    """
+    cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise FileNotFoundError(f"Cannot open video: {video_path}")
-
-    fps        = cap.get(cv2.CAP_PROP_FPS)
-    width      = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height     = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+ 
+    fps          = cap.get(cv2.CAP_PROP_FPS)
+    width        = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height       = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print(f"[INFO] Video: {width}x{height} @ {fps:.1f} fps | {total_frames} frames")
-
-
-    frame_flags    = []   # True/False per frame: overlap detected?
-    frame_confs    = []   # Max detection confidence in that frame
-    frame_idx      = 0
+    print(f"[INFO] {video_path.name} | {width}x{height} @ {fps:.1f} fps | {total_frames} frames")
+ 
+    frame_flags   = []
+    frame_confs   = []
     frame_interbox = []
-    frame_indices = []
-
-    print("[INFO] Processing frames...")
+    frame_indices  = []
+    frame_idx      = 0
+    processed      = 0
+    skipped        = 0
+ 
+    print(f"[INFO] Processing: {video_path.name}")
+    print(f"       frames={total_frames} | fps={fps:.1f} | skip=1/{frame_skip} "
+          f"(~{total_frames // frame_skip} frames to process)")
+    print("[INFO] Running detection...")
     while True:
-        ret, frame = cap.read() # reads the next frame
+        ret, frame = cap.read()
         if not ret:
-            break  # End of video
-
-        # Skip frames — only process every Nth frame
+            break
+ 
         if frame_idx % frame_skip != 0:
             frame_idx += 1
+            skipped += 1
             continue
-
-        # Run YOLO inference on the frame
+ 
         results = model(frame, conf=conf_threshold, verbose=False)[0]
-
+        
         # Show the frame with bounding boxes drawn
-        annotated_frame = results.plot()
-        cv2.imshow("Calf Detection", annotated_frame)
-        cv2.waitKey(1)  # 1ms delay, keeps the window responsive
-
-        # Filter detections to only our target classes (cows/calves)
-        boxes   = []
-        confs   = []
+        # annotated_frame = results.plot()
+        # cv2.imshow("Calf Detection", annotated_frame)
+        # cv2.waitKey(1)  # 1ms delay, keeps the window responsive
+        
+        boxes = []
+        confs = []
         for box in results.boxes:
             if int(box.cls[0].item()) in target_ids:
                 boxes.append(box.xyxy[0].tolist())
                 confs.append(float(box.conf[0].item()))
  
-        # Check for overlapping pairs
-        overlap_detected, intersection_box  = frame_has_overlap(boxes, iou_threshold)
+        overlap_detected, inter_box = frame_has_overlap(boxes, iou_threshold)
  
         frame_flags.append(overlap_detected)
         frame_confs.append(max(confs) if confs else 0.0)
         frame_indices.append(frame_idx)
-        frame_interbox.append(intersection_box if overlap_detected else None)
+        frame_interbox.append(inter_box if overlap_detected else None)
         frame_idx += 1
+        processed += 1
  
-        if frame_idx % 100 == 0:
-            print(f"  ...frame {frame_idx}/{total_frames}")
+        if processed % 100 == 0:
+            pct = 100 * frame_idx / total_frames if total_frames else 0
+            print(f"  ...processed {processed} frames | "
+                  f"skipped {skipped} | "
+                  f"video pos {frame_idx}/{total_frames} ({pct:.1f}%) | "
+                  f"events so far: {sum(frame_flags)}")
  
     cap.release()
+    print(f"[INFO] Done — processed {processed} frames, skipped {skipped} | "
+          f"flagged frames: {sum(frame_flags)}")
  
-    # Group flagged frames into events
-    events = extract_events(frame_flags, fps, min_duration, frame_confs, frame_interbox, frame_indices)
- 
-    # Build metadata
-    video_name = os.path.splitext(os.path.basename(video_path))[0]
-    output_dir = "results/metadata/baseline"
-    os.makedirs(output_dir, exist_ok=True)
+    events = extract_events(
+        frame_flags, fps, min_duration, frame_skip,
+        frame_confs, frame_interbox, frame_indices,
+    )
  
     metadata = {
-        "identifier":             os.path.basename(video_path),
-        "video_path":             os.path.abspath(video_path),
-        "model":                  model_path,
+        "identifier":              video_path.name,
+        "video_path":             str(video_path.resolve()),
+        "model":                  str(DEFAULT_MODEL),
         "iou_threshold":          iou_threshold,
         "conf_threshold":         conf_threshold,
         "min_duration_sec":       min_duration,
@@ -309,33 +435,93 @@ def run_detection(video_path, model_path, iou_threshold, conf_threshold, min_dur
         "num_events":             len(events),
         "events":                 events,
     }
- 
-    # Save JSON
-    json_path = os.path.join(output_dir, f"{video_name}_results.json")
-    with open(json_path, "w") as f:
-        json.dump(metadata, f, indent=2)
- 
-    # Print summary to console
-    print("\n" + "═" * 50)
-    print(f"  VIDEO:    {metadata['identifier']}")
-    print(f"  FLAGGED:  {metadata['cross_sucking_detected']}")
-    print(f"  EVENTS:   {metadata['num_events']}")
-    for i, ev in enumerate(events):
-        print(f"    Event {i+1}: {ev['start_sec']}s → {ev['end_sec']}s "
-              f"({ev['duration_sec']}s) | conf={ev['avg_confidence']}")
-    print(f"  OUTPUT:   {json_path}")
-    print("═" * 50 + "\n")
- 
     return metadata
 
+def run_all(
+    csv_path:       Path,
+    model_path:     str,
+    iou_threshold:  float,
+    conf_threshold: float,
+    min_duration:   float,
+    frame_skip:     int,
+) -> None:
+    """
+    End-to-end pipeline: load all splits → run detection → save JSON metadata.
+ 
+    Iterates over every split under `data_root`, runs `detect_video` on each
+    unique video, and writes results to the baseline metadata directory.
+    Videos whose output JSON already exists are skipped automatically.
+ 
+    Args:
+        data_root:      Root directory containing split subdirectories.
+        model_path:     YOLO weights filename (e.g. 'yolo26x.pt').
+                        Downloaded automatically on first run if not found locally.
+        iou_threshold:  IoU threshold to flag a frame as containing an overlap.
+        conf_threshold: Minimum YOLO detection confidence to keep a bounding box.
+        min_duration:   Minimum event duration in seconds.
+        frame_skip:     Process every Nth frame (1 = every frame).
+ 
+    Raises:
+        ValueError: If the target class is not present in the loaded model.
+    """
+    split_name = get_split_label(csv_path)
+    video_paths = load_split_from_csv(csv_path)
+    if not video_paths:
+        print("[ERROR] No videos loaded.")
+        return
 
+    from ultralytics import YOLO
+    print(f"[INFO] Loading model: {model_path}")
+    model = YOLO(model_path)
+
+    class_name_to_id = {v: k for k, v in model.names.items()}
+    target_ids = {class_name_to_id[TARGET_CLASS_NAME]} if TARGET_CLASS_NAME in class_name_to_id else set()
+    if not target_ids:
+        raise ValueError(f"'{TARGET_CLASS_NAME}' not found in model: {list(model.names.values())}")
+
+    for video_path in video_paths:
+        # m = re.search(r"videos[\\/](.*)$", str(video_path))
+        # rel_parent = Path(m.group(1)).parent if m else Path()
+        
+        json_path = METADATA_DIR_CLOUD/ split_name / "baseline" / f"{video_path.stem}_results.json"
+
+        if json_path.exists():
+            print(f"[SKIP] {json_path.name}")
+            continue
+        if not video_path.exists():
+            print(f"[WARN] Video not found, skipping: {video_path}")
+            continue
+
+        try:
+            metadata = detect_video(
+                video_path, model, target_ids,
+                iou_threshold, conf_threshold, min_duration, frame_skip,
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed on {video_path.name}: {e} — skipping.")
+            continue
+
+        os.makedirs(json_path.parent, exist_ok=True)
+        with open(json_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+
+        print("\n" + "═" * 50)
+        print(f"  VIDEO:   {metadata['identifier']}")
+        print(f"  FLAGGED: {metadata['cross_sucking_detected']}")
+        print(f"  EVENTS:  {metadata['num_events']}")
+        for i, ev in enumerate(metadata["events"]):
+            print(f"    Event {i+1}: {ev['start_sec']}s → {ev['end_sec']}s "
+                  f"({ev['duration_sec']}s) | conf={ev['avg_confidence']}")
+        print(f"  OUTPUT:  {json_path}")
+        print("═" * 50 + "\n")
+
+# CLI
 def parse_args():
     parser = argparse.ArgumentParser(
         description=f"Baseline cross-sucking detector using {DEFAULT_MODEL} bounding box overlap."
     )
-    parser.add_argument("--video",
-                        required=True, 
-                        help="Path to input video file")
+    parser.add_argument("--csv", type=Path, required=True,
+                        help="Path to a split test.csv (e.g. data/processed/day_based/test.csv)")
     parser.add_argument("--model", 
                         default=DEFAULT_MODEL, 
                         help=f"YOLO weights file (default: {DEFAULT_MODEL})")
@@ -358,12 +544,14 @@ def parse_args():
 
 
 if __name__ == "__main__":
+    
     args = parse_args()
-    run_detection(
-        video_path    = args.video,
+    run_all(
+        csv_path   = ROOT_DIR / args.csv,
         model_path    = args.model,
         iou_threshold = args.iou_threshold,
         conf_threshold= args.conf_threshold,
         min_duration  = args.min_duration,
         frame_skip    = args.frame_skip,
     )
+    

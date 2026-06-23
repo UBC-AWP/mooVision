@@ -24,9 +24,13 @@ site/
 
 # --- Models ---
 *.pt
+weights/
 
 # --- Data ---
 data/
 
 # --- YOLO OUTPUT ---
 runs/
+
+# --- Sockeye ---
+logs/

@@ -25,23 +25,17 @@ ROOT_DIR = require_dir("ROOT_DIR")
 
 # Path on GitHub / local workspace
 LOCAL_DIR = require_dir("LOCAL_DIR")
-BASELINE_METADATA_DIR = LOCAL_DIR / "results" / "metadata" / "baseline"
+BASELINE_METADATA_DIR_LOCAL = LOCAL_DIR / "results" / "metadata" / "baseline"
+METADATA_DIR_CLOUD = ROOT_DIR / "results" / "metadata" 
 
-# Clip folders
+# Videos and labels
 UNLABELLED_CLIPS_DIR = ROOT_DIR / "cross_sucking_clips"
 LABELLED_CLIPS_DIR = ROOT_DIR / "cross_sucking_labelled"
-
-# Source videos
 SOURCE_VIDEOS_DIR = ROOT_DIR / "raw_cross_sucking_datalog" / "videos"
 
-# Index
+# Raw and Processed Index Paths
 INDEX_PATH = UNLABELLED_CLIPS_DIR / "all_clips_index.csv"
-RAW_INDEX_PATH = (
-    LOCAL_DIR / "data" / "raw" / "data/raw/all_clips_index_raw.csv"
-)  # Local Copy
-PROCESSED_INDEX_PATH = (
-    LOCAL_DIR / "data" / "processed" / "processed_clips_index.csv"
-)  # Filtered Data
+PROCESSED_INDEX = ROOT_DIR / "data" / "processed" / "processed_clips_index.csv"
 
 # Data / metadata
 DATA_FOLDER_DIR = ROOT_DIR / "data"
@@ -51,5 +45,9 @@ METADATA_DIR = DATA_FOLDER_DIR / "clips_metadata"
 METADATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Output clips
-REPRODUCED_CLIPS_DIR = ROOT_DIR / "reproduced_clips"
-REPRODUCED_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
+RESULT_CLIPS_DIR = ROOT_DIR  / "results" / "result_clips"
+RESULT_CLIPS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+
+

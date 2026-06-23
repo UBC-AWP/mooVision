@@ -1,17 +1,14 @@
 # Clipping Pipeline
 
-This page documents how to use `scripts/clipping.py` to reproduce short clips from long-form videos, either from a CSV index or from JSON event metadata produced by the baseline pipeline.
+This page documents how to use `scripts/clipping.py` to reproduce short annotated clips from long-form source videos using JSON event metadata produced by the detection pipeline.
 
 ---
 
 ## Summary
 
-The clipping pipeline replays precise temporal segments from raw `.mp4` files into standalone clip files. It supports two input modes:
+The clipping pipeline replays precise temporal segments from raw `.mp4` files into standalone annotated clip files. It reads JSON event metadata produced by any stage of the detection pipeline (baseline, fine-tuned YOLO, or sequence-linked) and produces boxed clips with per-frame bounding box annotations.
 
-1) **Index-based clipping**: reads a CSV index with clip start/end timestamps.  
-2) **JSON events-based clipping**: reads JSON event metadata and optionally produces boxed clips with per-frame annotations.
-
-All clips are written to the configured `REPRODUCED_CLIPS_DIR`, with names derived from either the CSV `clip_name` or a deterministic event naming scheme.
+All clips are written to `results/result_clips/`, preserving the directory structure of the input JSON files relative to the `metadata/` folder.
 
 ---
 
@@ -19,27 +16,16 @@ All clips are written to the configured `REPRODUCED_CLIPS_DIR`, with names deriv
 
 | Property | Details |
 |---|---|
-| Format | CSV index **or** JSON events metadata |
-| Content | Clip start/end times + source video references (optionally bounding boxes) |
+| Format | JSON event metadata files |
+| Content | Clip start/end times, source video references, and optionally per-frame bounding boxes |
 
-Before running the clipping script, ensure your local workspace satisfies the following dependencies:
+Before running the clipping script, ensure your local workspace satisfies the following:
 
 - `.env` is populated with `ROOT_DIR` and `LOCAL_DIR` (used by `config.py`).
-- Source videos exist under `ROOT_DIR/raw_cross_sucking_datalog/videos`.
-- For **index mode**, `INDEX_PATH` points to a CSV index (default: `ROOT_DIR/cross_sucking_clips/all_clips_index.csv`).
-- For **JSON events mode**, JSON files exist under `LOCAL_DIR/results/metadata/baseline`.
+- Source videos exist under `ROOT_DIR/raw_cross_sucking_datalog/`.
+- JSON metadata files exist under `LOCAL_DIR/results/metadata/` produced by the detection pipeline.
 
-### Required CSV Columns (Index Mode)
-
-At minimum, the CSV must include:
-
-- `source_video_basename`
-- `source_video_path`
-- `clip_name`
-- `clip_start_in_source_sec`
-- `clip_end_in_source_sec`
-
-### Expected JSON Schema (Events Mode)
+### Expected JSON Schema
 
 Minimum fields:
 
@@ -52,92 +38,107 @@ Minimum fields:
 }
 ```
 
-Optional fields for annotation:
+Optional fields used for annotation:
 
-- `identifier` (string used for clip naming)
-- `fps` (float; used for annotation alignment)
+- `identifier` (string; used as the per-video output folder name and clip filename stem)
+- `fps` (float; used for annotation frame alignment)
 - `events[*].intersection_box`: list of per-frame boxes with `frame`, `x1`, `y1`, `x2`, `y2`
 
 ---
 
 ## Output
 
-By default, results are saved to `REPRODUCED_CLIPS_DIR` (defined in `config.py`).
+Clips are written to `results/result_clips/` preserving everything after `metadata/` in the input JSON path. Each video gets its own subfolder named after its `identifier` stem.
 
 ```text
-reproduced_clips/
-├── Pen 2 - Group 2/
-│   └── POSTWEANING/Day 1/
-│       ├── <identifier>_event001_12.3-16.8.mp4
-│       └── <identifier>_event001_12.3-16.8_boxed.mp4
-└── <clip_name_from_csv>.mp4
+results/result_clips/
+├── pipeline_demo/
+│   └── yolo/
+│       └── ch02_20250913094601/
+│           ├── ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+│           └── ch02_20250913094601_event002_22.1-25.4_boxed.mp4
+│   └── baseline/
+│       └── ch02_20250913094601/
+│           ├── ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+│           └── ch02_20250913094601_event002_22.1-25.4_boxed.mp4
 ```
 
-When `annotate=True`, boxed clips are saved alongside the unboxed clips using the `_boxed.mp4` suffix.
+Boxed clips are saved with the `_boxed.mp4` suffix. The unboxed intermediate clip is removed after annotation succeeds. If annotation fails, the unboxed version is kept as a fallback.
 
 ---
 
-## How it works
+## How It Works
 
-1) Load configuration paths from `config.py` (sourced from `.env`).  
-2) Choose a clipping strategy: CSV index mode or JSON events mode.  
-3) Resolve each clip’s source video and timestamps.  
-4) `reproduce_clip` reads frames from `start_sec` to `end_sec` and writes a new `.mp4`.  
-5) In JSON mode, `annotate_clip_with_boxes` can optionally render bounding boxes into a second clip.
+1. Load configuration paths from `config.py` (sourced from `.env`).
+2. Accept `--input` as a single JSON file or a directory to search recursively for `*.json` files.
+3. For each JSON, resolve the source video path using `ROOT_DIR`.
+4. Extract everything after `metadata/` in the JSON file's parent path to construct the output subdirectory.
+5. Create a per-video output folder named after the `identifier` stem.
+6. `reproduce_clip` reads frames from `start_sec` to `end_sec` and writes a temporary `.mp4`.
+7. `annotate_clip_with_boxes` renders per-frame bounding boxes into the final `_boxed.mp4`, then removes the unboxed intermediate.
+
+### Output Path Derivation
+
+The output path is derived entirely from the JSON file's location relative to the `metadata/` folder. Everything after `metadata/` in the JSON's parent directory is preserved as-is in the output, so no level-counting is needed and any input structure is handled correctly.
+
+```text
+input  → results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json
+output → results/result_clips/pipeline_demo/yolo/ch02_20250913094601/ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+
+input  → results/metadata/pipeline_demo/baseline/ch02_20250913094601_results.json
+output → results/result_clips/pipeline_demo/baseline/ch02_20250913094601/ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+```
 
 ### Edge Cases
 
-**"Annotation Alignment Requirement"**  
-When annotations are used, the JSON `fps` and `intersection_box` frame indices must align with the source video. If they do not, boxes will be offset from the target frames.
+**Annotation Alignment**
+The JSON `fps` and `intersection_box` frame indices must align with the source video. Frame indices in `intersection_box` are in source-video coordinates and are converted to clip-local indices by subtracting the event start frame before annotation.
 
-**"Missing Video Paths"**  
-If a JSON file references a `video_path` that does not exist, a `FileNotFoundError` is raised.
+**Missing Video Paths**
+If a JSON file references a `video_path` that does not exist on disk, a `FileNotFoundError` is raised.
 
-**"Index Mode Processes a Single Row"**  
-`split_by_index` currently iterates `matched[:1]`, so only the first matched clip is reproduced. Remove the slice to enable batch reproduction.
+**No Events in JSON**
+If a JSON file contains an empty `events` list, the file is skipped and a message is printed.
+
+**Annotation Failure**
+If `annotate_clip_with_boxes` fails for an event, the unboxed intermediate clip is kept as a fallback and a warning is printed.
 
 ---
 
-## Core Pipeline Concepts
+### Clip Naming
 
-### Input Modes
-
-- **CSV index mode** reads the clip list from a single index and writes clips using each row’s `clip_name`.
-- **JSON events mode** reads one JSON file or a folder of JSON files, creating per-event clips and optionally boxed versions.
-
-### Clip Naming and Foldering
-
-In JSON mode, clip names follow:
+Clips follow this naming convention:
 
 ```text
-<identifier_stem>_event###_<start_sec>-<end_sec>.mp4
+<identifier_stem>_event###_<start_sec>-<end_sec>_boxed.mp4
 ```
 
-Clips are written into a folder derived from the source video path segment after `cross_sucking_clips/`, preserving pen/stage/day structure when available.
+Example:
 
-### Annotation Rendering
-
-`annotate_clip_with_boxes` converts **source-video frame indices** to **clip-local indices** by subtracting the event’s start frame. This keeps boxes aligned to the clipped segment.
+```text
+ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+```
 
 ---
 
 ## Usage
 
-### Basic (JSON events mode)
+### Clip from a single JSON file
 
 ```bash
-uv run scripts/clipping.py
+uv run scripts/clipping.py --input results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json
 ```
 
-### Index mode (CSV index)
+### Clip from a directory of JSON files
 
 ```bash
-uv run python - <<'PY'
-from scripts.clipping import split_by_index
-from config import INDEX_PATH, REPRODUCED_CLIPS_DIR
+uv run scripts/clipping.py --input results/metadata/pipeline_demo/yolo/
+```
 
-split_by_index(INDEX_PATH, REPRODUCED_CLIPS_DIR)
-PY
+### Clip to a custom output directory
+
+```bash
+uv run scripts/clipping.py --input results/metadata/pipeline_demo/yolo/ --output /tmp/clips/
 ```
 
 ---
@@ -152,8 +153,6 @@ PY
       show_signature_annotations: true
       members:
         - reproduce_clip
-        - split_by_index
         - split_by_json_events
         - annotate_clip_with_boxes
-        - run_splitting
         - main

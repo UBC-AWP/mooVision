@@ -3,585 +3,551 @@ Preprocessing functionality for creating training sets to fine-tune YOLO
 object detection models.
 
 WIP NOTES.
-NOTE 1: Should change to save output to onedrive rather than locally (later on). Creates Too many files for local work.
-
 NOTE 2: Look into sampling frames at x/second rather than a defined skip amount.
-
 NOTE 3: Examples are not finished and need to be properly updated.
 """
 
 from pathlib import Path
 import sys
-import zipfile
-import shutil
-from typing import List
-import cv2
-import re
-import argparse
-import yaml
+import os
 
-# import argparse
-from sklearn.model_selection import train_test_split
+import shutil
+import argparse
+import tarfile
+
 import pandas as pd
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from scripts.data_reading.matching import parse_labelled_name, parse_unlabelled_name
-from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR
+from config import UNLABELLED_CLIPS_DIR, LABELLED_CLIPS_DIR, ROOT_DIR
+from scripts.preprocessing.extract_frames import extract_frames
+from scripts.preprocessing.extract_labels import extract_labels
+from scripts.preprocessing.utils import create_yaml
 
 
-def extract_labels(
-    label_paths: List[Path],
-    output_dir: Path,
-    labels_root: Path,
-    split: str,
-    skip: int,
-    FORCE: bool = False,
-) -> None:
+def resolve_working_directory(output_dir: Path) -> Path:
     """
-    Extract labels from annotated data.
-
-    Extracts bounding box labels from .zip files (corresponding to CVAT Output
-    folders), and saves files to either a train, or val (split) folder in the
-    specified output directory. If FORCE = True, and the output directory
-    structure already exists, this will delete the existing folders and rebuild
-    the data from scratch.
-
-    `extract_labels` outputs data into a labels/ folder within the output directory.
-    This is meant to mimic the data format required for fine-tuning YOLO models.
-
-    This function assumes that bounding box labels are saved as `.txt` files in
-    `obj_train_data` folders within .zip files, and that `labels_path` lists
-    relative paths to these .zip files within the `labels_root` directory.
+    Resolve the optimal node-local staging folder based on the host system.
 
     Parameters
     ----------
-    labels_path : List[Path]
-        List of relative paths to label outputs of cross-sucking events.
-    output_dir : Path
-        Path to output directory.
-    labels_root : Path
-        Path to root directory of label outputs of cross-sucking events.
-    split : str
-        One of `train`, `val`. Dictates which split folder, train/ or val/, the
-        labels should be extracted to.
-    skip : int
-        Number of frames to skip.
-    FORCE : bool
-        If True, overwritres the existing data. Defaults to False.
+    output_dir : pathlib.Path
+        The default fallback compilation directory path.
 
     Returns
     -------
-    None :
-        This function reads to disk and does not return anything.
+    working_directory : pathlib.Path
+        The verified, isolated local scratch workspace directory path.
 
     Raises
     ------
-    ValueError
-        If inputs are empty, or if labels_path is an empty list.
-        If split is not one of `train` or `val`.
     TypeError
-        If inputs to not match the specififed types.
-    FileNotFoundError
-        If any relative paths do not lead to files for labelled data.
-        If `labels_root` does not exist.
-        If the target folder does not exist within the .zip files.
-        If there are no `.txt` files found in the target folder.
-
-    Notes
-    -----
-    `extract_labels` is meant to be used in conjunction with `extract_frames`
-    to build datasets for training YOLO models. YOLO requires datasets in the
-    format listed below where frames and labels are split into train/val sets
-    and each frame has a corresponding label with the same name and a .txt
-    extension. This implies that there needs to be equal numbers of frames
-    and labels, and that frames and labels need to match.
-
-
-    Examples
-    --------
-    .. code-block:: python
-
-        import shutil
-        import zipfile
-        from pathlib import Path
-        from my_project.preprocessing import extract_labels
-
-        # Setup temporary directories mimicking a real project workspace
-        labels_root = Path("temp_labels_source")
-        output_dir = Path("temp_yolo_output")
-        labels_root.mkdir(parents=True, exist_ok=True)
-
-        # Ensure the mock filename aligns with your expected identifier conventions.
-        mock_zip_name = "0042_p1.zip"
-        zip_path = labels_root / mock_zip_name
-
-        # Build a mock CVAT export zip file on the fly
-        # Creates files inside 'obj_train_data/' to replicate CVAT structure
-        with zipfile.ZipFile(zip_path, "w") as archive:
-            for frame_idx in range(10):
-                # Simulated YOLO format line: <class_id> <x1> <y1> <x2> <y2>
-                mock_annotation = f"0 0.50 0.50 0.22 0.34"
-                archive.writestr(
-                    f"obj_train_data/frame_{frame_idx:06d}.txt",
-                    mock_annotation
-                )
-
-        # Execute the label extraction (skipping every 2nd frame)
-        extract_labels(
-            labels_path=[mock_zip_name],
-            labels_root=labels_root,
-            output_dir=output_dir,
-            target_folder="obj_train_data",
-            split="train",
-            skip=2,
-            FORCE=True,
+        If `output_dir` is not an instance of `pathlib.Path`.
+    """
+    # Runtime Type Checking
+    if not isinstance(output_dir, Path):
+        raise TypeError(
+            f"Argument 'output_dir' must be a Path object, received {type(output_dir).__name__}"
         )
 
-        # Clean up mock files after ensuring execution succeeded
-        shutil.rmtree(labels_root)
-        shutil.rmtree(output_dir)
-    """
+    node_local_storage = os.environ.get("SLURM_TMPDIR", str(output_dir))
+    task_id = os.environ.get("SLURM_ARRAY_TASK_ID", "local_dev")
+    on_cluster = "PBS_JOBID" in os.environ or "SLURM_JOB_ID" in os.environ
 
-    # Add subdirectories to output directory
-    output_dir = Path(output_dir) / "labels" / split
-
-    # Do nothing if files already exist
-    if Path(output_dir).exists() and not FORCE:
-        print(f"Files already extracted at {Path(__file__) / Path(output_dir)}")
+    if on_cluster:
+        # Protect shared filesystems via isolated job IDs
+        base_local_dir = (
+            Path(node_local_storage)
+            / "data"
+            / "training"
+            / f"job_array_{task_id}_yolo_build"
+        )
+        if (
+            node_local_storage == str(output_dir)
+            or "scratch" in str(node_local_storage).lower()
+        ):
+            print(
+                f"WARNING: Shared storage detected! Isolating paths via task ID: {task_id}"
+            )
+        else:
+            print(f"Success: True Node-Local NVMe Storage engaged at: {base_local_dir}")
     else:
-        # Delete path and files if they already exist
-        if output_dir.exists() and output_dir.is_dir():
-            # Recursively deletes the directory and all contents
-            shutil.rmtree(output_dir)
+        print("Working on local node playground environment.")
+        base_local_dir = Path(node_local_storage)
 
-        #### ---- CHECK INPUT LIST IS NOT EMPTY ---- ####
-        #### ---- CHECK INPUT TYPES ARE STRINGS ---- ####
-
-        # Loop over zip file paths (CVAT Outputs)
-        for input_path in label_paths:
-
-            ### THIS SHOULD BE EARLIER MAYBE? = yes, else we might
-            # # run through severral iterations of this list until we get to something that is not a string
-
-            if not isinstance(input_path, str):
-                raise TypeError(
-                    f"{input_path} is not a string. labels_path should be a list of strings."
-                )
-
-            # Standardie Path to Posix Standard
-            input_path = labels_root / input_path.replace("\\", "/")
-
-            if not input_path.exists():
-                raise FileNotFoundError(f"{input_path} not found.")
-
-            # Get numeric id and part id of labelled output
-            numeric_id, part_id = parse_labelled_name(str(input_path.name))
-
-            ### DO I NEED TO TEST THE OUTPUTS OF THIS??
-            # --- NO? Already confirmed from other function inputs?
-
-            if part_id:
-                # Format nicely
-                part_id = f"part0{part_id}"
-
-            # Target folder in zip file
-            target_folder = "obj_train_data"
-
-            # Look in zip folder
-            with zipfile.ZipFile(input_path, "r") as zip_ref:
-
-                # List all files in zip folder
-                all_files = zip_ref.namelist()
-
-                # Isolate only the .txt files belonging to the target folder hierarchy
-                files_to_extract = sorted(
-                    [
-                        f
-                        for f in all_files
-                        if f.startswith(
-                            target_folder
-                        )  # assumes files names: target_folder/frame_000000.txt
-                        and ".txt" in f
-                        and (
-                            int(re.search(r"(\d+)", f).group(1)) % skip == 0
-                        )  # Take every `skip` frame
-                    ]
-                )
-
-                ### TEST LENGTH OF LIST HERE FOR .TXT FILES --- Return could not find labels at input_path/target_folder
-
-                for file in files_to_extract:
-                    # Extract individual files explicitly to target destination
-                    zip_ref.extract(file, output_dir)
-
-            # target_folder = "obj_train_data/"
-            # path to target folder in output dir (extraction adds target folder in output hierarchy)
-            target_folder = output_dir / target_folder
-
-            if target_folder.exists() and target_folder.is_dir():
-                # Iterate through all files inside the sub-folder
-                for file_path in target_folder.iterdir():
-                    if file_path.is_file():
-                        # Define target path (e.g., extraction_output/train/0000_{part}_frame_000000.txt)
-                        target_path = (
-                            output_dir
-                            / f"{int(numeric_id):04}_{part_id}_{str(file_path.name)}"
-                        )
-
-                        # Atomic filesystem move (Metadata update only, no disk write)
-                        file_path.rename(target_path)
-
-                # Delete the now-empty target folder from output dir
-                target_folder.rmdir()
-                print(f"Files saved to {output_dir}")
-            else:
-                raise FileNotFoundError(
-                    f"{target_folder} structure not found or already processed."
-                )
+    working_directory = base_local_dir / "dataset"
+    print(f"\nConfiguring node-local staging environment: {working_directory}")
+    working_directory.mkdir(parents=True, exist_ok=True)
+    return working_directory, base_local_dir, on_cluster
 
 
-def extract_frames(
-    video_paths: List[str],
-    videos_root: Path,
-    output_dir,
+def process_single_split(
+    df: pd.DataFrame,
+    working_dir: Path,
     split: str,
     skip: int,
-    FORCE: bool = False,
+    force: bool,
+    clips_root_dir: Path,
+    labels_root_dir: Path,
 ) -> None:
     """
-    Extract frames from all videos in list.
+    Process image frames, label batches, and purge orphans for a single dataset split.
 
-    Takes in a list of realtive paths to video files inside the videos_root directory
-    and extracts the frames from each video as .jpg files into train or val folders in
-    output_dir. Split is one of train or val and dictates which folder the images are
-    saved under. Skip dictates how many frames to skip (i.e. skip = 5 would mean
-    extract every fifth frame).
-
-    `extract_frames` outputs frames to an images/train/ or images/val/ folder within
-    the output directory depending on the split argument.
+    This function executes an end-to-end extraction pipeline for a single data
+    split (e.g., 'train' or 'val'). It extracts frames from source videos, extracts
+    bounding box annotations from corresponding zip files, and cross-references them.
+    Any frame generated by the video extractor that lacks a corresponding entry in
+    the label registry is treated as an orphan and is unlinked from the file system.
 
     Parameters
     ----------
-    videos : List[str]
-        A list of relative paths to video files inside the videos_root directory.
-    videos_root : Path
-        Path to root directory containing videos.
-    output_dir : Path
-        Path to output directory to save extracted frames to.
+    df : pd.DataFrame
+        Driving DataFrame containing tracking metadata for the target split.
+        Must include the columns 'clip_relative_path' and 'labelled_clip_relative_path'.
+    working_dir : pathlib.Path
+        The root destination directory where the workspace structure ('images' and
+        'labels' folders) is built.
     split : str
-        One of `train`, `val`. Dictates which split folder, train/ or val/, the
-        labels should be extracted to.
+        The dataset split identifier name. Typically 'train' or 'val'.
     skip : int
-        Number of frames to skip.
-    FORCE : bool
-        If True, overwritres the existing data. Defaults to False.
-
-
-    Returns
-    -------
-    None :
-        This function reads to disk and does not return anything.
-
-
-    Raises
-    ------
-    ValueError
-        If inputs are empty, or if videos is an empty list.
-        If split is not one of `train` or `val`.
-        If a video cannot be read, or is corrupted.
-        If skip is greater than the number of frames
-    TypeError
-        If inputs to not match the specififed types.
-    FileNotFoundError
-        If any relative paths in videos do not lead to files for labelled data.
-        If `videos_root` does not exist.
-
-    Notes
-    -----
-    `extract_frames` is meant to be used in conjunction with `extract_labels`
-    to build datasets for training YOLO models. YOLO requires datasets in the
-    format listed below. Frames and labels are split into train/val sets,
-    and each frame has a corresponding label with the same name and .txt
-    extension. This implies that there needs to be equal numbers of frames
-    and labels, and that labels need to match to correct frames.
-
-    Examples
-    --------
-    .. code-block:: python
-
-        from pathlib import Path
-        from unittest.mock import MagicMock, patch
-        from my_project.preprocessing import extract_frames
-
-        # Create dummy directories
-        video_root = Path("temp_videos")
-        output_dir = Path("temp_output")
-        video_root.mkdir(parents=True, exist_ok=True)
-        (video_root / "CS_0042_clip.mp4").touch() # Just an empty file shell
-
-        # Mock OpenCV so it simulates reading 10 successful frames
-        with patch('cv2.VideoCapture') as mock_caps:
-            instance = mock_caps.return_value
-            instance.isOpened.side_effect = [True] * 10 + [False]
-            instance.read.return_value = (True, "mock_frame_data")
-            instance.grab.return_value = True
-
-            # Run the extraction function safely without a real video file
-            extract_frames(
-                videos=["CS_0042_clip.mp4"],
-                videos_root=video_root,
-                output_dir=output_dir,
-                split="train",
-                skip=2
-            )
-    """
-
-    # Output dir
-    output_dir = Path(output_dir) / "images" / split
-    # Rewrite files on FORCE
-    if Path(output_dir).exists() and not FORCE:
-        print(f"Files already extracted at {Path(__file__) / Path(output_dir)}")
-    else:
-        # Delete path if it already exists
-        if output_dir.exists() and output_dir.is_dir():
-            # Recursively deletes the directory and all contents
-            shutil.rmtree(output_dir)
-
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        for video_file in video_paths:
-
-            # Standardize Path to Posix Standard
-            video_file = videos_root / video_file.replace("\\", "/")
-
-            # Print working video...
-            print(f"Extracting frames from {video_file.name}...")
-
-            # Get numeric id and part id of video clip
-            numeric_id, part_id = parse_unlabelled_name(str(video_file.name))
-            if part_id:
-                part_id = f"part0{part_id}"
-
-            # Video capture
-            cap = cv2.VideoCapture(str(video_file))
-            frame_idx = 0
-
-            while cap.isOpened():
-                # Read frames at every `skip`` position, ignore the rest
-                if frame_idx % skip == 0:
-                    # Decode frame
-                    ret, frame = cap.read()
-                    if not ret:  # Break if decoding fails
-                        break
-                    # Create Output Path
-                    frame_path = (
-                        output_dir
-                        / f"{int(numeric_id):04}_{part_id}_frame_{frame_idx:06d}.jpg"
-                    )
-
-                    # Write frame to output dir
-                    cv2.imwrite(str(frame_path), frame)
-                else:
-                    ret = cap.grab()  # advances position, does not decode frame.
-                    if not ret:  # Skip efficiently
-                        break
-
-                frame_idx += 1
-
-            # release video
-            cap.release()
-            print(f"{video_file.name} frames saved to {output_dir}")
-
-
-def create_yaml(
-    dataset_path: str,
-    class_names: list[str] = ["cross-sucking"],
-    output_path: str = "dataset.yaml",
-    train_dir: str = "images/train",
-    val_dir: str = "images/val",
-) -> None:
-    """
-    Write a YOLO dataset YAML configuration file.
-
-    Parameters
-    ----------
-    dataset_path : str
-        Absolute path to the dataset root directory.
-    class_names : list[str]
-        Ordered list of class labels matching the IDs in label files.
-    output_path : str, optional
-        Destination path for the YAML file.
-    train_dir : str, optional
-        Training images directory, relative to dataset_path.
-    val_dir : str, optional
-        Validation images directory, relative to dataset_path.
+        Frame downsampling step factor parameter passed directly down to the
+        frame extractor engine.
+    force : bool
+        If True, forces re-extraction of video assets and labels even if the
+        target storage folders already exist.
+    clips_root_dir : pathlib.Path
+        The root path pointing to where the raw original video files are located.
+    labels_root_dir : pathlib.Path
+        The root path pointing to where the raw original compressed annotation archive
+        zips are located.
 
     Returns
     -------
     None
-        This function reads straight to disk and does not return anything.
-    """
-    config = {
-        "path": str(Path(dataset_path).resolve()),
-        "train": train_dir,
-        "val": val_dir,
-        "nc": len(class_names),
-        "names": class_names,
-    }
 
-    out = dataset_path + "/" + output_path
-    with open(out, "w") as f:
-        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+    Raises
+    ------
+    KeyError
+        If the driving `df` is missing the required tracking columns.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from pathlib import Path
+    >>> data = {"clip_relative_path": ["v1.mp4"], "labelled_clip_relative_path": ["l1.zip"]}
+    >>> df = pd.DataFrame(data)
+    >>> process_single_split(
+    ...     df=df, working_dir=Path("./work"), split="train", skip=2,
+    ...     force=False, clips_root_dir=Path("./clips"), labels_root_dir=Path("./labels")
+    ... )
+    """
+    # Runtime Type Checking Validation Block
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(
+            f"Argument 'df' must be a pandas DataFrame, received {type(df).__name__}"
+        )
+    if not isinstance(working_dir, Path):
+        raise TypeError(
+            f"Argument 'working_dir' must be a pathlib.Path instance, received {type(working_dir).__name__}"
+        )
+    if not isinstance(split, str):
+        raise TypeError(
+            f"Argument 'split' must be a str, received {type(split).__name__}"
+        )
+    if not isinstance(skip, int) or isinstance(
+        skip, bool
+    ):  # Python bool inherits from int
+        raise TypeError(
+            f"Argument 'skip' must be an int, received {type(skip).__name__}"
+        )
+    if not isinstance(force, bool):
+        raise TypeError(
+            f"Argument 'force' must be a bool, received {type(force).__name__}"
+        )
+    if not isinstance(clips_root_dir, Path):
+        raise TypeError(
+            f"Argument 'clips_root_dir' must be a pathlib.Path instance, received {type(clips_root_dir).__name__}"
+        )
+    if not isinstance(labels_root_dir, Path):
+        raise TypeError(
+            f"Argument 'labels_root_dir' must be a pathlib.Path instance, received {type(labels_root_dir).__name__}"
+        )
+
+    # Column Validation Check
+    required_cols = ["clip_relative_path", "labelled_clip_relative_path"]
+    for col in required_cols:
+        if col not in df.columns:
+            raise KeyError(f"Driving DataFrame is missing the required column: '{col}'")
+
+    print("\n\n=========================")
+    print(f"Preprocessing {split.capitalize()} Split")
+    print("=========================\n")
+
+    # 1. Execute Custom Extraction Pipelines
+    frame_registry = extract_frames(
+        video_paths=df["clip_relative_path"].to_list(),
+        videos_root=clips_root_dir,
+        working_dir=working_dir,
+        split=split,
+        skip=skip,
+        force=force,
+    )
+
+    label_registry = extract_labels(
+        label_paths=df["labelled_clip_relative_path"].to_list(),
+        labels_root=labels_root_dir,
+        working_dir=working_dir,
+        frame_registry=frame_registry,
+        split=split,
+        skip=skip,
+        force=force,
+    )
+
+    # Sanitize and Purge Orphans (Align image frames cleanly with bounding boxes)
+    print(f"\nPurging orphaned {split} images with no corresponding labels...")
+    img_dir = working_dir / "images" / split
+    frames_dropped = 0
+
+    for video_key, frame_set in frame_registry.items():
+        label_set = label_registry.get(video_key, set())
+        orphaned_frames = frame_set - label_set
+
+        if orphaned_frames:
+            part_str = f"part0{video_key[1]}" if video_key[1] else None
+            file_prefix = f"{int(video_key[0]):04}_{part_str}_frame_"
+
+            for orphan_frame in orphaned_frames:
+                orphan_path = img_dir / f"{file_prefix}{orphan_frame:06d}.jpg"
+                if orphan_path.exists():
+                    orphan_path.unlink()
+                    frames_dropped += 1
+
+    print(f"Dropped {frames_dropped} unannotated trailing {split} frames.")
+
+
+def validate_dataset(
+    working_dir: Path,
+) -> None:
+    """
+    Validate that train and validation dataset splits have matched file counts.
+
+    This function scans the specified working directory to count images
+    (supporting .jpg, .jpeg, and .png formats) and labels (.txt format)
+    separately across the 'train' and 'val' split directories. It ensures
+    the bounding box annotations perfectly pair with available target images
+    before feeding data into a YOLO training model pipeline.
+
+    Parameters
+    -------
+    working_dir : pathlib.Path
+        The root path containing the dataset workspace tree layout. Expected
+        internal subdirectory architecture requires:
+        - `working_dir/images/train`
+        - `working_dir/labels/train`
+        - `working_dir/images/val`
+        - `working_dir/labels/val`
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    TypeError
+        If `working_dir` is not an instance of `pathlib.Path`.
+    AssertionError
+        If there is a structural file count mismatch between the image assets
+        and text annotation assets inside either the 'train' or 'val' split.
+
+    Examples
+    --------
+    >>> from pathlib import Path
+    >>> workspace = Path("/home/user/yolo_dataset")
+    >>> validate_dataset(workspace)
+    Processing complete. Checking file counts...
+    Verification Counts (Local NVMe):
+     - Train Images: 1250 | Labels: 1250
+     - Val Images:   150 | Labels: 150
+    """
+    if not isinstance(working_dir, Path):
+        raise TypeError(
+            f"Argument 'working_dir' must be a pathlib.Path instance, received {type(working_dir).__name__}"
+        )
+    print("Processing complete. Checking file counts...")
+
+    train_img_count = sum(
+        1
+        for f in (working_dir / "images" / "train").glob("*")
+        if f.suffix.lower() in [".jpg", ".jpeg", ".png"]
+    )
+    train_lbl_count = sum(1 for f in (working_dir / "labels" / "train").glob("*.txt"))
+    val_img_count = sum(
+        1
+        for f in (working_dir / "images" / "val").glob("*")
+        if f.suffix.lower() in [".jpg", ".jpeg", ".png"]
+    )
+    val_lbl_count = sum(1 for f in (working_dir / "labels" / "val").glob("*.txt"))
+
+    print(
+        f"\nVerification Counts (Local NVMe):\n - Train Images: {train_img_count} | Labels: {train_lbl_count}"
+    )
+    print(f" - Val Images:   {val_img_count} | Labels: {val_lbl_count}")
+
+    assert train_img_count == train_lbl_count, "Train mismatch detected!"
+    assert val_img_count == val_lbl_count, "Validation mismatch detected!"
+
+
+def package_tar_file(base_local_dir: Path, working_dir: Path, output_dir: Path) -> None:
+    """
+    Package the dataset into a tar archive and transfer it to destination storage.
+
+    This function compresses the node-local staging dataset workspace into a single
+    uncompressed tarball (`dataset.tar`) inside the local scratch directory. It then
+    atomically relocates the resulting tarball to the final cluster network or project
+    scratch storage space and sweeps the temporary local directory to free up disk space.
+
+    Parameters
+    ----------
+    base_local_dir : pathlib.Path
+        The root temporary directory allocated for the job on the local computing node
+        (e.g., fallback path or `SLURM_TMPDIR`). This folder is recursively deleted
+        at the end of execution.
+    working_dir : pathlib.Path
+        The location of the structured dataset folder (`.../dataset`) containing the
+        compiled 'images' and 'labels' split trees. Wrapped as the root folder inside
+        the archive.
+    output_dir : pathlib.Path
+        The primary targeting directory on target storage where the final `dataset.tar`
+        will be written.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    TypeError
+        If `base_local_dir`, `working_dir`, or `output_dir` are not instances
+        of `pathlib.Path`.
+    FileNotFoundError
+        If `working_dir` or `base_local_dir` do not exist on the file system when
+        packaging is initiated.
+
+    Notes
+    -----
+    This pattern is optimized for high-performance computing (HPC) environments where
+    node-local NVMe scratch structures minimize network bottlenecks during compilation.
+    """
+    # Runtime Type Checking Validation
+    if not isinstance(base_local_dir, Path):
+        raise TypeError(
+            f"Argument 'base_local_dir' must be a pathlib.Path instance, received {type(base_local_dir).__name__}"
+        )
+    if not isinstance(working_dir, Path):
+        raise TypeError(
+            f"Argument 'working_dir' must be a pathlib.Path instance, received {type(working_dir).__name__}"
+        )
+    if not isinstance(output_dir, Path):
+        raise TypeError(
+            f"Argument 'output_dir' must be a pathlib.Path instance, received {type(output_dir).__name__}"
+        )
+
+    # Boundary Existence Checks
+    if not base_local_dir.exists():
+        raise FileNotFoundError(
+            f"Base local directory does not exist: {base_local_dir}"
+        )
+    if not working_dir.exists():
+        raise FileNotFoundError(
+            f"Working dataset directory to archive does not exist: {working_dir}"
+        )
+    # Package everything into a single tarball inside local /tmp
+    local_tar_file = base_local_dir / "dataset.tar"
+    print(f"\nCompressing complete archive on local node: {local_tar_file}")
+
+    with tarfile.open(local_tar_file, "w") as tar:
+        # Packages 'dataset/' as the single root directory inside the archive
+        tar.add(str(working_dir), arcname="dataset")
+
+    # Ship the single archive file to /scratch (Instantaneous network transaction)
+    cluster_scratch_path = Path(output_dir)
+    cluster_scratch_path.mkdir(parents=True, exist_ok=True)
+    final_scratch_target = (
+        cluster_scratch_path / "dataset.tar"
+    )  # f"dataset_{task_id}.tar"
+
+    print(
+        f"Transferring clean tar archive to network scratch storage: {final_scratch_target}"
+    )
+    shutil.move(str(local_tar_file), str(final_scratch_target))
+
+    # 4. Cleanup node local memory entirely
+    print("Clearing temporary node-local data directory...")
+    shutil.rmtree(base_local_dir)
+    print("Preprocessing execution complete.")
 
 
 # UPDATE TO CLEAN AND TAKE IN ARGUMENTS
 def run_yolo_preprocessing(
-    input_path: str,
-    output_dir: str,
+    train_path: str,
+    val_path: str,
+    output_path: str,
     skip: int,
-    val_size: float,
-    random_state: int = 300,
-    FORCE: bool = False,
+    force: bool = False,
 ) -> None:
     """
-    Execute the end-to-end YOLO preprocessing pipeline on a tracking index.
+        Execute the end-to-end YOLO preprocessing pipeline on a tracking index.
 
-    Reads a processed dataset file, splits the data into training and
-    validation subsets via a randomized train/test split, and systematically
-    calls `extract_frames` and `extract_labels` to generate a YOLO-compliant
-    object detection directory structure.
+        Reads a processed dataset file, splits the data into training and
+        validation subsets via a randomized train/test split, and systematically
+        calls `extract_frames` and `extract_labels` to generate a YOLO-compliant
+        object detection directory structure.
 
     Parameters
-    ----------
-    input_path : str
-        Path to the source CSV file containing video and label mappings.
-    output_dir : Path
-        Base directory path where the 'images/' and 'labels/' subfolders
-        will be compiled.
-    target_folder : float
-        Folder within zipped files holding bounding box annotations..
-    skip : int
-        The sequence interval step size for downsampling frame data (e.g.,
-        passing 5 extracts every 5th sequential frame).
-    val_size : float
-        The proportion of the dataset to include in the training split
-        (between 0.0 and 1.0).
-    random_state : int, default 300
-        The seed passed directly to `train_test_split` to ensure
-        reproducibility.
-    FORCE : bool, default False
-        If True, overwrite files at target destination.
+        ----------
+        train_path : str
+            Relative path from `ROOT_DIR` to the source CSV file containing training
+            video and label mappings.
+        val_path : str
+            Relative path from `ROOT_DIR` to the source CSV file containing validation
+            video and label mappings.
+        output_path : str
+            Relative directory path under `ROOT_DIR` where dataset assets compile,
+            or where the final compressed tar archive is saved if running on an HPC cluster.
+        skip : int
+            The sequence interval step size for downsampling frame data (e.g., passing
+            5 extracts every 5th sequential frame).
+        force : bool, default False
+            If True, forces overwrite / re-extraction of video frames and annotations
+            even if the target storage destinations already exist.
 
-    Returns
-    -------
-    None
-        This function saves image files and annotation arrays straight to disk.
+        Returns
+        -------
+        None
 
-    Raises
-    ------
-    FileNotFoundError
-        If the target configuration index at `train_path` cannot be located on disk.
-    ValueError
-        If `test_size` or `val_size` parameter boundaries violate standard float constraints.
-    OTHER TO BE NOTED
+        Raises
+        ------
+        TypeError
+            If any parameter violates type assertions (e.g., `skip` is passed as a string).
+        FileNotFoundError
+            If either `train_path` or `val_path` indexes cannot be located relative to
+            `ROOT_DIR`.
 
-    See Also
-    --------
-    extract_frames : Image extraction function utilizing OpenCV streams.
+        See Also
+        --------
+        process_single_split : Extraction and orphan purging loop manager per split.
+        resolve_working_directory : Scratch workspace router optimized for local vs HPC.
 
-    extract_labels : Zipfile extraction for bounding box coordinates.
-
-    Examples
-    --------
-    WIP
+        Examples
+        --------
+        >>> run_yolo_preprocessing(
+        ...     train_path="metadata/train_split.csv",
+        ...     val_path="metadata/val_split.csv",
+        ...     output_path="runs/exp1_dataset",
+        ...     skip=2,
+        ...     force=True
+        ... )
     """
-    # Convert inputs to Path objects
-    train_path = Path(input_path).absolute()
-    output_path = Path(output_dir).absolute()
-    skip = int(skip)
-    val_size = float(val_size)
-    random_state = int(random_state)
+    # 1. Runtime Boundary Type Assertions
+    if not isinstance(train_path, str):
+        raise TypeError(
+            f"Argument 'train_path' must be a str, received {type(train_path).__name__}"
+        )
+    if not isinstance(val_path, str):
+        raise TypeError(
+            f"Argument 'val_path' must be a str, received {type(val_path).__name__}"
+        )
+    if not isinstance(output_path, str):
+        raise TypeError(
+            f"Argument 'output_path' must be a str, received {type(output_path).__name__}"
+        )
+    if not isinstance(skip, int) or isinstance(skip, bool):
+        raise TypeError(
+            f"Argument 'skip' must be an int, received {type(skip).__name__}"
+        )
+    if not isinstance(force, bool):
+        raise TypeError(
+            f"Argument 'force' must be a bool, received {type(force).__name__}"
+        )
 
-    train_df = pd.read_csv(train_path, index_col=0)
+    root = Path(ROOT_DIR)
+    output_dir = root / output_path
 
-    train, val = train_test_split(
-        train_df,
-        test_size=val_size,
-        random_state=random_state,
+    # 2. Disk Boundary Verification Checks
+    resolved_train_csv = root / train_path
+    resolved_val_csv = root / val_path
+
+    if not resolved_train_csv.exists():
+        raise FileNotFoundError(
+            f"Missing required training configuration metadata: {resolved_train_csv}"
+        )
+    if not resolved_val_csv.exists():
+        raise FileNotFoundError(
+            f"Missing required validation configuration metadata: {resolved_val_csv}"
+        )
+
+    # Read source CSV allocations directly
+    train_df = pd.read_csv(resolved_train_csv, index_col=0)
+    val_df = pd.read_csv(resolved_val_csv, index_col=0)
+    working_directory, base_local_dir, on_cluster = resolve_working_directory(
+        output_dir=output_dir
     )
 
-    # Extract frames and bounding box annotations for the train set
-    extract_labels(
-        label_paths=train["labelled_clip_relative_path"],
-        labels_root=LABELLED_CLIPS_DIR,
-        output_dir=output_path,
+    process_single_split(
+        df=train_df,
+        working_dir=working_directory,
         split="train",
         skip=skip,
-        FORCE=FORCE,
-    )
-    extract_frames(
-        video_paths=train["clip_relative_path"],
-        videos_root=UNLABELLED_CLIPS_DIR,
-        output_dir=output_path,
-        split="train",
-        skip=skip,
-        FORCE=FORCE,
+        force=force,
+        clips_root_dir=UNLABELLED_CLIPS_DIR,
+        labels_root_dir=LABELLED_CLIPS_DIR,
     )
 
-    # Extract frames and bounding box annotations for the val set
-    extract_labels(
-        label_paths=val["labelled_clip_relative_path"],
-        labels_root=LABELLED_CLIPS_DIR,
-        output_dir=output_path,
+    process_single_split(
+        df=val_df,
+        working_dir=working_directory,
         split="val",
         skip=skip,
-        FORCE=FORCE,
-    )
-    extract_frames(
-        video_paths=val["clip_relative_path"],
-        videos_root=UNLABELLED_CLIPS_DIR,
-        output_dir=output_path,
-        split="val",
-        skip=skip,
-        FORCE=FORCE,
+        force=force,
+        clips_root_dir=UNLABELLED_CLIPS_DIR,
+        labels_root_dir=LABELLED_CLIPS_DIR,
     )
 
-    # Create dataset.yaml
-    create_yaml(output_dir)
+    create_yaml(str(working_directory))
+    validate_dataset(working_directory)
+
+    if on_cluster:
+        package_tar_file(base_local_dir, working_directory, output_dir)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Preprocessing for YOLO models.")
     parser.add_argument(
-        "--input_path",
+        "--train_path",
         type=str,
+        required=True,
         help="Path to data file.",
     )
     parser.add_argument(
-        "--output_dir",
+        "--val_path",
         type=str,
-        help="Output directory for train/val splits.)",
+        required=True,
+        help="Path to data file.",
+    )
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        required=True,
+        help="Output directory for dataset.",
     )
     parser.add_argument(
         "--skip",
         default=1,
+        type=int,
         help="Downsampling density. Skip=5 means read every 5th frame.",
     )
     parser.add_argument(
-        "--val_size",
-        default=0.2,
-        type=float,
-        help="Size of validation set for train/val split.",
-    )
-    parser.add_argument(
-        "--random_state",
-        default=300,
-        type=int,
-        help="Random state for reproducibility in train/val split.",
-    )
-    parser.add_argument(
-        "--FORCE",
+        "--force",
         default=False,
         action="store_true",
         help="Overwrite existing files.",
@@ -590,15 +556,17 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    print("Running preprocessing for YOLO models...")
+    print("\n=================================")
+    print("PREPROCESSING")
+    print("=================================\n")
+
+    print("\nRunning preprocessing for YOLO models...\n")
     args = parse_args()
+
     run_yolo_preprocessing(
-        input_path=args.input_path,
-        output_dir=args.output_dir,
+        train_path=args.train_path,
+        val_path=args.val_path,
+        output_path=args.output_path,
         skip=args.skip,
-        val_size=args.val_size,
-        random_state=args.random_state,
-        FORCE=args.FORCE,
+        force=args.force,
     )
-    print("All files created.")
-    print("Preprocessing for YOLO models complete.")
