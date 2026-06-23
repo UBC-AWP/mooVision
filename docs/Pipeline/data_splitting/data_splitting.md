@@ -1,19 +1,19 @@
 # Splitting Data
 
-This page documents how to use `scripts/splitting.py` to create train and test splits for model training, and the methodology for data splitting in the MooVision project.
+This page documents how to use `scripts/splitting.py` to create train/val/test splits for model training, and the methodology for data splitting experiments in the MooVision project.
 
 ---
 
 ## Summary
 
-To answer different research questions about the effectiveness of a cross-sucking detection model, this project creates four different train test splits by default. These are as follows:
+To answer different research questions about variable with fundamental impacts on a cross-sucking detection model, this project creates eight different train/val/test split. These are as follows:
 
 1. Random shuffle split
 2. Time-based split
-3. Pen-based split
-4. Period-based split
+3. Pen-based split (x3)
+4. Period-based split (x3)
 
-Since video files are large, splits are created as train and test csv's from the ground truth data file. These csv files must hold relative paths to both cross-sucking clips and annotated labels within their respective folders, allowing access to select video files for later training.
+To remove redundancy, splits are create from the processed index file and held as train, val, and test csv files in the processed data folder. These csv files hold relative paths to video and labels, allowing downstream functionality for creating training sets of videos in each split.
 
 ### Random Shuffle Split
 
@@ -65,7 +65,7 @@ Example:
 - Train: weaning; Val: preweaning; Test: postweaning
 - Train: preweaning; Val: postweaning; Test: weaning
 
-We expect that frequency and characteristics of cross-sucking behaviour may differ across periods, and this could affect model performance. For instance, calf growth changing appearances may result in the inability of learned edges (etc.) to transfer across weaning periods, resulting in poor
+We expect that frequency and characteristics of cross-sucking behaviour may differ across periods, and this could affect model performance. For instance, calf growth and changing appearances may result in the inability of learned edges (etc.) to transfer across weaning periods, resulting in poor model performance. Moreover we expect behaviour habits to change over calf growth and weaning periods leading to additional instabilities for the model.
 
 ---
 
