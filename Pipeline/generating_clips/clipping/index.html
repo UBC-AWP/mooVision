@@ -1,0 +1,2174 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../evaluation/evaluation/">
+      
+      
+        <link rel="next" href="../../analysis/analysis/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Clipping - MooVision</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#clipping-pipeline" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="MooVision" class="md-header__button md-logo" aria-label="MooVision" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MooVision
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Clipping
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="MooVision" class="md-nav__button md-logo" aria-label="MooVision" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MooVision
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Pipeline
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Model Pipeline
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reading_in_data/read_all_clips_index/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reading In Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data_splitting/data_splitting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splitting Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../preprocessing/preprocessing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Training
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Training/training_yolo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YOLO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../evaluation/evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clipping
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clipping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#input-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Input Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#expected-json-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected JSON Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-path-derivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Path Derivation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edge-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Cases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clip-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip Naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clip-from-a-single-json-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip from a single JSON file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clip-from-a-directory-of-json-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip from a directory of JSON files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clip-to-a-custom-output-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip to a custom output directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clipping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping--scriptsclipping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scripts.clipping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.reproduce_clip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reproduce_clip
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.split_by_json_events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_by_json_events
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.annotate_clip_with_boxes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotate_clip_with_boxes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        main
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utils
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Utils
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../utils/get_video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../utils/sockeye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sockeye
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../about/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../about/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../about/release_notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#input-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Input Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#expected-json-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected JSON Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-path-derivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Path Derivation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edge-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Cases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clip-naming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip Naming
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clip-from-a-single-json-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip from a single JSON file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clip-from-a-directory-of-json-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip from a directory of JSON files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clip-to-a-custom-output-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clip to a custom output directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clipping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping--scriptsclipping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scripts.clipping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.reproduce_clip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reproduce_clip
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.split_by_json_events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_by_json_events
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.annotate_clip_with_boxes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotate_clip_with_boxes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.clipping.main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        main
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="clipping-pipeline">Clipping Pipeline</h1>
+<p>This page documents how to use <code>scripts/clipping.py</code> to reproduce short annotated clips from long-form source videos using JSON event metadata produced by the detection pipeline.</p>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>The clipping pipeline replays precise temporal segments from raw <code>.mp4</code> files into standalone annotated clip files. It reads JSON event metadata produced by any stage of the detection pipeline (baseline, fine-tuned YOLO, or sequence-linked) and produces boxed clips with per-frame bounding box annotations.</p>
+<p>All clips are written to <code>results/result_clips/</code>, preserving the directory structure of the input JSON files relative to the <code>metadata/</code> folder.</p>
+<hr />
+<h2 id="input-requirements">Input Requirements</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Format</td>
+<td>JSON event metadata files</td>
+</tr>
+<tr>
+<td>Content</td>
+<td>Clip start/end times, source video references, and optionally per-frame bounding boxes</td>
+</tr>
+</tbody>
+</table>
+<p>Before running the clipping script, ensure your local workspace satisfies the following:</p>
+<ul>
+<li><code>.env</code> is populated with <code>ROOT_DIR</code> and <code>LOCAL_DIR</code> (used by <code>config.py</code>).</li>
+<li>Source videos exist under <code>ROOT_DIR/raw_cross_sucking_datalog/</code>.</li>
+<li>JSON metadata files exist under <code>LOCAL_DIR/results/metadata/</code> produced by the detection pipeline.</li>
+</ul>
+<h3 id="expected-json-schema">Expected JSON Schema</h3>
+<p>Minimum fields:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;video_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;path/to/source.mp4&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;events&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;start_sec&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">12.3</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;end_sec&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">16.8</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Optional fields used for annotation:</p>
+<ul>
+<li><code>identifier</code> (string; used as the per-video output folder name and clip filename stem)</li>
+<li><code>fps</code> (float; used for annotation frame alignment)</li>
+<li><code>events[*].intersection_box</code>: list of per-frame boxes with <code>frame</code>, <code>x1</code>, <code>y1</code>, <code>x2</code>, <code>y2</code></li>
+</ul>
+<hr />
+<h2 id="output">Output</h2>
+<p>Clips are written to <code>results/result_clips/</code> preserving everything after <code>metadata/</code> in the input JSON path. Each video gets its own subfolder named after its <code>identifier</code> stem.</p>
+<div class="highlight"><pre><span></span><code>results/result_clips/
+├── pipeline_demo/
+│   └── yolo/
+│       └── ch02_20250913094601/
+│           ├── ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+│           └── ch02_20250913094601_event002_22.1-25.4_boxed.mp4
+│   └── baseline/
+│       └── ch02_20250913094601/
+│           ├── ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+│           └── ch02_20250913094601_event002_22.1-25.4_boxed.mp4
+</code></pre></div>
+<p>Boxed clips are saved with the <code>_boxed.mp4</code> suffix. The unboxed intermediate clip is removed after annotation succeeds. If annotation fails, the unboxed version is kept as a fallback.</p>
+<hr />
+<h2 id="how-it-works">How It Works</h2>
+<ol>
+<li>Load configuration paths from <code>config.py</code> (sourced from <code>.env</code>).</li>
+<li>Accept <code>--input</code> as a single JSON file or a directory to search recursively for <code>*.json</code> files.</li>
+<li>For each JSON, resolve the source video path using <code>ROOT_DIR</code>.</li>
+<li>Extract everything after <code>metadata/</code> in the JSON file's parent path to construct the output subdirectory.</li>
+<li>Create a per-video output folder named after the <code>identifier</code> stem.</li>
+<li><code>reproduce_clip</code> reads frames from <code>start_sec</code> to <code>end_sec</code> and writes a temporary <code>.mp4</code>.</li>
+<li><code>annotate_clip_with_boxes</code> renders per-frame bounding boxes into the final <code>_boxed.mp4</code>, then removes the unboxed intermediate.</li>
+</ol>
+<h3 id="output-path-derivation">Output Path Derivation</h3>
+<p>The output path is derived entirely from the JSON file's location relative to the <code>metadata/</code> folder. Everything after <code>metadata/</code> in the JSON's parent directory is preserved as-is in the output, so no level-counting is needed and any input structure is handled correctly.</p>
+<div class="highlight"><pre><span></span><code>input  → results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json
+output → results/result_clips/pipeline_demo/yolo/ch02_20250913094601/ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+
+input  → results/metadata/pipeline_demo/baseline/ch02_20250913094601_results.json
+output → results/result_clips/pipeline_demo/baseline/ch02_20250913094601/ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+</code></pre></div>
+<h3 id="edge-cases">Edge Cases</h3>
+<p><strong>Annotation Alignment</strong>
+The JSON <code>fps</code> and <code>intersection_box</code> frame indices must align with the source video. Frame indices in <code>intersection_box</code> are in source-video coordinates and are converted to clip-local indices by subtracting the event start frame before annotation.</p>
+<p><strong>Missing Video Paths</strong>
+If a JSON file references a <code>video_path</code> that does not exist on disk, a <code>FileNotFoundError</code> is raised.</p>
+<p><strong>No Events in JSON</strong>
+If a JSON file contains an empty <code>events</code> list, the file is skipped and a message is printed.</p>
+<p><strong>Annotation Failure</strong>
+If <code>annotate_clip_with_boxes</code> fails for an event, the unboxed intermediate clip is kept as a fallback and a warning is printed.</p>
+<hr />
+<h3 id="clip-naming">Clip Naming</h3>
+<p>Clips follow this naming convention:</p>
+<div class="highlight"><pre><span></span><code>&lt;identifier_stem&gt;_event###_&lt;start_sec&gt;-&lt;end_sec&gt;_boxed.mp4
+</code></pre></div>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code>ch02_20250913094601_event001_12.3-16.8_boxed.mp4
+</code></pre></div>
+<hr />
+<h2 id="usage">Usage</h2>
+<h3 id="clip-from-a-single-json-file">Clip from a single JSON file</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scripts/clipping.py<span class="w"> </span>--input<span class="w"> </span>results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json
+</code></pre></div>
+<h3 id="clip-from-a-directory-of-json-files">Clip from a directory of JSON files</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scripts/clipping.py<span class="w"> </span>--input<span class="w"> </span>results/metadata/pipeline_demo/yolo/
+</code></pre></div>
+<h3 id="clip-to-a-custom-output-directory">Clip to a custom output directory</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scripts/clipping.py<span class="w"> </span>--input<span class="w"> </span>results/metadata/pipeline_demo/yolo/<span class="w"> </span>--output<span class="w"> </span>/tmp/clips/
+</code></pre></div>
+<hr />
+<h2 id="function-reference">Function Reference</h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="scripts.clipping"></a>
+    <div class="doc doc-contents first">
+
+        <h2 id="scripts.clipping--scriptsclipping">scripts.clipping</h2>
+<p>Reproduce short annotated video clips from longer source videos.</p>
+
+
+<details class="overview" open>
+  <summary>Overview</summary>
+  <p>This module provides a pipeline for reproducing clip video segments from
+source <code>.mp4</code> files using JSON event metadata produced by any stage of the
+detection pipeline (baseline, fine-tuned YOLO, or sequence-linked).</p>
+<p>For each event in each JSON, a clip is reproduced from the source video and
+an annotated <code>*_boxed.mp4</code> is written with per-frame bounding boxes overlaid.</p>
+</details>
+
+<details class="input/output" open>
+  <summary>Input/Output</summary>
+  <p>Inputs
+  - Source videos (<code>*.mp4</code>) resolved via <code>ROOT_DIR</code> in <code>config.py</code>.
+  - A single JSON file, or a directory searched recursively for <code>*.json</code>
+    metadata files, passed via <code>--input</code> on the command line.</p>
+<p>Outputs
+  - Annotated clips written under <code>results/result_clips/</code>, preserving
+    everything after <code>metadata/</code> in the input JSON path, with one
+    subfolder per video named after its <code>identifier</code> stem::</p>
+<div class="highlight"><pre><span></span><code>    results/result_clips/&lt;split_name&gt;/&lt;model_name&gt;/&lt;identifier&gt;/
+        &lt;identifier&gt;_event001_&lt;start&gt;-&lt;end&gt;_boxed.mp4
+        &lt;identifier&gt;_event002_&lt;start&gt;-&lt;end&gt;_boxed.mp4
+
+Examples:
+    input  → results/metadata/pipeline_demo/yolo/ch02_....json
+    output → results/result_clips/pipeline_demo/yolo/ch02_.../ch02_...mp4
+
+    input  → results/metadata/pipeline_demo/baseline/ch02_....json
+    output → results/result_clips/pipeline_demo/baseline/ch02_.../ch02_...mp4
+</code></pre></div>
+</details>
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <ul>
+<li>Relies on OpenCV for video I/O.</li>
+<li>Configuration is centralised in <code>config.py</code>, driven by environment
+    variables in a <code>.env</code> file at the repo root.</li>
+<li>If annotation fails for an event, the unboxed intermediate clip is kept
+    as a fallback and a warning is printed.</li>
+</ul>
+</details>
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scripts.clipping.reproduce_clip" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">reproduce_clip</span><span class="p">(</span><span class="n">raw_video_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">start_sec</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">end_sec</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Reproduce a clip from a source video between two timestamps.</p>
+
+
+<details class="overview" open>
+  <summary>Overview</summary>
+  <p>Opens a source <code>.mp4</code> video with OpenCV, seeks to <code>start_sec</code>, and writes
+frames until <code>end_sec</code> into a new <code>.mp4</code> file at <code>output_path</code>.</p>
+</details>
+
+<details class="input/output" open>
+  <summary>Input/Output</summary>
+  <p>Input
+  - <code>raw_video_path</code>: Source video file.
+  - <code>start_sec</code>, <code>end_sec</code>: Start/end times in seconds (float).</p>
+<p>Output
+  - <code>output_path</code>: Written <code>.mp4</code> clip.</p>
+</details>
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>raw_video_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the source <code>.mp4</code> file.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>start_sec</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Start time (seconds) in the source video.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>end_sec</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>End time (seconds) in the source video.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Destination path for the reproduced clip.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>True</code> if the clip was written successfully; <code>False</code> if the source video
+could not be opened or frames could not be read.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <ul>
+<li>Uses codec <code>"mp4v"</code> via OpenCV.</li>
+<li>The output frame size and FPS are taken from the source video.</li>
+<li>This function does not create <code>output_path.parent</code>; callers should ensure
+  the directory exists if needed.</li>
+</ul>
+</details>
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ok</span> <span class="o">=</span> <span class="n">reproduce_clip</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;in.mp4&quot;</span><span class="p">),</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">12.5</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;out.mp4&quot;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ok</span><span class="p">)</span>
+<span class="go">True</span>
+</code></pre></div>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scripts.clipping.split_by_json_events" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">split_by_json_events</span><span class="p">(</span><span class="n">json_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Reproduce annotated clips defined by JSON event metadata files.</p>
+
+
+<details class="overview" open>
+  <summary>Overview</summary>
+  <p>Recursively searches <code>json_path</code> for <code>*.json</code> metadata files produced by the
+detection pipeline. For each event in each JSON, reproduces a clip from the
+source video and writes an annotated <code>*_boxed.mp4</code> with bounding boxes
+overlaid. The output directory structure is derived entirely from the JSON
+file's path relative to the <code>metadata/</code> folder, so it mirrors the input
+hierarchy regardless of how deeply nested the JSON files are.</p>
+</details>
+
+<details class="input/output" open>
+  <summary>Input/Output</summary>
+  <p>Input
+  - <code>json_path</code>: A single JSON file, or a directory searched recursively
+                 for <code>*.json</code> files produced by the detection pipeline.
+  - Each JSON must specify <code>video_path</code> and <code>events</code>, and must live
+    somewhere under a <code>metadata/</code> directory.</p>
+<p>Output
+  - Annotated clips written under:
+        <output_dir>/<path_after_metadata>/<identifier_stem>/<stem><em>event###</em><start>-<end>_boxed.mp4</p>
+<div class="highlight"><pre><span></span><code>Examples:
+    input  → results/metadata/pipeline_demo/yolo/ch02_....json
+    output → results/result_clips/pipeline_demo/yolo/ch02_.../
+
+    input  → results/metadata/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_....json
+    output → results/result_clips/baseline/pipeline_demo/Pen 2/PREWEANING/Day 1/ch02_.../
+</code></pre></div>
+</details>
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>json_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A single JSON file, or a root directory to search recursively for JSON files.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output root directory (e.g. RESULT_CLIPS_DIR).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Total number of successfully reproduced clips across all JSON files.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="FileNotFoundError">FileNotFoundError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If a JSON references a <code>video_path</code> that does not exist on disk.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Expected JSON schema (minimum):
+  - <code>video_path</code> : str
+  - <code>events</code>     : list[dict] with keys <code>start_sec</code>, <code>end_sec</code></p>
+<p>Optional keys used if present:
+  - <code>identifier</code>                 : str — used as the per-video output folder name
+  - <code>fps</code>                        : float — used for annotation frame alignment
+  - <code>events[*].intersection_box</code> : list[dict] with keys <code>frame</code>, <code>x1</code>, <code>y1</code>,
+                                   <code>x2</code>, <code>y2</code> in source-video frame coordinates</p>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scripts.clipping.annotate_clip_with_boxes" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">annotate_clip_with_boxes</span><span class="p">(</span><span class="n">input_clip</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">output_clip</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">boxes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">thickness</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Annotate a clip with per-frame bounding boxes and write a new video.</p>
+
+
+<details class="overview" open>
+  <summary>Overview</summary>
+  <p>Reads <code>input_clip</code> frame-by-frame, draws any boxes associated with the current
+frame index, and writes the resulting frames to <code>output_clip</code>.</p>
+</details>
+
+<details class="input/output" open>
+  <summary>Input/Output</summary>
+  <p>Input
+  - <code>input_clip</code>: Existing clip to annotate.
+  - <code>boxes</code>: Clip-relative frame boxes (frame 0 is the first frame of the clip).</p>
+<p>Output
+  - <code>output_clip</code>: Annotated clip written to disk.</p>
+</details>
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>input_clip</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the input clip (<code>.mp4</code>).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output_clip</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path where the annotated clip will be written.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>boxes</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span>[<span title="dict">dict</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of bounding boxes in clip-relative frame coordinates. Each dict must
+include: <code>frame</code>, <code>x1</code>, <code>y1</code>, <code>x2</code>, <code>y2</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>color</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span>[<span title="int">int</span>, <span title="int">int</span>, <span title="int">int</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Rectangle color in BGR.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(0, 255, 0)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>thickness</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Rectangle thickness (pixels).</p>
+              </div>
+            </td>
+            <td>
+                  <code>2</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>True</code> if annotation succeeded, else <code>False</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <ul>
+<li>Creates <code>output_clip.parent</code> if it does not exist.</li>
+<li>Supports multiple boxes per frame.</li>
+</ul>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scripts.clipping.main" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">main</span><span class="p">()</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Run the clipping pipeline from the command line.</p>
+
+
+<details class="overview" open>
+  <summary>Overview</summary>
+  <p>Accepts a JSON file or directory of JSON files as input and reproduces
+annotated clips for all detected events, written under the output directory
+mirroring the source video hierarchy.</p>
+</details>
+
+<details class="input/output" open>
+  <summary>Input/Output</summary>
+  <p>Input
+  - <code>--input</code>  : A single JSON file or a directory searched recursively
+                   for <code>*.json</code> files produced by the detection pipeline.</p>
+<p>Output
+  - Annotated clips written under:
+        <output>/<split_name>/<model_name>/<stem>/<stem><em>event###</em><start>-<end>_boxed.mp4
+  - <code>--output</code> defaults to <code>RESULT_CLIPS_DIR</code> (<code>results/result_clips</code>).</p>
+</details>
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>None</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Arguments are parsed from the command line:
+  --input   Path  Required. JSON file or directory of JSON files.
+  --output  Path  Optional. Output root. Default: RESULT_CLIPS_DIR.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <p>Clip all events from a directory of JSONs::</p>
+<div class="highlight"><pre><span></span><code>python src/clipping.py --input results/metadata/&lt;split_name&gt;/&lt;model_name&gt;
+</code></pre></div>
+<p>Clip events from a single JSON file::</p>
+<div class="highlight"><pre><span></span><code>python src/clipping.py --input results/metadata/pen_based/pen_3/yolo
+</code></pre></div>
+<p>Clip to a custom output directory::</p>
+<div class="highlight"><pre><span></span><code>python src/clipping.py --input results/metadata/&lt;split_name&gt;/&lt;model_name&gt;/ --output /tmp/clips/
+</code></pre></div>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/@mermaid-js/layout-elk@0.1.7/dist/mermaid-layout-elk.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+      
+        <script src="../../../javascripts/mermaid-init.js"></script>
+      
+    
+  </body>
+</html>

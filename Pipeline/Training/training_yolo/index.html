@@ -1,0 +1,3149 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../preprocessing/preprocessing/">
+      
+      
+        <link rel="next" href="../../evaluation/evaluation/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>YOLO - MooVision</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#yolo-model-training" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="MooVision" class="md-header__button md-logo" aria-label="MooVision" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MooVision
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              YOLO
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="MooVision" class="md-nav__button md-logo" aria-label="MooVision" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MooVision
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Pipeline
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Model Pipeline
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reading_in_data/read_all_clips_index/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reading In Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data_splitting/data_splitting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splitting Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../preprocessing/preprocessing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Training
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YOLO
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YOLO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-pipeline-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Pipeline Functionality
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Pipeline Functionality">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-path-configuration-dataset-unpacking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML Path Configuration &amp; Dataset Unpacking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#early-stopping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Early Stopping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#epoch-setting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Epoch Setting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overwriting-existing-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overwriting Existing Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware-gpu-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware &amp; GPU Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-line-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Line Arguments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-local-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Line (Local) Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.training.training_yolo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        training_yolo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.training.training_yolo.setup_node_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup_node_dataset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.training.training_yolo.train_yolo_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        train_yolo_model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#work-in-progress-wip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Work In Progress (WIP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Work In Progress (WIP)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#target-interface-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target Interface Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../evaluation/evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../generating_clips/clipping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clipping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../analysis/analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utils
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Utils
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../utils/get_video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../utils/sockeye/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sockeye
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../about/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../about/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../about/release_notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-pipeline-functionality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Pipeline Functionality
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Pipeline Functionality">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-path-configuration-dataset-unpacking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML Path Configuration &amp; Dataset Unpacking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#early-stopping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Early Stopping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#epoch-setting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Epoch Setting
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache Optimization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overwriting-existing-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overwriting Existing Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware-gpu-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware &amp; GPU Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-line-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Line Arguments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-line-local-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Line (Local) Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.training.training_yolo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        training_yolo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.training.training_yolo.setup_node_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        setup_node_dataset
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.training.training_yolo.train_yolo_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        train_yolo_model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#work-in-progress-wip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Work In Progress (WIP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Work In Progress (WIP)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#target-interface-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target Interface Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="yolo-model-training">YOLO Model Training</h1>
+<p>Frame-by-frame object detection training using Ultralytics YOLO models. Wraps the Ultralytics training API with a fixed interface and CLI entry point, allowing models to be trained from the command line or imported directly into a pipeline.</p>
+<hr />
+<h2 id="summary">Summary</h2>
+<p>As with preprocessing, we specify two workflows for training models: local and Sockeye (HPC). Local workflows run linearly, where each training process must be called individually. HPC workflows parallelize training jobs to run each of the eight experimental splits simultaneously.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Property</th>
+<th style="text-align: left;">Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Script</strong></td>
+<td style="text-align: left;"><code>training_yolo.py</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Framework</strong></td>
+<td style="text-align: left;"><a href="https://docs.ultralytics.com/modes/train">Ultralytics YOLO</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Supported Models</strong></td>
+<td style="text-align: left;">YOLOv8, YOLOv11 (YOLO26+)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Input</strong></td>
+<td style="text-align: left;">Dataset YAML + pretrained weights / Dataset.tar + pretrained weights</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Output</strong></td>
+<td style="text-align: left;">Model weights + training artifacts written to disk</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>CLI Support</strong></td>
+<td style="text-align: left;">Yes</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>See Also:</strong> <code>04_train_yolo.sh</code> for the YOLO training Sockeye job submission script and <code>run_training_pipeline.sh</code> for the Sockeye orchestrator script.</p>
+</blockquote>
+<hr />
+<h2 id="inputs">Inputs</h2>
+<ul>
+<li><strong>Local:</strong> Reads training data directly from the local <code>dataset.yaml</code> path, loads the pretrained YOLO weights, updates the path references, and runs training.</li>
+<li><strong>Sockeye (HPC):</strong> Unpacks a compressed <code>dataset.tar</code> file locally to the compute node to avoid numerous slow file transfers over the HPC network. It updates <code>yaml_path</code> to the current node directory, loads pre-downloaded YOLO weights, and runs training against the freshly unpacked files.</li>
+</ul>
+<h2 id="output">Output</h2>
+<p>This script writes directly to disk and returns <code>None</code>. All outputs are organized by experimental split and written to <code>project/name/split</code>.</p>
+<div class="highlight"><pre><span></span><code>project/
+└── name/
+    ├── weights/
+    │   ├── best.pt       # Best checkpoint evaluated by validation metric
+    │   └── last.pt       # Final checkpoint from the last epoch
+    ├── results.csv       # Per-epoch training and validation metrics
+    └── args.yaml         # Resolved runtime training configuration
+</code></pre></div>
+<hr />
+<h2 id="how-it-works">How It Works</h2>
+<ol>
+<li>
+<p><strong>Environment Detection:</strong> The script detects whether the execution context is local or on Sockeye.</p>
+</li>
+<li>
+<p>On <strong>Sockeye</strong>, the <code>dataset.tar</code> file is unpacked directly on the local compute node, and the <code>yaml_path</code> variable inside <code>dataset.yaml</code> is updated dynamically to target the node location.</p>
+</li>
+<li>
+<p>On a <strong>Local</strong> machine, <code>yaml_path</code> inside <code>dataset.yaml</code> is updated to your current project path before training execution.</p>
+</li>
+<li>
+<p><strong>Weight Allocation:</strong></p>
+</li>
+<li>
+<p>On <strong>Sockeye</strong>, a pretrained YOLO model is loaded from a local, pre-downloaded weights directory (configurable via <code>.env_sockeye</code> and prepared by running <code>bash 01_setup.sh</code>). <em>Ensure the model version downloaded and the variables specified in <code>04_train_yolo.sh</code> match before running.</em></p>
+</li>
+<li>
+<p><strong>Locally</strong>, weights are fetched directly from Ultralytics using the version and size flags passed via the CLI (e.g., resolving to <code>yolov8n.pt</code> or <code>yolo11n.pt</code>).</p>
+</li>
+<li>
+<p><strong>Training Execution:</strong> The model is trained on the dataset described in the generated YAML file.</p>
+</li>
+<li>
+<p><strong>Parameter Forwarding:</strong> Core training arguments—such as epochs, batch size, image size, patience, and device constraints—are passed directly to the underlying Ultralytics <code>model.train()</code> execution call.</p>
+</li>
+</ol>
+<hr />
+<h2 id="core-pipeline-functionality">Core Pipeline Functionality</h2>
+<h3 id="yaml-path-configuration-dataset-unpacking">YAML Path Configuration &amp; Dataset Unpacking</h3>
+<p>Because absolute paths on shared HPC clusters change depending on the assigned compute node, YAML target paths are initially specified as relative links (<code>./dataset</code>). This script resolves and updates paths dynamically at runtime to prevent pathing failures during training.</p>
+<p>On Sockeye, datasets are bundled into a single <code>dataset.tar</code> archive to maximize filesystem network efficiency. This script unpacks the dataset onto the local compute node, updates the underlying configuration paths, and validates folder lengths and file counts to ensure complete data integrity before initializing the model.</p>
+<h3 id="image-handling">Image Handling</h3>
+<p>Training images are dynamically resized to the target <code>img_size</code> resolution. When <code>rect=True</code> (default behavior), the longest side of the frame is restricted to <code>img_size</code> while fully preserving the original aspect ratio. This configuration is highly recommended for high-resolution footage like the 1920×1800 MooVision clips utilized in this pipeline.</p>
+<h3 id="early-stopping">Early Stopping</h3>
+<p>If the chosen validation metrics fail to improve for <code>patience</code> consecutive epochs, training terminates automatically to save compute cycles. You can also pass the <code>time</code> parameter to hard-cap the absolute wall-clock runtime in hours, regardless of how many epochs have finished.</p>
+<h3 id="batch-size">Batch Size</h3>
+<p>Supports flexible, variable batch configuration. The default batch size on Sockeye is optimized at 64 to maximize throughput; allocating exceptionally large batch values on certain compute nodes may trigger Out Of Memory (OOM) faults.</p>
+<h3 id="epoch-setting">Epoch Setting</h3>
+<p>The <code>epochs</code> parameter specifies the maximum number of full training passes over the dataset. While higher epoch caps allow for deep feature optimization, they significantly increase the probability of model overfitting.</p>
+<h3 id="cache-optimization">Cache Optimization</h3>
+<p>Allows caching of dataset images and labels directly into memory using <code>--cache</code>. Caching is <strong>generally discouraged</strong> for this pipeline as the video frame datasets are exceptionally large and risk flooding memory limits. Given the high-speed local disk nodes on Sockeye, caching yields negligible performance benefits.</p>
+<h3 id="overwriting-existing-runs">Overwriting Existing Runs</h3>
+<p>To prevent accidental data loss, the pipeline prevents overwriting existing directories by default. To replace an existing run folder with a new experiment, pass the <code>--exist_ok</code> flag.</p>
+<h3 id="hardware-gpu-compatibility">Hardware &amp; GPU Compatibility</h3>
+<p>The architecture is designed to scale across single or multi-GPU environments using the <code>device</code> and <code>workers</code> parameters. By default, <code>device</code> is set to <code>"cpu"</code> to ensure safe, error-free execution on machines lacking dedicated acceleration.</p>
+<ul>
+<li>To target a specific GPU, pass a single string identifier: <code>--device="0"</code></li>
+<li>To run parallelized multi-GPU training, pass a collection list: <code>--device=[0,1]</code></li>
+<li>The <code>workers</code> argument (defaults to 8) regulates the number of parallel CPU data-loading threads used to feed data to the GPU.</li>
+</ul>
+<h3 id="model-selection">Model Selection</h3>
+<p>Pretrained base weights are dynamically resolved at execution as <code>yolo{version}{size}.pt</code>. For example, setting <code>model=26</code> (MooVision internally aliases 26 for v11 architectures) and <code>model_size="m"</code> will resolve to <code>yolo11m.pt</code>. Ultralytics automatically handles fetching remote files if matching weights are not discovered locally.</p>
+<hr />
+<h2 id="command-line-arguments">Command Line Arguments</h2>
+<p>For complete information regarding downstream engine configurations, visit the <a href="https://docs.ultralytics.com/modes/train">Ultralytics Training Reference Documentation</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Type</th>
+<th>Default</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dataset</code></td>
+<td><code>str</code></td>
+<td><em>None</em></td>
+<td><strong>Yes</strong></td>
+<td>Path to the dataset configuration target file.</td>
+</tr>
+<tr>
+<td><code>--device</code></td>
+<td><code>str</code></td>
+<td><code>"cpu"</code></td>
+<td>No</td>
+<td>Hardware acceleration choice. Examples: <code>'0'</code> or <code>'0,1'</code> for specific GPUs, <code>'cpu'</code>, <code>'cuda'</code>, or <code>'mps'</code>.</td>
+</tr>
+<tr>
+<td><code>--workers</code></td>
+<td><code>int</code></td>
+<td><code>8</code></td>
+<td>No</td>
+<td>Number of parallel data loader worker processes.</td>
+</tr>
+<tr>
+<td><code>--name</code></td>
+<td><code>str</code></td>
+<td><code>"cross-sucking"</code></td>
+<td>No</td>
+<td>Name identifier for the specific training run/experiment.</td>
+</tr>
+<tr>
+<td><code>--project</code></td>
+<td><code>str</code></td>
+<td><code>"MooVision"</code></td>
+<td>No</td>
+<td>Name of the output project directory where results are saved.</td>
+</tr>
+<tr>
+<td><code>--weights_dir</code></td>
+<td><code>str</code></td>
+<td><code>""</code></td>
+<td>No</td>
+<td>Path to a local folder containing model weights. Leave completely blank to automatically download weights from the internet.</td>
+</tr>
+<tr>
+<td><code>--model</code></td>
+<td><code>int</code></td>
+<td><code>26</code></td>
+<td>No</td>
+<td>YOLO model version integer (e.g., <code>8</code> for YOLOv8, <code>26</code> for YOLO11/26+).</td>
+</tr>
+<tr>
+<td><code>--model_size</code></td>
+<td><code>str</code></td>
+<td><code>"n"</code></td>
+<td>No</td>
+<td>Model scale/variant size configuration options: <code>n</code> (nano), <code>s</code> (small), <code>m</code> (medium), <code>l</code> (large), or <code>x</code> (xlarge).</td>
+</tr>
+<tr>
+<td><code>--epochs</code></td>
+<td><code>int</code></td>
+<td><code>50</code></td>
+<td>No</td>
+<td>Maximum number of full validation passes over the entire dataframe during training.</td>
+</tr>
+<tr>
+<td><code>--time</code></td>
+<td><code>float</code></td>
+<td><code>None</code></td>
+<td>No</td>
+<td>Maximum absolute training duration allowed, specified in hours.</td>
+</tr>
+<tr>
+<td><code>--batch</code></td>
+<td><code>int</code></td>
+<td><code>32</code></td>
+<td>No</td>
+<td>Training batch size per iteration.</td>
+</tr>
+<tr>
+<td><code>--patience</code></td>
+<td><code>int</code></td>
+<td><code>20</code></td>
+<td>No</td>
+<td>Early stopping threshold. Training stops early if no evaluation improvements are seen after this many consecutive epochs.</td>
+</tr>
+<tr>
+<td><code>--img_size</code></td>
+<td><code>int</code></td>
+<td><code>640</code></td>
+<td>No</td>
+<td>Target image size (resolution pixel width/height) used for model training.</td>
+</tr>
+<tr>
+<td><code>--not_rect</code></td>
+<td>Flag</td>
+<td><code>True</code></td>
+<td>No</td>
+<td><strong>Disables</strong> rectangular training. Including this flag switches the underlying configuration (<code>rect</code>) to <code>False</code>, forcing the system to stop maintaining native image aspect ratios.</td>
+</tr>
+<tr>
+<td><code>--do_not_save</code></td>
+<td>Flag</td>
+<td><code>True</code></td>
+<td>No</td>
+<td><strong>Disables</strong> tracking saves. Including this flag switches the underlying configuration (<code>save</code>) to <code>False</code>, preventing training checkpoints and finalized model weights from saving to disk.</td>
+</tr>
+<tr>
+<td><code>--exist_ok</code></td>
+<td>Flag</td>
+<td><code>False</code></td>
+<td>No</td>
+<td><strong>Enables</strong> project overwriting. Including this flag sets the parameter to <code>True</code>, allowing the script to safely overwrite existing project directories without throwing errors.</td>
+</tr>
+<tr>
+<td><code>--cache</code></td>
+<td>Flag</td>
+<td><code>False</code></td>
+<td>No</td>
+<td><strong>Enables</strong> image caching. Including this flag sets the parameter to <code>True</code>, caching raw images in RAM/storage memory for significantly quicker batch step testing.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="usage">Usage</h2>
+<h3 id="command-line-local-example">Command Line (Local) Example</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scripts/training/training_yolo.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dataset<span class="o">=</span><span class="s2">&quot;data/training/pipeline_demo/dataset/dataset.yaml&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--project<span class="o">=</span><span class="s2">&quot;pipeline_demo&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="o">=</span><span class="s2">&quot;demo_01&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--epochs<span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--batch<span class="o">=</span><span class="m">8</span>
+</code></pre></div>
+<hr />
+<h2 id="function-reference">Function Reference</h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="scripts.training.training_yolo"></a>
+    <div class="doc doc-contents first">
+
+        <p>Frame-by-frame object detection training using Ultralytics YOLO models.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scripts.training.training_yolo.setup_node_dataset" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">setup_node_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">base_name</span><span class="o">=</span><span class="s1">&#39;dataset&#39;</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Extract and isolate datasets to process-specific local compute node directories.</p>
+<p>This function sets up a task-isolated staging workspace inside high-speed
+node-local storage (e.g., SSD/NVMe scratch spaces mapped via <code>SLURM_TMPDIR</code>)
+to prevent file collisions when multi-task array jobs run concurrently on the
+same physical hardware node. It extracts the raw dataset tarball via native system
+utilities, checks the data structure for YOLO formatting compatibility, and
+dynamically overwrites the dataset's internal configuration file (<code>dataset.yaml</code>)
+with absolute pathing strings.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>dataset</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The path string targeting the dataset. On an HPC cluster loop, this maps
+to the target <code>.tar</code> input file path. On local local dev systems, this maps
+to a directory relative to <code>ROOT_DIR</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>base_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An identifier appended to the directory isolation signature naming convention
+(<code>job_X_task_Y_&lt;base_name&gt;</code>).</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#34;dataset&#34;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>local_yaml_path</code></td>            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The absolute path pointing to the dynamically updated and isolated configuration
+<code>dataset.yaml</code> file.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td><code>on_cluster</code></td>            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Flags whether execution environments evaluated as an HPC cluster loop or a
+local fallback run.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="FileNotFoundError">FileNotFoundError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the target dataset tar file is missing on a cluster, or if the internal
+<code>dataset.yaml</code> configuration template cannot be located.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If cluster execution conditions are true but <code>SLURM_TMPDIR</code> is missing,
+or if an image directory component is found completely empty during audit loops.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="RuntimeError">RuntimeError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If native system <code>tar</code> sub-processes crash or return non-zero exit codes,
+or if structural validation fails (missing both <code>images</code> and <code>labels</code> trees).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>scripts/training/training_yolo.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 20</span>
+<span class="normal"> 21</span>
+<span class="normal"> 22</span>
+<span class="normal"> 23</span>
+<span class="normal"> 24</span>
+<span class="normal"> 25</span>
+<span class="normal"> 26</span>
+<span class="normal"> 27</span>
+<span class="normal"> 28</span>
+<span class="normal"> 29</span>
+<span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">setup_node_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">base_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;dataset&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extract and isolate datasets to process-specific local compute node directories.</span>
+
+<span class="sd">    This function sets up a task-isolated staging workspace inside high-speed</span>
+<span class="sd">    node-local storage (e.g., SSD/NVMe scratch spaces mapped via `SLURM_TMPDIR`)</span>
+<span class="sd">    to prevent file collisions when multi-task array jobs run concurrently on the</span>
+<span class="sd">    same physical hardware node. It extracts the raw dataset tarball via native system</span>
+<span class="sd">    utilities, checks the data structure for YOLO formatting compatibility, and</span>
+<span class="sd">    dynamically overwrites the dataset&#39;s internal configuration file (`dataset.yaml`)</span>
+<span class="sd">    with absolute pathing strings.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataset : str</span>
+<span class="sd">        The path string targeting the dataset. On an HPC cluster loop, this maps</span>
+<span class="sd">        to the target `.tar` input file path. On local local dev systems, this maps</span>
+<span class="sd">        to a directory relative to `ROOT_DIR`.</span>
+<span class="sd">    base_name : str, default &quot;dataset&quot;</span>
+<span class="sd">        An identifier appended to the directory isolation signature naming convention</span>
+<span class="sd">        (`job_X_task_Y_&lt;base_name&gt;`).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    local_yaml_path : pathlib.Path</span>
+<span class="sd">        The absolute path pointing to the dynamically updated and isolated configuration</span>
+<span class="sd">        `dataset.yaml` file.</span>
+<span class="sd">    on_cluster : bool</span>
+<span class="sd">        Flags whether execution environments evaluated as an HPC cluster loop or a</span>
+<span class="sd">        local fallback run.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    FileNotFoundError</span>
+<span class="sd">        If the target dataset tar file is missing on a cluster, or if the internal</span>
+<span class="sd">        `dataset.yaml` configuration template cannot be located.</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If cluster execution conditions are true but `SLURM_TMPDIR` is missing,</span>
+<span class="sd">        or if an image directory component is found completely empty during audit loops.</span>
+<span class="sd">    RuntimeError</span>
+<span class="sd">        If native system `tar` sub-processes crash or return non-zero exit codes,</span>
+<span class="sd">        or if structural validation fails (missing both `images` and `labels` trees).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># GENERATE AN ABSOLUTE ISOLATION SIGNATURE PER ARRAY TASK</span>
+    <span class="c1"># This ensures that even if Task 1 and Task 2 share the same physical server node,</span>
+    <span class="c1"># they write to completely separated folders on the NVMe storage drive.</span>
+    <span class="n">slurm_job_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_JOB_ID&quot;</span><span class="p">,</span> <span class="s2">&quot;local_dev&quot;</span><span class="p">)</span>
+    <span class="n">slurm_task_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_ARRAY_TASK_ID&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
+    <span class="n">tmp_dir_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SLURM_TMPDIR&quot;</span><span class="p">)</span>
+
+    <span class="n">on_cluster</span> <span class="o">=</span> <span class="s2">&quot;PBS_JOBID&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span> <span class="ow">or</span> <span class="s2">&quot;SLURM_JOB_ID&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span>
+
+    <span class="k">if</span> <span class="n">on_cluster</span><span class="p">:</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Working on Cluster, searching for tar path...&quot;</span><span class="p">)</span>
+        <span class="n">tar_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">tar_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataset archive missing at: </span><span class="si">{</span><span class="n">tar_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">tmp_dir_env</span><span class="p">:</span>
+            <span class="c1"># Combined both Job ID and Task ID to guarantee absolute isolation</span>
+            <span class="c1"># across different jobs and task arrays sharing the same node.</span>
+            <span class="c1"># e.g., /localscratch/11740177/job_11740177_task_1_dataset</span>
+            <span class="n">isolated_node_dir</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">Path</span><span class="p">(</span><span class="n">tmp_dir_env</span><span class="p">)</span>
+                <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;job_</span><span class="si">{</span><span class="n">slurm_job_id</span><span class="si">}</span><span class="s2">_task_</span><span class="si">{</span><span class="n">slurm_task_id</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">base_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not find SLURM_TMPDIR.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ISOLATED NATIVE C TAR EXTRACTION</span>
+        <span class="c1"># If this specific task has already successfully extracted its partition, skip to avoid overhead</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">())):</span>
+            <span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Task </span><span class="si">{</span><span class="n">slurm_task_id</span><span class="si">}</span><span class="s2"> Staging Area: </span><span class="si">{</span><span class="n">isolated_node_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Extracting archive via native system tar utility...&quot;</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># --strip-components=1 strips the top-level folder &#39;dataset/&#39; from the tarball</span>
+                <span class="c1"># and unrolls everything straight into our task-isolated directory</span>
+                <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="s2">&quot;tar&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;-xf&quot;</span><span class="p">,</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="n">tar_path</span><span class="p">),</span>
+                        <span class="s2">&quot;--strip-components=1&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;-C&quot;</span><span class="p">,</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="n">isolated_node_dir</span><span class="p">),</span>
+                    <span class="p">],</span>
+                    <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">DEVNULL</span><span class="p">,</span>
+                    <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">isolated_node_dir</span><span class="p">)</span>
+                <span class="n">error_msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">e</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">stderr</span> <span class="k">else</span> <span class="s2">&quot;I/O System Error&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;[ERROR] Native tar extraction failed for task </span><span class="si">{</span><span class="n">slurm_task_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error_msg</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># POST-EXTRACTION VALIDATION CHECKS</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[INFO] Task </span><span class="si">{</span><span class="n">slurm_task_id</span><span class="si">}</span><span class="s2">: Commencing dataset integrity validation...&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Dynamically check for standard YOLO data splits: images and labels</span>
+        <span class="n">valid_folders</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="n">d</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">d</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;images&quot;</span><span class="p">,</span> <span class="s2">&quot;labels&quot;</span><span class="p">]</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Should return &quot;images&quot; and &quot;labels&quot;, else clean for next run.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_folders</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">isolated_node_dir</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[ERROR] Validation Failed: No valid YOLO folders (&#39;images&#39;/&#39;labels&#39;) found inside &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">isolated_node_dir</span><span class="si">}</span><span class="s2">. Verify if &#39;--strip-components=1&#39; fits your archive structure.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Path(tmp_dir_env) / f&quot;job_{slurm_job_id}_task_{slurm_task_id}_{base_name}&quot; / &quot;images&quot; or &quot;labels&quot;</span>
+        <span class="n">img_root_dir</span> <span class="o">=</span> <span class="n">isolated_node_dir</span> <span class="o">/</span> <span class="n">valid_folders</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">lbl_root_dir</span> <span class="o">=</span> <span class="n">isolated_node_dir</span> <span class="o">/</span> <span class="n">valid_folders</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Should return &quot;train&quot; and &quot;val&quot;</span>
+        <span class="n">valid_splits</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">img_root_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">]</span>
+        <span class="p">]</span>
+        <span class="c1"># Step B: Traverse each found data split to audit structural files</span>
+        <span class="k">for</span> <span class="n">split</span> <span class="ow">in</span> <span class="n">valid_splits</span><span class="p">:</span>
+
+            <span class="c1"># ... / images / train or val</span>
+            <span class="n">img_dir</span> <span class="o">=</span> <span class="n">img_root_dir</span> <span class="o">/</span> <span class="n">split</span>
+            <span class="n">lbl_dir</span> <span class="o">=</span> <span class="n">lbl_root_dir</span> <span class="o">/</span> <span class="n">split</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">img_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">lbl_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">isolated_node_dir</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;[ERROR] Structural Mismatch in split [</span><span class="si">{</span><span class="n">split</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">]. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Expected both branches to exist:</span><span class="se">\n</span><span class="s2">  - </span><span class="si">{</span><span class="n">img_dir</span><span class="si">}</span><span class="se">\n</span><span class="s2">  - </span><span class="si">{</span><span class="n">lbl_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Map unique stems (filenames without extensions) while dropping hidden OS assets</span>
+            <span class="n">image_stems</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">stem</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">img_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="n">label_stems</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">stem</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">lbl_dir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+            <span class="p">}</span>
+
+            <span class="n">num_images</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">image_stems</span><span class="p">)</span>
+            <span class="n">num_labels</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">label_stems</span><span class="p">)</span>
+
+            <span class="c1"># Step C: Catch empty directory states (indicates quota block or corrupted extraction)</span>
+            <span class="k">if</span> <span class="n">num_images</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">isolated_node_dir</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;[ERROR] Integrity Failure: Image directory for split [</span><span class="si">{</span><span class="n">split</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">] is completely empty.&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Step D: Alert or flag on image vs bounding-box count variance</span>
+            <span class="k">if</span> <span class="n">num_images</span> <span class="o">!=</span> <span class="n">num_labels</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;[WARNING] File count discrepancy in split [</span><span class="si">{</span><span class="n">split</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">]: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">num_images</span><span class="si">}</span><span class="s2"> images but </span><span class="si">{</span><span class="n">num_labels</span><span class="si">}</span><span class="s2"> labels.&quot;</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Check for images missing corresponding annotation labels</span>
+                <span class="n">orphaned_images</span> <span class="o">=</span> <span class="n">image_stems</span> <span class="o">-</span> <span class="n">label_stems</span>
+                <span class="k">if</span> <span class="n">orphaned_images</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;First 5 images missing a matching .txt label file: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">orphaned_images</span><span class="p">)[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[SUCCESS] Split [</span><span class="si">{</span><span class="n">split</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2">] checked: </span><span class="si">{</span><span class="n">num_images</span><span class="si">}</span><span class="s2"> images and </span><span class="si">{</span><span class="n">num_labels</span><span class="si">}</span><span class="s2"> labels verified.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[SUCCESS] Dataset structure validation completely passed for Task </span><span class="si">{</span><span class="n">slurm_task_id</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="p">)</span>
+        <span class="c1"># ────────────────────────────────────────────────────────────────</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Laptop fallback strategy</span>
+        <span class="n">data_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ROOT_DIR</span><span class="p">)</span> <span class="o">/</span> <span class="n">dataset</span>
+        <span class="n">isolated_node_dir</span> <span class="o">=</span> <span class="n">data_path</span><span class="o">.</span><span class="n">parent</span>
+
+    <span class="c1"># CONFIGURE INDEPENDENT PATHS IN THE LOCAL YAML FILE</span>
+    <span class="c1"># The config file sits inside each task&#39;s isolated local folder footprint,</span>
+    <span class="c1"># meaning tasks will never read or overwrite each other&#39;s paths.</span>
+    <span class="n">local_yaml_path</span> <span class="o">=</span> <span class="n">isolated_node_dir</span> <span class="o">/</span> <span class="s2">&quot;dataset.yaml&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">local_yaml_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Missing dataset.yaml configuration file inside task directory: </span><span class="si">{</span><span class="n">isolated_node_dir</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Read the isolated config file</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">local_yaml_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">config_data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="c1"># Re-route the &#39;path&#39; key from &#39;./dataset&#39; to the absolute path of this task&#39;s folder</span>
+    <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">isolated_node_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+
+    <span class="c1"># Save the modifications back to the node-local storage drive</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">local_yaml_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">config_data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">default_flow_style</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">on_cluster</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[SUCCESS] Task </span><span class="si">{</span><span class="n">slurm_task_id</span><span class="si">}</span><span class="s2"> absolute dataset path locked to: </span><span class="si">{</span><span class="n">config_data</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[SUCCESS] Absolute dataset path locked to: </span><span class="si">{</span><span class="n">config_data</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">local_yaml_path</span><span class="p">,</span> <span class="n">on_cluster</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="scripts.training.training_yolo.train_yolo_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">train_yolo_model</span><span class="p">(</span><span class="n">on_cluster</span><span class="p">,</span> <span class="n">yaml_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">project</span><span class="p">,</span> <span class="n">weights_dir</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">model_size</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">workers</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">batch</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="mi">640</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">rect</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Train a YOLO model.</p>
+<p>Takes in training set from preprocessing.py and trains a YOLOv8 model of
+the specified size.</p>
+<p>Parameters are taken from ultralytics docs. For more information and
+arguments see:
+https://docs.ultralytics.com/modes/train.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>yaml_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to data.yaml configuration file. File contains dataset paths,
+and classes (e.g. cross-sucking)</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Experiment name. e.g. cross-sucking-yolo-v26-m</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>project</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span> | <span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output directory. This is where output of model training is stored, including model
+weights and predictions.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>weights_dir</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to local pretrained YOLO weights (raw weights)</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>YOLO model version. i.e. 26 for v26, 8 for v8.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_size</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Model size (n=nano, s=small, m=medium, l=large, x=xlarge). A larger
+model may take longer to train or use, but it may also provide
+increased performance.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>device</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>device to train on (0 for GPU, 'cuda' for CUDA, 'cpu' for CPU, 'mps' for GPU on Mac).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>workers</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of parallel threads to run on sockeye.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>exist_ok</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, overwrite existing project/name directory.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>epochs</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of training epochs. Each epoch represents one full pass of the
+dataest. A larger epoch value will increase training duration, but may
+also increase accuracy.</p>
+              </div>
+            </td>
+            <td>
+                  <code>100</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>time</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum training time in hours. This will override the number of epochs
+if reached first. Note, this may affect model performance and training
+times.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>patience</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Number of epochs to wait until stopping the training due no
+improvements in validation metrics.</p>
+              </div>
+            </td>
+            <td>
+                  <code>50</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>batch</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span> or <span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Batch size. See ultrlytics docs for more info:
+https://www.ultralytics.com/glossary/batch-size</p>
+              </div>
+            </td>
+            <td>
+                  <code>16</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>img_size</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Image size for training. Resized to squares of img_size x img_size if
+rect = False, else keeps aspect ratio. This may affect model accuracy
+and computational complexity.</p>
+              </div>
+            </td>
+            <td>
+                  <code>640</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>save</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Enables saving of training checkpoints and final model weights. Set to True by default
+to save results of model training.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>rect</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, keeps image ratio when rescaling images. The longest side is
+equal to img_size. Can improve efficiency and speed but may affect
+accuracy.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+                  <code>named arguemnts</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>See ultralytics docs for additional arguments.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>This function reads to disk and does not return anything.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Examples:</span></p>
+    <p>.. code-block:: python</p>
+<div class="highlight"><pre><span></span><code># After running scripts read_all_clips_index.py, and splitting.py run...
+yaml_path = &quot;data/processed/pipeline_testing/yolo_format&quot;  #/path/to/yaml/file
+train_yolo_model(
+    yaml_path=yaml_path,
+    model_size=&quot;n&quot;,
+    epochs=3,
+    imgsz=640,
+    batch=8,
+    rect=True,
+    device=&quot;mps&quot;,
+    save=True,
+    patience=50,
+    name=&quot;cross_sucking&quot;,
+    project=&quot;MooVision&quot;,
+)
+</code></pre></div>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>scripts/training/training_yolo.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_yolo_model</span><span class="p">(</span>
+    <span class="n">on_cluster</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">yaml_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">project</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">weights_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">model_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">workers</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">exist_ok</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">batch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span>
+    <span class="n">img_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span>
+    <span class="n">save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">rect</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">cache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Train a YOLO model.</span>
+
+<span class="sd">    Takes in training set from preprocessing.py and trains a YOLOv8 model of</span>
+<span class="sd">    the specified size.</span>
+
+<span class="sd">    Parameters are taken from ultralytics docs. For more information and</span>
+<span class="sd">    arguments see:</span>
+<span class="sd">    https://docs.ultralytics.com/modes/train.</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    yaml_path : str</span>
+<span class="sd">        Path to data.yaml configuration file. File contains dataset paths,</span>
+<span class="sd">        and classes (e.g. cross-sucking)</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Experiment name. e.g. cross-sucking-yolo-v26-m</span>
+<span class="sd">    project : Path | str</span>
+<span class="sd">        Output directory. This is where output of model training is stored, including model</span>
+<span class="sd">        weights and predictions.</span>
+<span class="sd">    weights_dir : str</span>
+<span class="sd">        Path to local pretrained YOLO weights (raw weights)</span>
+<span class="sd">    model : int</span>
+<span class="sd">        YOLO model version. i.e. 26 for v26, 8 for v8.</span>
+<span class="sd">    model_size : str</span>
+<span class="sd">        Model size (n=nano, s=small, m=medium, l=large, x=xlarge). A larger</span>
+<span class="sd">        model may take longer to train or use, but it may also provide</span>
+<span class="sd">        increased performance.</span>
+<span class="sd">    device : str</span>
+<span class="sd">        device to train on (0 for GPU, &#39;cuda&#39; for CUDA, &#39;cpu&#39; for CPU, &#39;mps&#39; for GPU on Mac).</span>
+<span class="sd">    workers : int</span>
+<span class="sd">        Number of parallel threads to run on sockeye.</span>
+<span class="sd">    exist_ok : bool</span>
+<span class="sd">        If True, overwrite existing project/name directory.</span>
+<span class="sd">    epochs : int</span>
+<span class="sd">        Number of training epochs. Each epoch represents one full pass of the</span>
+<span class="sd">        dataest. A larger epoch value will increase training duration, but may</span>
+<span class="sd">        also increase accuracy.</span>
+<span class="sd">    time : float</span>
+<span class="sd">        Maximum training time in hours. This will override the number of epochs</span>
+<span class="sd">        if reached first. Note, this may affect model performance and training</span>
+<span class="sd">        times.</span>
+<span class="sd">    patience : int</span>
+<span class="sd">        Number of epochs to wait until stopping the training due no</span>
+<span class="sd">        improvements in validation metrics.</span>
+<span class="sd">    batch : int or float</span>
+<span class="sd">        Batch size. See ultrlytics docs for more info:</span>
+<span class="sd">        https://www.ultralytics.com/glossary/batch-size</span>
+<span class="sd">    img_size : int</span>
+<span class="sd">        Image size for training. Resized to squares of img_size x img_size if</span>
+<span class="sd">        rect = False, else keeps aspect ratio. This may affect model accuracy</span>
+<span class="sd">        and computational complexity.</span>
+<span class="sd">    save : bool</span>
+<span class="sd">        Enables saving of training checkpoints and final model weights. Set to True by default</span>
+<span class="sd">        to save results of model training.</span>
+<span class="sd">    rect : bool</span>
+<span class="sd">        If True, keeps image ratio when rescaling images. The longest side is</span>
+<span class="sd">        equal to img_size. Can improve efficiency and speed but may affect</span>
+<span class="sd">        accuracy.</span>
+<span class="sd">    **kwargs : named arguemnts</span>
+<span class="sd">        See ultralytics docs for additional arguments.</span>
+
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+<span class="sd">        This function reads to disk and does not return anything.</span>
+
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        # After running scripts read_all_clips_index.py, and splitting.py run...</span>
+<span class="sd">        yaml_path = &quot;data/processed/pipeline_testing/yolo_format&quot;  #/path/to/yaml/file</span>
+<span class="sd">        train_yolo_model(</span>
+<span class="sd">            yaml_path=yaml_path,</span>
+<span class="sd">            model_size=&quot;n&quot;,</span>
+<span class="sd">            epochs=3,</span>
+<span class="sd">            imgsz=640,</span>
+<span class="sd">            batch=8,</span>
+<span class="sd">            rect=True,</span>
+<span class="sd">            device=&quot;mps&quot;,</span>
+<span class="sd">            save=True,</span>
+<span class="sd">            patience=50,</span>
+<span class="sd">            name=&quot;cross_sucking&quot;,</span>
+<span class="sd">            project=&quot;MooVision&quot;,</span>
+<span class="sd">        )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Loads pretrained model</span>
+    <span class="k">if</span> <span class="n">weights_dir</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading model from weights...&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="o">==</span> <span class="mi">26</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Option 1: Loading YOLO26 model&quot;</span><span class="p">)</span>
+            <span class="n">final_model_target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">weights_dir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;yolo</span><span class="si">{</span><span class="n">model</span><span class="si">}{</span><span class="n">model_size</span><span class="si">}</span><span class="s2">.pt&quot;</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">final_model_target</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Could not find </span><span class="si">{</span><span class="n">final_model_target</span><span class="si">}</span><span class="s2">. Set model to yolo</span><span class="si">{</span><span class="n">model</span><span class="si">}{</span><span class="n">model_size</span><span class="si">}</span><span class="s2">.pt in .env_sockeye and run ./01_setup.sh on the login node.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">final_model_target</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">weights_dir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;yolov</span><span class="si">{</span><span class="n">model</span><span class="si">}{</span><span class="n">model_size</span><span class="si">}</span><span class="s2">.pt&quot;</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">final_model_target</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Could not find </span><span class="si">{</span><span class="n">final_model_target</span><span class="si">}</span><span class="s2">. Set model to yolov</span><span class="si">{</span><span class="n">model</span><span class="si">}{</span><span class="n">model_size</span><span class="si">}</span><span class="s2">.pt in .env_sockeye and run ./01_setup.sh on the login node.&quot;</span>
+                <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;loading model from internet...&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="o">==</span> <span class="mi">26</span><span class="p">:</span>
+            <span class="n">final_model_target</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;yolo</span><span class="si">{</span><span class="n">model</span><span class="si">}{</span><span class="n">model_size</span><span class="si">}</span><span class="s2">.pt&quot;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">final_model_target</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;yolov</span><span class="si">{</span><span class="n">model</span><span class="si">}{</span><span class="n">model_size</span><span class="si">}</span><span class="s2">.pt&quot;</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">YOLO</span><span class="p">(</span><span class="n">final_model_target</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model loaded from: </span><span class="si">{</span><span class="n">final_model_target</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">on_cluster</span><span class="p">:</span>
+        <span class="c1"># Path to save in root dir defined in sockeye scripts.</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">yaml_path</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="n">project</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">exist_ok</span><span class="o">=</span><span class="n">exist_ok</span><span class="p">,</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span><span class="p">,</span>
+            <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">patience</span><span class="o">=</span><span class="n">patience</span><span class="p">,</span>
+            <span class="n">batch</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span>
+            <span class="n">imgsz</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span>
+            <span class="n">save</span><span class="o">=</span><span class="n">save</span><span class="p">,</span>
+            <span class="n">rect</span><span class="o">=</span><span class="n">rect</span><span class="p">,</span>
+            <span class="n">workers</span><span class="o">=</span><span class="n">workers</span><span class="p">,</span>
+            <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Save project to root dir</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">yaml_path</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">project</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">ROOT_DIR</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;data&quot;</span> <span class="o">/</span> <span class="s2">&quot;yolo_training_runs&quot;</span> <span class="o">/</span> <span class="n">project</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+            <span class="n">exist_ok</span><span class="o">=</span><span class="n">exist_ok</span><span class="p">,</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span><span class="p">,</span>
+            <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span>
+            <span class="n">patience</span><span class="o">=</span><span class="n">patience</span><span class="p">,</span>
+            <span class="n">batch</span><span class="o">=</span><span class="n">batch</span><span class="p">,</span>
+            <span class="n">imgsz</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span>
+            <span class="n">save</span><span class="o">=</span><span class="n">save</span><span class="p">,</span>
+            <span class="n">rect</span><span class="o">=</span><span class="n">rect</span><span class="p">,</span>
+            <span class="n">workers</span><span class="o">=</span><span class="n">workers</span><span class="p">,</span>
+            <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><p>options:
+show_source: false
+show_root_heading: true</p>
+<hr />
+<h2 id="work-in-progress-wip">Work In Progress (WIP)</h2>
+<ol>
+<li><strong>Flexible Parameter Forwarding:</strong> Integrate <code>kwargs</code> capability into parsed argument behaviors. This will unlock direct passthrough optimization, allowing users to leverage any latent arguments supported natively within the Ultralytics API straight from this interface wrapper.</li>
+</ol>
+<h3 id="target-interface-concept">Target Interface Concept</h3>
+<p>Pass additional Ultralytics arguments via <code>--kwargs</code> (feature implementation pending):</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>train_yolo_model.py<span class="w"> </span>--yaml_path<span class="w"> </span>dataset.yaml<span class="w"> </span>--kwargs<span class="w"> </span><span class="nv">lr0</span><span class="o">=</span><span class="m">0</span>.01<span class="w"> </span><span class="nv">cos_lr</span><span class="o">=</span>True
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/@mermaid-js/layout-elk@0.1.7/dist/mermaid-layout-elk.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+      
+        <script src="../../../javascripts/mermaid-init.js"></script>
+      
+    
+  </body>
+</html>
