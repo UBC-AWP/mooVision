@@ -7,7 +7,7 @@ A light-coverage suite: 2-3 tests per function, focused on the
 core behavior of each one rather than exhaustive edge cases.
 
 Run with:
-    pytest test_evaluation.py -v
+    pytest tests/test_evaluation.py -v
 """
 
 import json
