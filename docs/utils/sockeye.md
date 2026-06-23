@@ -18,9 +18,9 @@ The scripts are numbered in the order they should be run:
 | `03_preprocessing.sh` | Convert videos into YOLO format (frames + labels, train/val split, filtering orphan frames) | `dataset/images/{train,val}/`, `dataset/labels/{train,val}/`, `dataset.yaml` (or `dataset.tar` on Sockeye) |
 | `04_train_yolo.sh` | Fine-tune YOLO model on training split | `data/yolo_training_runs/split_X_model/weights/best.pt` |
 | `05_baseline_testing.sh` | Run IoU-threshold baseline inference | `results/metadata/<split_strategy>/baseline/` |
-| `06_model_testing.sh` | Run YOLO + Seq-NMS inference (array jobs across splits/chunks) | `results/metadata/<split_strategy>/yolo/`, `seq-nms/` |
+| `06_yolo_testing.sh` | Run YOLO + Seq-NMS inference (array jobs across splits/chunks) | `results/metadata/<split_strategy>/yolo/`, `seq-nms/` |
 | `07_baseline_evaluation.sh` | Evaluate baseline predictions vs ground truth | `results/evaluation/evaluation_report_<split_strategy>_baseline.json` |
-| `08_model_evaluation.sh` | Evaluate YOLO + Seq-NMS predictions vs ground truth | `results/evaluation/evaluation_report_<split_strategy>_yolo.json`, `evaluation_report_<split_strategy>_seq-nms.json` |
+| `08_yolo_evaluation.sh` | Evaluate YOLO + Seq-NMS predictions vs ground truth | `results/evaluation/evaluation_report_<split_strategy>_yolo.json`, `evaluation_report_<split_strategy>_seq-nms.json` |
 
 !!! note
     All data outputs (except .venv which in in the repo mooVision/ folder) are stored on Sockeye under: `/scratch/st-nina-1/moovision/` (case-sensitive: lowercase "moovision")
@@ -169,28 +169,28 @@ Output is written to `results/metadata/<split_strategy>/baseline/`.
 !!! note
     The baseline script does not overwrite existing results. To rerun the script and generate new results, delete the existing output files first.
 
-## 06 — Model Testing (YOLO & Seq-NMS Inference)
+## 06 — YOLO Testing (YOLO & Seq-NMS Inference)
 
-**Script:** `06_model_testing.sh`
+**Script:** `06_yolo_testing.sh`
 
 Runs the fine-tuned YOLO model across all splits as a SLURM array job (8 splits × 10 chunks = 80 tasks). Each task processes a subset (10% chunk) of the test clips for one split.
 
 Submit all model/split combinations as a SLURM array job:
 
 ```bash
-sbatch 06_model_testing.sh
+sbatch 06_yolo_testing.sh
 ```
 
 To overwrite existing results:
 
 ```bash
-sbatch --export=ALL,OVERWRITE=true 06_model_testing.sh
+sbatch --export=ALL,OVERWRITE=true 06_yolo_testing.sh
 ```
 
 To test on just the first two array tasks before a full run:
 
 ```bash
-OVERWRITE=true sbatch --array=0-1 06_model_testing.sh
+OVERWRITE=true sbatch --array=0-1 06_yolo_testing.sh
 ```
 
 You can also run inference manually for a single split:
@@ -234,16 +234,16 @@ Output reports are written to `results/evaluation/`.
 
 ---
 
-## 08 — Model Evaluation (YOLO & Seq-NMS)
+## 08 — YOLO Evaluation (YOLO & Seq-NMS)
 
-**Script:** `08_model_evaluation.sh`
+**Script:** `08_yolo_evaluation.sh`
 
 Evaluates the fine-tuned YOLO predictions from step 06 against ground truth. Runs across all 8 splits and both pipeline variants (yolo, seq-nms).
 
 Once inference is done, submit the evaluation job:
 
 ```bash
-sbatch 08_model_evaluation.sh
+sbatch 08_yolo_evaluation.sh
 ```
 
 Or run manually:
