@@ -127,8 +127,6 @@ def process_single_split(
 
     Raises
     ------
-    TypeError
-        If any of the parameters fail their respective runtime type assertions.
     KeyError
         If the driving `df` is missing the required tracking columns.
 
@@ -299,10 +297,70 @@ def validate_dataset(
     assert val_img_count == val_lbl_count, "Validation mismatch detected!"
 
 
-def package_tar_file(base_local_dir, working_dir, output_dir):
+def package_tar_file(base_local_dir: Path, working_dir: Path, output_dir: Path) -> None:
     """
-    Package Dataset into tar file and transfer to path
+    Package the dataset into a tar archive and transfer it to destination storage.
+
+    This function compresses the node-local staging dataset workspace into a single
+    uncompressed tarball (`dataset.tar`) inside the local scratch directory. It then
+    atomically relocates the resulting tarball to the final cluster network or project
+    scratch storage space and sweeps the temporary local directory to free up disk space.
+
+    Parameters
+    ----------
+    base_local_dir : pathlib.Path
+        The root temporary directory allocated for the job on the local computing node
+        (e.g., fallback path or `SLURM_TMPDIR`). This folder is recursively deleted
+        at the end of execution.
+    working_dir : pathlib.Path
+        The location of the structured dataset folder (`.../dataset`) containing the
+        compiled 'images' and 'labels' split trees. Wrapped as the root folder inside
+        the archive.
+    output_dir : pathlib.Path
+        The primary targeting directory on target storage where the final `dataset.tar`
+        will be written.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    TypeError
+        If `base_local_dir`, `working_dir`, or `output_dir` are not instances
+        of `pathlib.Path`.
+    FileNotFoundError
+        If `working_dir` or `base_local_dir` do not exist on the file system when
+        packaging is initiated.
+
+    Notes
+    -----
+    This pattern is optimized for high-performance computing (HPC) environments where
+    node-local NVMe scratch structures minimize network bottlenecks during compilation.
     """
+    # Runtime Type Checking Validation
+    if not isinstance(base_local_dir, Path):
+        raise TypeError(
+            f"Argument 'base_local_dir' must be a pathlib.Path instance, received {type(base_local_dir).__name__}"
+        )
+    if not isinstance(working_dir, Path):
+        raise TypeError(
+            f"Argument 'working_dir' must be a pathlib.Path instance, received {type(working_dir).__name__}"
+        )
+    if not isinstance(output_dir, Path):
+        raise TypeError(
+            f"Argument 'output_dir' must be a pathlib.Path instance, received {type(output_dir).__name__}"
+        )
+
+    # Boundary Existence Checks
+    if not base_local_dir.exists():
+        raise FileNotFoundError(
+            f"Base local directory does not exist: {base_local_dir}"
+        )
+    if not working_dir.exists():
+        raise FileNotFoundError(
+            f"Working dataset directory to archive does not exist: {working_dir}"
+        )
     # Package everything into a single tarball inside local /tmp
     local_tar_file = base_local_dir / "dataset.tar"
     print(f"\nCompressing complete archive on local node: {local_tar_file}")
@@ -338,58 +396,99 @@ def run_yolo_preprocessing(
     force: bool = False,
 ) -> None:
     """
-    Execute the end-to-end YOLO preprocessing pipeline on a tracking index.
+        Execute the end-to-end YOLO preprocessing pipeline on a tracking index.
 
-    Reads a processed dataset file, splits the data into training and
-    validation subsets via a randomized train/test split, and systematically
-    calls `extract_frames` and `extract_labels` to generate a YOLO-compliant
-    object detection directory structure.
+        Reads a processed dataset file, splits the data into training and
+        validation subsets via a randomized train/test split, and systematically
+        calls `extract_frames` and `extract_labels` to generate a YOLO-compliant
+        object detection directory structure.
 
     Parameters
-    ----------
-    train_path : str
-        Path to the source CSV file containing training video and label mappings.
-    val_path : str
-        Path to the source CSV file containing validation video and label mappings.
-    output_path : str
-        Relative directory inside ROOT_DIR path where the 'images/' and
-        'labels/' subfolders will be compiled. Or where .tar file will be saved
-        if on sockeye.
-    skip : int
-        The sequence interval step size for downsampling frame data (e.g.,
-        passing 5 extracts every 5th sequential frame).
-    force : bool, default False
-        If True, overwrite files at target destination.
+        ----------
+        train_path : str
+            Relative path from `ROOT_DIR` to the source CSV file containing training
+            video and label mappings.
+        val_path : str
+            Relative path from `ROOT_DIR` to the source CSV file containing validation
+            video and label mappings.
+        output_path : str
+            Relative directory path under `ROOT_DIR` where dataset assets compile,
+            or where the final compressed tar archive is saved if running on an HPC cluster.
+        skip : int
+            The sequence interval step size for downsampling frame data (e.g., passing
+            5 extracts every 5th sequential frame).
+        force : bool, default False
+            If True, forces overwrite / re-extraction of video frames and annotations
+            even if the target storage destinations already exist.
 
-    Returns
-    -------
-    None
-        This function saves image files and annotation arrays straight to disk.
+        Returns
+        -------
+        None
 
-    Raises
-    ------
-    FileNotFoundError
-        If the target configuration index at `train_path` cannot be located on disk.
-    ValueError
-        If `test_size` or `val_size` parameter boundaries violate standard float constraints.
-    OTHER TO BE NOTED
+        Raises
+        ------
+        TypeError
+            If any parameter violates type assertions (e.g., `skip` is passed as a string).
+        FileNotFoundError
+            If either `train_path` or `val_path` indexes cannot be located relative to
+            `ROOT_DIR`.
 
-    See Also
-    --------
-    extract_frames : Image extraction function utilizing OpenCV streams.
-    extract_labels : Zipfile extraction for bounding box coordinates.
+        See Also
+        --------
+        process_single_split : Extraction and orphan purging loop manager per split.
+        resolve_working_directory : Scratch workspace router optimized for local vs HPC.
 
-    Examples
-    --------
-    WIP
+        Examples
+        --------
+        >>> run_yolo_preprocessing(
+        ...     train_path="metadata/train_split.csv",
+        ...     val_path="metadata/val_split.csv",
+        ...     output_path="runs/exp1_dataset",
+        ...     skip=2,
+        ...     force=True
+        ... )
     """
+    # 1. Runtime Boundary Type Assertions
+    if not isinstance(train_path, str):
+        raise TypeError(
+            f"Argument 'train_path' must be a str, received {type(train_path).__name__}"
+        )
+    if not isinstance(val_path, str):
+        raise TypeError(
+            f"Argument 'val_path' must be a str, received {type(val_path).__name__}"
+        )
+    if not isinstance(output_path, str):
+        raise TypeError(
+            f"Argument 'output_path' must be a str, received {type(output_path).__name__}"
+        )
+    if not isinstance(skip, int) or isinstance(skip, bool):
+        raise TypeError(
+            f"Argument 'skip' must be an int, received {type(skip).__name__}"
+        )
+    if not isinstance(force, bool):
+        raise TypeError(
+            f"Argument 'force' must be a bool, received {type(force).__name__}"
+        )
+
     root = Path(ROOT_DIR)
     output_dir = root / output_path
 
-    # Read source CSV allocations directly
-    train_df = pd.read_csv(root / train_path, index_col=0)
-    val_df = pd.read_csv(root / val_path, index_col=0)
+    # 2. Disk Boundary Verification Checks
+    resolved_train_csv = root / train_path
+    resolved_val_csv = root / val_path
 
+    if not resolved_train_csv.exists():
+        raise FileNotFoundError(
+            f"Missing required training configuration metadata: {resolved_train_csv}"
+        )
+    if not resolved_val_csv.exists():
+        raise FileNotFoundError(
+            f"Missing required validation configuration metadata: {resolved_val_csv}"
+        )
+
+    # Read source CSV allocations directly
+    train_df = pd.read_csv(resolved_train_csv, index_col=0)
+    val_df = pd.read_csv(resolved_val_csv, index_col=0)
     working_directory, base_local_dir, on_cluster = resolve_working_directory(
         output_dir=output_dir
     )
