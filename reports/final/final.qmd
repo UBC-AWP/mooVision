@@ -378,3 +378,68 @@ alt.vconcat(
 {{< pagebreak >}}
 
 # References
+
+{{< pagebreak >}}
+
+# Appendix {#sec-appendix}
+
+## Glossary of Terms {#sec-appendix-glossary}
+
+**Cross-sucking event:** A single, continuous occurrence of cross-sucking behaviour performed by a calf, as identified and labelled by a human annotator. Each event has a defined start and end time within a source video.
+
+**Event window:** The time interval defined by a start and end time (in seconds) over which a cross-sucking event occurs, applying to both ground truth and predicted events.
+
+**Frame:** A single still image extracted from a video at a specific point in time.
+
+**Frame-level detection:** A bounding box predicted by the model on an individual video frame indicating the location of a calf engaged in cross-sucking behaviour.
+
+**Bounding box:** A rectangular region defined by pixel coordinates that marks the location of a cross-sucking interaction within a single frame.
+
+**Frame-level evaluation:** Comparison of predicted bounding boxes against ground truth bounding boxes on a frame-by-frame basis, measuring spatial accuracy.
+
+**Event-level evaluation:** Comparison of entire predicted event windows against ground truth event windows, measuring temporal detection accuracy and producing precision, recall, F1, and F2 scores.
+
+**True positive:** A predicted event whose time window sufficiently overlaps with a labelled ground truth event.
+
+**False positive:** A predicted event that does not correspond to any labelled ground truth event.
+
+**False negative:** A labelled ground truth event that the model failed to detect.
+
+**Ground truth:** The set of human-annotated cross-sucking events and bounding boxes treated as the correct reference for evaluation.
+
+## Preprocessing on Sockeye {#sec-appendix-sockeye}
+
+On Sockeye preprocessing jobs are split across multiple nodes and run in parallel. For each one, video frames and labels are extracted locally on compute nodes, packaged into datasets, and then transferred to a data storage node (in the scratch directory) as compressed tar files before being transferred back and unpacked on compute nodes as training sets. This avoids the issue of transferring small files and makes use of the high-speed transfer system for large files, ensuring an efficient and timely workflow. Training and evaluation then follow, also split across several nodes to ensure we make use of Sockeye’s cluster system.
+
+In the local workflow, splits must be run in sequential order as functionality for parallelization has not been added. However, data is sent straight to the predesignated root directory, and avoids the need to compress and uncompress a dataset within the same device. Subsequent training and evaluation must be run sequentially as well.
+
+
+## Gemini 2.5 Flash Prompt {#sec-appendix-gemini}
+
+```python
+CROSS_SUCKING_VIDEO_PROMPT = (
+    "You are an expert in dairy cattle behaviour. Identify cross-sucking in this video. "
+    "Cross-sucking is defined narrowly here: one calf sucking on the hind/rear back, udder, "
+    "or lower stomach/belly area of another calf. It requires visible oral contact between one "
+    "calf's mouth and that hindquarter region of another calf. Do NOT count sucking on any other "
+    "body part (ears, muzzle, legs, etc.), and do NOT count mere proximity, sniffing, head-butting, "
+    "or social licking. Analyse the video systematically. For every timestamp where cross-sucking "
+    "occurs, return a 2D bounding box that encloses the event. Respond ONLY with a JSON array. "
+    "Each element MUST include: [{\"timestamp_sec\": <float>, \"label\": \"cross-sucking\", "
+    "\"box_2d\": [ymin, xmin, ymax, xmax]}]. If cross-sucking does not occur, return []."
+)
+
+IMAGE_CROSS_SUCKING_PROMPT = (
+    "You are an expert in dairy cattle behaviour. Identify cross-sucking in this image. "
+    "Cross-sucking is defined narrowly here: one calf sucking on the hind/rear back, udder, "
+    "or lower stomach/belly area of another calf. It requires visible oral contact between one "
+    "calf's mouth and that hindquarter region of another calf. Do NOT count sucking on any other "
+    "body part (ears, muzzle, legs, etc.), and do NOT count mere proximity, sniffing, "
+    "head-butting, or social licking. If cross-sucking clearly occurs, return one tight 2D "
+    "bounding box that encloses both the calf doing the sucking AND the hind/udder/stomach area "
+    "being sucked, with the label 'cross-sucking'. Respond ONLY with a JSON array — no markdown, "
+    "no explanation: [{\"label\": \"cross-sucking\", "
+    "\"box_2d\": [ymin, xmin, ymax, xmax]}]. "
+    "If cross-sucking does not clearly occur in the image, return []."
+)
+```
