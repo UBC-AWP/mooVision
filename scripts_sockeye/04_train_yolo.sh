@@ -63,7 +63,9 @@ uv run --frozen --offline python scripts/training/training_yolo.py \
     --epochs=100 \
     --patience=40 
 
-# # 3. Handle Resume Checkpoint Logic vs Fresh Start
+# WIP: Add resume training logic
+
+# 3. Handle Resume Checkpoint Logic vs Fresh Start
 # if [ -f "$CHECKPOINT_PATH" ]; then
 #     echo "FOUND RECOVERY CHECKPOINT. Resuming training..."
 #     uv run scripts/training/training_yolo.py \
@@ -83,7 +85,7 @@ uv run --frozen --offline python scripts/training/training_yolo.py \
 #         --model=26 \
 #         --model_size=m \
 #         --batch=64 \
-
+#
 # fi
 
 echo "========================================================"

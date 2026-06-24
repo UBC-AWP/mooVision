@@ -138,17 +138,17 @@ Train, val, and test csv's must contain relative paths to cross-sucking clips, s
 The script can be run from the terminal using the following command.
 
 ```{bash}
-uv run scripts/splitting.py
+uv run scripts/split_data/split_data.py
 ```
 
 By default, this will run all train/test splits, but will not overwrite folders or files if they already exist. 
 
 ### Overwriting Files
 
-To overwrite files use the `--FORCE` argument.
+To overwrite files use the `--force` argument.
 
 ```{bash}
-uv run scripts/splitting.py --FORCE
+uv run scripts/split_data/split_data.py --force
 ```
 
 ### Running Specific Splits
@@ -156,7 +156,7 @@ uv run scripts/splitting.py --FORCE
 If you do not want to run a specific split you can pass the arguments: `--no_{type}_split` where type is one of "random", "day", "period", "pen". For example,
 
 ```{bash}
-uv run scripts/splitting.py --FORCE --no_random_split --no_pen_split
+uv run scripts/split_data/split_data.py --force --no_random_split --no_pen_split
 ```
 
 will run period-based and day-based splits, but it will not run a random shuffle split, nor a pen-based split.
@@ -166,7 +166,7 @@ will run period-based and day-based splits, but it will not run a random shuffle
 By default, train and test csv's are saved to folders in `data/processed/`. If you want to specifiy a new output directory you can do so using the `--output_dir=` argument.
 
 ```{bash}
-uv run scripts/splitting.py --FORCE --output_dir="data/splits/"
+uv run scripts/split_data/split_data.py --force --output_dir="data/splits/"
 ```
 
 ### Specifying a Data Path
@@ -174,7 +174,7 @@ uv run scripts/splitting.py --FORCE --output_dir="data/splits/"
 If you want to specify your own processed data file, you can pass this to the script with the following arguemnt.
 
 ```{bash}
-uv run scripts/splitting.py --data_path="/path/to/your/data_file"
+uv run scripts/split_data/split_data.py --data_path="/path/to/your/data_file"
 ```
 
 Note: If you are creating your own processed data file, the data must adhere to data requirements layed out in `Project Organization`.
@@ -183,7 +183,7 @@ Note: If you are creating your own processed data file, the data must adhere to 
 
 ## Function Reference
 
-::: scripts.data_splitting.split_data
+::: scripts.split_data.split_data
     options:
         show_source: false
         show_root_heading: true
