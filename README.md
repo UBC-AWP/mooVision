@@ -1,5 +1,7 @@
 # MooVision
 
+[](img/cross-sucking.gif)
+
 MooVision is a computer-vision pipeline for detecting **cross-sucking behaviour** in socially housed dairy calves from angled overhead pen video. The goal is to reduce the time and effort required for manual review/labeling by automatically producing candidate events, clipped video segments, and structured metadata for downstream analysis.
 
 ## Project Overview
