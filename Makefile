@@ -2,41 +2,45 @@
 PY ?= uv run
 
 # ── Script paths ────────────────────────────────────────────────────────────
-READ_INDEX   := scripts/data_reading/read_all_clips_index.py
-SPLIT        := scripts/data_splitting/split_data.py
+READ_INDEX   := scripts/read_data/read_all_clips_index.py
+SPLIT        := scripts/split_data/split_data.py
 PREPROCESS   := scripts/preprocessing/preprocessing_yolo.py
 TRAIN        := scripts/training/training_yolo.py
-BASELINE     := scripts/models/baseline/baseline.py
-RUN_YOLO     := scripts/run_testing_2.py
-EVAL         := scripts/evaluation.py
-CLIP         := scripts/clipping.py
+BASELINE     := scripts/run_models/baseline/baseline.py
+RUN_YOLO     := scripts/run_models/run_testing.py
+EVAL         := scripts/evaluation/evaluation.py
+CLIP         := scripts/clipping/clipping.py
+
+# ── Report paths ─────────────────────────────────────────────────────────────
+REPORT_DIR   ?= reports
+REPORT_QMD   ?= $(REPORT_DIR)/final/final.qmd
 
 # ── Configurable parameters (override from CLI if needed) ───────────────────
-DATASET      ?= data/training/pipeline_demo/dataset/dataset.yaml
-PROJECT      ?= pipeline_demo
-RUN_NAME     ?= demo_01
-DEVICE       ?= cpu
-EPOCHS       ?= 1
-BATCH        ?= 8
+DATASET          ?= data/training/pipeline_demo/dataset/dataset.yaml
+PROJECT          ?= pipeline_demo
+RUN_NAME         ?= demo_01
+DEVICE           ?= cpu
+EPOCHS           ?= 1
+BATCH            ?= 8
 
-TRAIN_PATH   ?= data/processed/pipeline_demo/train.csv
-VAL_PATH     ?= data/processed/pipeline_demo/val.csv
-PREPROCESS_OUT ?= data/training/pipeline_demo/
-FRAME_SKIP   ?= 100
-TEST_CSV     ?= data/processed/pipeline_demo/test.csv
+TRAIN_PATH       ?= data/processed/pipeline_demo/train.csv
+VAL_PATH         ?= data/processed/pipeline_demo/val.csv
+PREPROCESS_OUT   ?= data/training/pipeline_demo/
+FRAME_SKIP       ?= 100
+TEST_CSV         ?= data/processed/pipeline_demo/test.csv
 
-MODEL_PATH   ?= data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt
+MODEL_PATH       ?= data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt
 
-PRED_YOLO    ?= results/metadata/pipeline_demo/yolo/
-PRED_SEQNMS  ?= results/metadata/pipeline_demo/seq-nms/
-GT_CSV       ?= data/processed/processed_clips_index.csv
+PRED_YOLO        ?= results/metadata/pipeline_demo/yolo/
+PRED_SEQNMS      ?= results/metadata/pipeline_demo/seq-nms/
+GT_CSV           ?= data/processed/processed_clips_index.csv
 EVAL_OUT_YOLO    ?= results/evaluation_report_yolo.json
 EVAL_OUT_SEQNMS  ?= results/evaluation_report_seq_nms.json
-LABELLED_DIR ?= cross_sucking_labelled
+LABELLED_DIR     ?= cross_sucking_labelled
 
-CLIP_INPUT   ?= results/metadata/pipeline_demo/yolo/
+CLIP_INPUT       ?= results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json
 
-# ── Targets ─────────────────────────────────────────────────────────────────
+# ── Targets ──────────────────────────────────────────────────────────────────
 .PHONY: run pipeline \
         read_index split preprocess train \
         baseline run_yolo \
@@ -49,7 +53,7 @@ pipeline: read_index split preprocess train baseline run_yolo eval clip
 
 # 1. Read raw clip index
 read_index:
-	$(PY) $(READ_INDEX) --FORCE
+	$(PY) $(READ_INDEX) --force
 
 # 2. Split data into train/val/test
 split:
@@ -110,3 +114,12 @@ eval: eval_yolo eval_seqnms
 # 8. Clip events from prediction JSONs
 clip:
 	$(PY) $(CLIP) --input $(CLIP_INPUT)
+
+# 9. Render report (run manually after pipeline is complete)
+report: report-pdf
+ 
+report-html:
+	uv run quarto render $(REPORT_QMD) --to html
+ 
+report-pdf:
+	uv run quarto render $(REPORT_QMD) --to pdf

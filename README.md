@@ -50,6 +50,27 @@ This project uses `uv` for package management.
 
 5. Run scripts with `uv run python <script.py>`
 
+## Running Tests
+
+To run all tests:
+```bash
+uv run pytest tests/ -v
+```
+
+To run tests for a specific module:
+```bash
+# read_all_clips_index.py tests
+uv run pytest tests/read_data/test_read_all_clips_index.py -v
+
+# evaluation.py tests
+uv run pytest tests/evaluation/test_evaluation.py -v
+```
+
+To run a specific test class:
+```bash
+uv run pytest tests/read_data/test_read_all_clips_index.py::TestReadData -v
+```
+
 ---
 
 ## Local `.env` configuration (required)
@@ -128,13 +149,13 @@ After configuring you `.env` and config files, run the following commands from y
 1. Read in Raw index, and process for videos . Note, this will throw a lot of warnings when ran. These are telling you that the function is using the clips NOT found in fixed_clips when multiple versions of the same video are found.
 
    ```bash
-   uv run scripts/data_reading/read_all_clips_index.py --FORCE
+   uv run scripts/read_data/read_all_clips_index.py --force
    ```
 
 2. Split Data into train and test splits. This outputs the 8 main train/val/test splits tested to the `data/processed/` folder within the root directory. For more information, see the project documentation.
 
    ```bash
-   uv run scripts/data_splitting/split_data.py --force
+   uv run scripts/split_data/split_data.py --force
    ```
 
 3. Preprocess Data for fine-tuning YOLO object detection model (using demo training set). Note that the train_path, val_path, and output_path are relative to the root directory `ROOT_DIR` here. Here we run only the demo training set for efficiency purposes as running all 8 splits is a long process. A similar command can be used to run any of the other splits, for more information see project documentation.
@@ -161,19 +182,19 @@ After configuring you `.env` and config files, run the following commands from y
     Cross-sucking examples (~2-3 minutes):
 
     ```bash
-    uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
+    uv run scripts/run_models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
     ```
 
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
 
     ```bash
-    uv run scripts/run_testing_2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
+    uv run scripts/run_models/run_testing.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0
     ```
 
     Note: if you wish to overwrite the existing result, add the argument `--overwrite` in the end
 
     ```bash
-    uv run scripts/run_testing_2.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0 --overwrite
+    uv run scripts/run_models/run_testing.py --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" --data_path "data/processed/pipeline_demo/test.csv" --chunk 0 --chunk_pct 1.0 --overwrite
     ```
 
 7. Evaluate results, including frame-level bounding box IoU computed from CVAT annotations. Note that `--labelled_clips_dir` should point to the directory containing the CVAT annotation zip files for the clips being evaluated; this argument is optional and can be omitted if frame-level bbox IoU is not needed.
@@ -181,7 +202,7 @@ After configuring you `.env` and config files, run the following commands from y
     Evaluate plain fine-tuned YOLO (CS detection only, no temporal linking):
 
     ```bash
-    uv run python scripts/evaluation.py \
+    uv run python scripts/evaluation/evaluation.py \
         --predictions "results/metadata/pipeline_demo/yolo/" \
         --ground_truth data/processed/processed_clips_index.csv \
         --output results/evaluation_report_yolo.json \
@@ -191,7 +212,7 @@ After configuring you `.env` and config files, run the following commands from y
     Evaluate YOLO + Seq-NMS (with temporal linking):
 
     ```bash
-    uv run python scripts/evaluation.py \
+    uv run python scripts/evaluation/evaluation.py \
         --predictions "results/metadata/pipeline_demo/seq-nms/" \
         --ground_truth data/processed/processed_clips_index.csv \
         --output results/evaluation_report_seq_nms.json \
@@ -201,7 +222,7 @@ After configuring you `.env` and config files, run the following commands from y
 8. Clip frames from results:
 
    ```bash
-   uv run scripts/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
+   uv run scripts/clipping/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
    ```
    
 The distribution analysis notebook is not part of the `make run` pipeline and
@@ -226,6 +247,28 @@ The demo workflow above is intended for local testing on a small subset of data.
 For a summary of findings, see the [final report](placeholder_path).
 
 > **Note for Sockeye users:** See the Sockeye documentation in the MkDocs for more information.
+
+## Rendering the Report
+
+The final report is written in Quarto and lives in `report/final_report.qmd`.
+It reads directly from pipeline outputs in `results/` so it must be run after
+the pipeline has completed. Quarto must be installed separately from `uv` —
+see [quarto.org](https://quarto.org) for installation instructions.
+
+To render the PDF:
+
+```bash
+make report
+```
+
+To render HTML for review during writing:
+
+```bash
+make report-html
+```
+
+The rendered files are saved to `reports/final/final.pdf` and
+`reports/final/final.html` respectively.
 
 ## How to run MkDocs
 For detailed documentation, please refer to our MkDocs site. To view it locally, run:

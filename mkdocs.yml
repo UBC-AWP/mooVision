@@ -41,19 +41,33 @@ plugins:
 
 nav:
   - Home: index.md
+  - Data Requirements: Pipeline/01_read_data/data_requirements.md
   - Model Pipeline:
-    - Reading In Data: Pipeline/reading_in_data/read_all_clips_index.md
-    - Splitting Data: Pipeline/data_splitting/data_splitting.md
-    - Baseline: Pipeline/models/baseline.md
-    - Preprocessing: Pipeline/preprocessing/preprocessing.md
+    - Reading In Data: 
+      - Reading In Data: Pipeline/01_read_data/read_all_clips_index.md
+      - Matching: Pipeline/01_read_data/matching.md
+      - Schema: Pipeline/01_read_data/schema.md
+    - Splitting Data: Pipeline/02_split_data/split_data.md
+    - Run Models:
+      - Baseline: Pipeline/05_run_models/baseline.md
+      - YOLO: Pipeline/05_run_models/yolo.md
+      - Seq-NMS: Pipeline/05_run_models/seq_nms.md
+    - Preprocessing: 
+      - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
+      - Extract Frames: Pipeline/03_preprocessing/extract_frames.md
+      - Extract Labels: Pipeline/03_preprocessing/extract_labels.md
+      - Utils: Pipeline/03_preprocessing/utils.md
     - Training:
-      - YOLO: Pipeline/Training/training_yolo.md
-    - Model Evaluation: Pipeline/evaluation/evaluation.md
-    - Clipping: Pipeline/generating_clips/clipping.md
-    - Analysis: Pipeline/analysis/analysis.md 
+      - YOLO: Pipeline/04_training/training_yolo.md
+    - Evaluation:
+      - Model Evaluation: Pipeline/06_evaluation/evaluation.md
+      - CS Detection Evaluation: Pipeline/06_evaluation/predict_bboxes.md
+    - Clipping: Pipeline/07_generating_clips/clipping.md
+    - Analysis: Pipeline/08_analysis/analysis.md
+  - Testing: testing/testing.md
   - Utils:
-    - Utils: utils/get_video.md
-    - Sockeye: utils/sockeye.md
+    - Utils: utils/utils.md
+  - Sockeye: sockeye.md
   - About:
     - About: about/about.md
     - License: about/license.md
