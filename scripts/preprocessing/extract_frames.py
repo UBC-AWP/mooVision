@@ -130,14 +130,6 @@ def process_single_video(
         raise TypeError(
             f"Argument 'final_output_dir' must be a Path object, received {type(final_output_dir).__name__}"
         )
-    if not isinstance(skip, int):
-        raise TypeError(
-            f"Argument 'skip' must be an int, received {type(skip).__name__}"
-        )
-    if skip <= 0:
-        raise ValueError(
-            f"Argument 'skip' must be a positive integer greater than 0, received {skip}"
-        )
     if not isinstance(executor, ThreadPoolExecutor):
         raise TypeError(
             f"Argument 'executor' must be a ThreadPoolExecutor instance, received {type(executor).__name__}"
