@@ -2,8 +2,8 @@ import json
 import pytest
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent)) 
-from scripts.clipping import split_by_json_events
+sys.path.append(str(Path(__file__).parent.parent.parent)) 
+from scripts.clipping.clipping import split_by_json_events
 
 
 def test_split_by_json_events_no_events(tmp_path: Path):
@@ -49,7 +49,7 @@ def test_split_by_json_events_missing_video_raises(tmp_path: Path):
 def test_split_by_json_events_skips_event_when_reproduce_fails(tmp_path, mocker):
     """If reproduce_clip fails, that event should not count toward total_success."""
     mocker.patch("pathlib.Path.exists", return_value=True)
-    mocker.patch("scripts.clipping.reproduce_clip", return_value=False)
+    mocker.patch("scripts.clipping.clipping.reproduce_clip", return_value=False)
 
     json_path = tmp_path / "test.json"
     json_path.write_text(json.dumps({
