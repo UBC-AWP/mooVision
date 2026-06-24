@@ -94,6 +94,12 @@ display(splits.style.hide(axis="index"))
 
 # Data Product
 
+When deployed by a researcher or farm operator, the pipeline takes raw barn camera footage as input and requires no manual annotation or model training. The footage is passed directly through the detection model, which produces per-frame bounding box predictions. These are then aggregated into discrete cross-sucking events with defined start and end times using the temporal linking step. The resulting detections are written to structured JSON metadata files, one per source video, containing event timestamps, confidence scores, and bounding box coordinates. An automated clip extraction tool then uses these outputs to pull and organise flagged video segments by pen, weaning stage, and recording day, giving researchers a condensed set of candidate clips for human review rather than hours of continuous footage.
+
+The current pipeline offers three detection configurations of increasing sophistication, the COCO-pretrained proximity baseline, the fine-tuned YOLO26 detector, and the fine-tuned detector extended with Seq-NMS temporal linking. The research pipeline used to develop and evaluate these models on UBC ARC Sockeye is documented separately in the project repository and is not required for deployment.
+
+This JSON-first, modular architecture was chosen because the research context demands interpretability over automation. Researchers need to verify detections rather than simply trust them, and the structured output gives them enough signal to prioritise which clips warrant immediate review based on confidence and duration. The annotated bounding box overlays further aid this process by making visible exactly what the model was responding to in each flagged segment, supporting a human-in-the-loop review workflow that fits naturally into the AWP's existing annotation practices.
+
 
 # Results
 
