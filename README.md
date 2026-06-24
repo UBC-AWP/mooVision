@@ -149,7 +149,7 @@ After configuring you `.env` and config files, run the following commands from y
 1. Read in Raw index, and process for videos . Note, this will throw a lot of warnings when ran. These are telling you that the function is using the clips NOT found in fixed_clips when multiple versions of the same video are found.
 
    ```bash
-   uv run scripts/read_data/read_all_clips_index.py --FORCE
+   uv run scripts/read_data/read_all_clips_index.py --force
    ```
 
 2. Split Data into train and test splits. This outputs the 8 main train/val/test splits tested to the `data/processed/` folder within the root directory. For more information, see the project documentation.
