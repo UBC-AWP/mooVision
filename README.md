@@ -109,7 +109,7 @@ UBC offers OneDrive accounts for researchers and research groups. If your data i
 We use `config.py` to configure paths to video and label directories. By default, the config file is setup for source videos, cross-sucking clips, and annotation labels existing in the following data structure:
 
 ```plaintext
-mooVision/
+Animal Welfare - mooVision - Documents (One Drive)/
 └── data/
     ├── raw_cross_sucking_datalog/
     │   └── videos/                          <- Raw field footages from cameras.
@@ -224,13 +224,15 @@ After configuring you `.env` and config files, run the following commands from y
    ```bash
    uv run scripts/clipping/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
    ```
-   
-The distribution analysis notebook is not part of the `make run` pipeline and
-should be run manually after any model stage to explore its outputs:
+
+9. Run the distribution analysis notebook to export figures for the report.
+   This must be done before rendering the PDF report:
 
 ```bash
-uv run jupyter notebook notebooks/distribution_analysis.ipynb
+   uv run jupyter notebook notebooks/distribution_analysis.ipynb
 ```
+
+   Once the notebook is open, run all cells including the final **Export Figures for Report PDF** cell at the bottom. This saves static PNGs to `reports/final/img/results/`.
 
 ## Running the Full Pipeline (Sockeye HPC)
 
@@ -250,25 +252,37 @@ For a summary of findings, see the [final report](placeholder_path).
 
 ## Rendering the Report
 
-The final report is written in Quarto and lives in `report/final_report.qmd`.
-It reads directly from pipeline outputs in `results/` so it must be run after
-the pipeline has completed. Quarto must be installed separately from `uv` —
-see [quarto.org](https://quarto.org) for installation instructions.
+The final report has two versions — a PDF for submission and an HTML version
+for interactive review. Both live in the `reports/final` folder. Quarto must be
+installed separately from `uv` — see [quarto.org](https://quarto.org) for
+installation instructions.
 
-To render the PDF:
+**Before rendering the PDF**, run the distribution analysis notebook and
+execute the export cell to generate static figures in `reports/final/img/results/`.
+The HTML version uses interactive Altair charts and does not need this step.
+
+Render the PDF (also runs the notebook automatically):
 
 ```bash
-make report
+make report-pdf
 ```
 
-To render HTML for review during writing:
+Render the HTML for review during writing:
 
 ```bash
 make report-html
 ```
 
-The rendered files are saved to `reports/final/final.pdf` and
-`reports/final/final.html` respectively.
+Render both:
+
+```bash
+make report
+```
+
+| File | Purpose |
+|---|---|
+| `reports/final/final_report.pdf.qmd` | PDF submission — static images, plain tables |
+| `reports/final/final_report.html.qmd` | HTML review — interactive Altair charts |
 
 ## How to run MkDocs
 For detailed documentation, please refer to our MkDocs site. To view it locally, run:
