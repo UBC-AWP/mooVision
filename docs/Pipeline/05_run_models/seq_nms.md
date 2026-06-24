@@ -185,7 +185,7 @@ uv run scripts/run_models/seq-NMS/seq_NMS.py \
 
 ## Function Reference
 
-::: scripts.run_models.seq-NMS.seq_NMS
+::: scripts.run_models.seq_NMS.seq_NMS
     options:
         show_source: false
         show_root_heading: true
