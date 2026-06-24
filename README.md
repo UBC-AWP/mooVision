@@ -60,15 +60,15 @@ uv run pytest tests/ -v
 To run tests for a specific module:
 ```bash
 # read_all_clips_index.py tests
-uv run pytest tests/test_read_all_clips_index.py -v
+uv run pytest tests/read_data/test_read_all_clips_index.py -v
 
 # evaluation.py tests
-uv run pytest tests/test_evaluation.py -v
+uv run pytest tests/evaluation/test_evaluation.py -v
 ```
 
 To run a specific test class:
 ```bash
-uv run pytest tests/test_read_all_clips_index.py::TestReadData -v
+uv run pytest tests/read_data/test_read_all_clips_index.py::TestReadData -v
 ```
 
 ---
@@ -202,7 +202,7 @@ After configuring you `.env` and config files, run the following commands from y
     Evaluate plain fine-tuned YOLO (CS detection only, no temporal linking):
 
     ```bash
-    uv run python scripts/evaluation.py \
+    uv run python scripts/evaluation/evaluation.py \
         --predictions "results/metadata/pipeline_demo/yolo/" \
         --ground_truth data/processed/processed_clips_index.csv \
         --output results/evaluation_report_yolo.json \
@@ -212,7 +212,7 @@ After configuring you `.env` and config files, run the following commands from y
     Evaluate YOLO + Seq-NMS (with temporal linking):
 
     ```bash
-    uv run python scripts/evaluation.py \
+    uv run python scripts/evaluation/evaluation.py \
         --predictions "results/metadata/pipeline_demo/seq-nms/" \
         --ground_truth data/processed/processed_clips_index.csv \
         --output results/evaluation_report_seq_nms.json \
