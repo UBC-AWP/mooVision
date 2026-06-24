@@ -80,13 +80,25 @@ display(splits.style.hide(axis="index"))
 
 
 ## A. Baseline
+The first priority was establishing a functioning baseline pipeline. The baseline uses a [YOLO model](https://docs.ultralytics.com/#where-to-start) pre-trained on the [COCO dataset](https://docs.ultralytics.com/datasets/detect/coco) to detect calves and draw a bounding box around each one in every frame. We employ [YOLO26](https://docs.ultralytics.com/models/yolo26) across all experiments, the most recent YOLO model, which achieves the best detection accuracy among publicly available YOLO models. For each frame, we compute the Intersection over Union (IoU) between every pair of detected bounding boxes. IoU is defined as the ratio of the overlapping area between two bounding boxes to the union area, quantifying the degree of spatial overlap between detected calves. If any pair exceeds the minimum IoU threshold, the intersection box of the highest-IoU pair is recorded for that frame. Frame-level detections are accumulated continuously. 
 
+![Illustration of Intersection over Union (IoU) between two detected calf bounding boxes. The red highlighted region indicates the intersection area, while the union area encompasses both boxes combined.](img/baseline_iou.png){#baseline-iou}
+
+As long as each successive frame contains a box pair exceeding the IoU threshold, the sequence stays open. When overlap drops below the threshold, the sequence closes. If it lasts at least the minimum duration, it is saved as a cross-sucking event. Otherwise, it is discarded as noise. 
+
+This approach operates on a simple assumption: any sufficiently long and close physical contact between two calves is cross-sucking. It is deliberately naive. The pre-trained model was designed to detect cows generically, so distinctive calf positions (e.g. sitting calves are harder to detect) or occlusions will degrade its accuracy. More importantly, the model has no understanding of what cross-sucking actually looks like, it only sees proximity. The baseline is intentionally limited. Its value lies not in accuracy, but in providing a reference point. Any improvement from subsequent models is meaningful precisely because it demonstrates we are doing better than simply flagging every sufficiently long cow contact as cross-sucking.
 
 
 ## B. Fine-tuned YOLO Model
+To move beyond proximity detection, we fine-tuned the pre-trained YOLO model on our labelled cross-sucking data. Rather than detecting any close contact between calves, the model is trained to recognize the specific visual patterns that characterize cross-sucking, the particular postures and spatial configurations that distinguish it from other interactions. This significantly improves detection precision over the baseline. 
+
+However, YOLO is an object detector, not an action/behaviour recognizer. It processes each frame independently and has no memory of what came before, which creates a distinct challenge: spatial detection without temporal context. YOLO learns what cross-sucking looks like in a single frame, but cross-sucking is a behaviour that unfolds over time. A model with no temporal awareness may miss events that are only recognizable across multiple frames or produce inconsistent detections across a sequence (i.e. fragmented event tracking). 
 
 
 ## C. YOLO and Seq-NMS
+YOLO26 with Sequential Non-Maximum Suppression (Seq-NMS) extends the fine-tuned YOLO approach by adding a temporal linking component. While the fine-tuned YOLO model detects cross-sucking behaviour at the frame level, it has no memory of what happened in previous frames. This means a single cross-sucking event is represented as hundreds of disconnected single-frame detections. Seq-NMS addresses this by linking spatially overlapping detections across consecutive frames into coherent event tubes with defined start and end times, and filtering out tubes shorter than a minimum duration to reduce noise. This approach was preferred over more complex tracking algorithms because it is simpler, computationally lightweight, and produces outputs that map directly onto our ground truth annotation format.
+
+A key limitation is that Seq-NMS performance depends heavily on the quality of per-frame detections. With limited training data and few epochs, noisy detections can cause missed events, which is reflected in the low recall that was observed in preliminary results. Another limitation is that Seq-NMS links detections based purely on spatial overlap between consecutive frames. If two calves shift position during a cross-sucking interaction, the bounding box location changes significantly enough that Seq-NMS may break the tube and treat this as two separate events. This could inflate event counts and reduce measured event durations.
 
 
 ## D. Preliminary experiment with LLM Gemini
