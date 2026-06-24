@@ -1,0 +1,78 @@
+---
+title: "MooVision: Final Project Report"
+author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond Wang"
+editor: source
+format: 
+    html:
+        toc: true
+        toc-depth: 2
+    pdf:
+        toc: true
+        toc-depth: 3
+bibliography: references.bib
+execute:
+    echo: false
+    warning: false
+jupyter: python3
+---
+
+{{< pagebreak >}}
+
+# Executive Summary
+
+
+
+# Introduction
+
+
+
+
+# Data 
+
+
+## Experimental Data Splits
+
+
+
+# High-Performance Computing (HPC) Workflow & Preprocessing Challenges
+
+
+
+# Data Science Methods
+
+
+
+## A. Baseline
+
+
+
+## B. Fine-tuned YOLO Model
+
+
+## C. YOLO and Seq-NMS
+
+
+## D. Preliminary experiment with LLM Gemini
+
+
+# Data Product
+
+
+# Results
+
+
+## Limitation
+
+
+# Conclusions and Recommendations
+
+
+
+{{< pagebreak >}}
+
+# Timeline
+
+
+{{< pagebreak >}}
+
+# References
