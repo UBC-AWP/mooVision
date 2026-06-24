@@ -45,7 +45,7 @@ export XDG_CACHE_HOME="${USER_SCRATCH}/.cache/job_${SLURM_JOB_ID}_task_${SLURM_A
 
 mkdir -p "$YOLO_CONFIG_DIR" "$MPLCONFIGDIR" "$FONTCONFIG_PATH" "$XDG_CACHE_HOME/fontconfig"
 
-uv run scripts/models/baseline/baseline.py \
+uv run scripts/run_models/baseline/baseline.py \
     --csv "$CSV_PATH" \
     --frame_skip 10
 

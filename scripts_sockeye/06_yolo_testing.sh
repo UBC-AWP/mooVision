@@ -72,7 +72,7 @@ if [ "$OVERWRITE" = "true" ]; then
     OVERWRITE_FLAG="--overwrite"
 fi
 
-uv run scripts/run-testing-2.py \
+uv run scripts/run_models/run-testing-2.py \
     --model_path "$MODEL_PATH" \
     --data_path "$DATA_PATH" \
     --chunk "$CHUNK_IDX" \
