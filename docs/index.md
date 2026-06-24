@@ -1,25 +1,61 @@
 # MooVision
 
-Computer vision for cross-sucking detection of dairy calves.
+MooVision is a computer-vision pipeline for detecting cross-sucking behaviour in socially housed dairy calves from angled overhead pen video. The goal is to reduce the time and effort required for manual review/labeling by automatically producing candidate events, clipped video segments, and structured metadata for downstream analysis.
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+---
 
-## Commands
+## Project Overview
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
-
-To run the mkdocs:
-`uv run mkdocs serve`
+Cross-sucking (here: sucking directed at various body parts of other calves) is a welfare concern in group-housed calves and is currently studied via manual labeling of long video recordings. This project builds a scalable workflow that:
+* Takes raw pen video as input
+* Runs a baseline detector (pretrained YOLOv8) with simple logic on top (e.g., proximity/overlap + temporal persistence)
+* Outputs predicted event windows and metadata (start/end time, confidence, pen, weaning stage, day)
+* Optionally generates clipped videos for review and evaluation
 
 ## Project layout
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+```text
+mooVision/
+├── docs/                     # Markdown files compiled by MkDocs into your static site
+│   ├── index.md              # The documentation homepage
+│   ├── ...                   
+├── scripts/                  # Executable pipeline source code directories
+│   ├── read_data/            # Read the data 
+│   ├── split_data/           # Split the data 
+│   ├── preprocessing/        # Preprocess data
+│   ├── training/.            # Training models
+│   ├── run_models/           # Scripts to run models on testing set
+│   │   └── baseline/         
+│   │   └── seq_NMS/         
+│   │   └── yolo/         
+│   │   └── run_testing.py    # For running fine-tuned YOLO model and Seq-NMS on test data
+│   └── evaluation/
+│   └── clipping    
+├── tests/                    # Robust test suite validating code integrity
+│   └── ...        
+├── utils/                    # Supportive pipeline utility scripts
+│   ├── build_clip_index.py   # Synchronizes dataset manifestations
+│   ├── clip_frames_mp4s.py   # Baseline target image slicing utility
+│   ├── count_labelled_clips.py # Audits dataset representation balances
+│   ├── count_mp4s.py         # Validates physical cluster storage arrays
+│   ├── extract_frames.py     # Multiprocessed image unpacking and tracking overlay
+│   └── get_video.py          # Programmatic OpenCV stream verification tools
+├── scripts_sockeye/          # Bash scripts to run in Sockeye
+│   ├── 01_setup.sh           
+│   ├── 02_read_and_split.sh  
+│   ├── 03_preprocessing.sh   
+│   ├── 04_train_yolo.sh      
+│   ├── 05_baseline_testing.sh
+│   ├── 06_yolo_testing.sh    
+│   ├── 07_baseline_eval.sh   
+│   └── 08_yolo_evaluation.sh
+├── config.py                 # Master configuration file containing path definitions
+├── mkdocs.yml                # Configuration file defining MkDocs plugins and themes
+├── pyproject.toml            # Project dependency definitions managed via uv
+├── reports/                  # Project proposal and final report
+├── Makefile                  # Makefile to run the whole pipeline locally
+└── run_training_pipeline.py  # For running the whole pipeline in Sockeye
+```
 
 ## Pipeline Diagram
 
@@ -73,3 +109,5 @@ flowchart TB
     classDef outputStyle stroke:#f59e0b,fill:#fff7ed
     style indexCSV stroke:#FF6D00,fill:#FFE0B2
 ```
+
+For full documentation visit [mkdocs.org](https://www.mkdocs.org).

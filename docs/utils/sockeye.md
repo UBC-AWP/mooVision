@@ -7,10 +7,6 @@ This page documents how to run the full mooVision pipeline on the [Sockeye HPC c
 
 ## Pipeline Overview
 
-The scripts are numbered in the order they should be run:
-
-## Pipeline Overview
-
 | Script | Purpose | Output |
 |--------|---------|--------|
 | `01_setup.sh` | Install dependencies and configure environment (run once) | `.venv/` environment ready |
