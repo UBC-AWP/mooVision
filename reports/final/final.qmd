@@ -48,6 +48,27 @@ Together, these objectives address the partner’s core need: a scalable, automa
 
 ## Experimental Data Splits
 
+To evaluate generalisation across deployment scenarios, the dataset was partitioned into eight train/validation splits across four experimental conditions. @tbl-splits summarises each split type, the number of models trained, and the research question each addresses.
+
+```{python}
+#| label: tbl-splits
+#| tbl-cap: "Experimental train/test split design"
+
+import pandas as pd
+from IPython.display import display
+
+splits = pd.DataFrame({
+    "Split Type":        ["Random", "Time-based", "Pen-based", "Period-based"],
+    "Models Trained":    [1, 1, 3, 3],
+    "Research Question": [
+        "How well does the model perform when train and test come from the same distribution?",
+        "How well does the model generalise to unseen days in a known environment?",
+        "How well does the model transfer to a new physical environment?",
+        "How well does the model generalize across calf developmental stage?",
+    ]
+})
+display(splits.style.hide(axis="index"))
+```
 
 
 # High-Performance Computing (HPC) Workflow & Preprocessing Challenges
