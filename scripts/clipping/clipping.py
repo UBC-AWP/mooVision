@@ -387,15 +387,15 @@ def main():
     --------
     Clip all events from a directory of JSONs::
 
-        python src/clipping.py --input results/metadata/<split_name>/<model_name>
+        uv run scripts/07_clipping/clipping.py --input results/metadata/<split_name>/<model_name>
 
     Clip events from a single JSON file::
 
-        python src/clipping.py --input results/metadata/pen_based/pen_3/yolo
+        uv run scripts/07_clipping/clipping.py --input results/metadata/pen_based/pen_3/yolo
 
     Clip to a custom output directory::
 
-        python src/clipping.py --input results/metadata/<split_name>/<model_name>/ --output /tmp/clips/
+        uv run scripts/07_clipping/clipping.py  --input results/metadata/<split_name>/<model_name>/ --output /tmp/clips/
     """
     parser = argparse.ArgumentParser(description="Clip events from prediction JSONs.")
     parser.add_argument("--input", type=Path, required=True,
