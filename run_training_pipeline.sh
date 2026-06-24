@@ -3,8 +3,8 @@
 # 1. Submit the setup job and capture its SLURM Job ID number
 #    (sbatch outputs text like "Submitted batch job 123456")
 echo "Configuring Sockeye Repository"
-cd /scratch/st-nina-1/mooVision/scripts_sockeye
 bash 01_setup.sh
+cd /scratch/st-nina-1/mooVision/scripts_sockeye
 
 # 2. Submit the read and split data job and capture its SLURM Job ID number
 READ_DATA_MSG=$(sbatch 02_read_and_split_data.sh)
