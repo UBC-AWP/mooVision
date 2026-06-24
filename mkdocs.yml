@@ -47,9 +47,10 @@ nav:
       - Matching: Pipeline/01_read_data/matching.md
       - Schema: Pipeline/01_read_data/schema.md
     - Splitting Data: Pipeline/02_split_data/split_data.md
-    - Baseline: Pipeline/05_run_models/baseline.md
-    - YOLO: Pipeline/05_run_models/yolo.md
-    - Seq-NMS: Pipeline/05_run_models/seq_nms.md
+    - Run Models:
+      - Baseline: Pipeline/05_run_models/baseline.md
+      - YOLO: Pipeline/05_run_models/yolo.md
+      - Seq-NMS: Pipeline/05_run_models/seq_nms.md
     - Preprocessing: 
       - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
       - Extract Frames: Pipeline/03_preprocessing/extract_frames.md
@@ -65,7 +66,7 @@ nav:
   - Testing: testing/testing.md
   - Utils:
     - Utils: utils/utils.md
-    - Sockeye: utils/sockeye.md
+  - Sockeye: utils/sockeye.md
   - About:
     - About: about/about.md
     - License: about/license.md
