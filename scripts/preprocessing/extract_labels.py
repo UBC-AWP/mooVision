@@ -9,7 +9,7 @@ import zipfile
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from scripts.data_reading.matching import parse_labelled_name
+from scripts.read_data.matching import parse_labelled_name
 from scripts.preprocessing.utils import validate_file_paths
 
 
