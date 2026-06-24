@@ -12,8 +12,9 @@ EVAL         := scripts/evaluation/evaluation.py
 CLIP         := scripts/clipping/clipping.py
 
 # ── Report paths ─────────────────────────────────────────────────────────────
-REPORT_DIR   ?= reports
-REPORT_QMD   ?= $(REPORT_DIR)/final/final.qmd
+ANALYSIS_SCRIPT ?= notebooks/distribution_analysis.py
+REPORT_PDF_QMD  ?= reports/final/final_report_pdf.qmd
+REPORT_HTML_QMD ?= reports/final/final_report_html.qmd
 
 # ── Configurable parameters (override from CLI if needed) ───────────────────
 DATASET          ?= data/training/pipeline_demo/dataset/dataset.yaml
@@ -115,11 +116,21 @@ eval: eval_yolo eval_seqnms
 clip:
 	$(PY) $(CLIP) --input $(CLIP_INPUT)
 
-# 9. Render report (run manually after pipeline is complete)
-report: report-pdf
- 
+# ── Report targets ────────────────────────────────────────────────────────────
+.PHONY: figures report-pdf report-html report
+
+# Execute analysis script to export static figures for PDF report.
+# Must be run before report-pdf if results have changed.
+figures:
+	$(PY) python $(ANALYSIS_SCRIPT)
+
+# Render PDF report (requires figures to be exported first)
+report-pdf: figures
+	$(PY) quarto render $(REPORT_PDF_QMD) --to pdf
+
+# Render HTML report (interactive charts, no figures export needed)
 report-html:
-	uv run quarto render $(REPORT_QMD) --to html
- 
-report-pdf:
-	uv run quarto render $(REPORT_QMD) --to pdf
+	$(PY) quarto render $(REPORT_HTML_QMD) --to html
+
+# Render both
+report: report-pdf report-html
