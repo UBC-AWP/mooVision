@@ -93,6 +93,7 @@ display(splits.style.hide(axis="index"))
 
 
 # Data Product
+![Example Data Piepeline.](img/pipeline.png){#fig-pipeline width=100%}
 
 When deployed by a researcher or farm operator, the pipeline takes raw barn camera footage as input and requires no manual annotation or model training. The footage is passed directly through the detection model, which produces per-frame bounding box predictions. These are then aggregated into discrete cross-sucking events with defined start and end times using the temporal linking step. The resulting detections are written to structured JSON metadata files, one per source video, containing event timestamps, confidence scores, and bounding box coordinates. An automated clip extraction tool then uses these outputs to pull and organise flagged video segments by pen, weaning stage, and recording day, giving researchers a condensed set of candidate clips for human review rather than hours of continuous footage.
 
@@ -103,6 +104,264 @@ This JSON-first, modular architecture was chosen because the research context de
 
 # Results
 
+## Prediction Summary
+
+```{python}
+#| label: tbl-summary
+#| tbl-cap: "Event-level detection statistics across splits and models"
+
+import json
+import re 
+import pandas as pd
+import altair as alt
+from pathlib import Path
+import sys
+
+project_root = Path().resolve().parent.parent
+sys.path.insert(0, str(project_root))
+from config import ROOT_DIR
+
+alt.data_transformers.enable("vegafusion")
+
+EVAL_PATH = ROOT_DIR / "results" / "evaluation"
+
+YOLO_MODEL_OUTPUT_DIR_PERIOD_POST = ROOT_DIR / "results" / "metadata" / "period_based" / "POSTWEAN" / "yolo"
+YOLO_MODEL_OUTPUT_DIR_PERIOD_WEAN = ROOT_DIR / "results" / "metadata" / "period_based" / "WEAN"     / "yolo"
+SEQ_MODEL_OUTPUT_DIR_PERIOD_POST  = ROOT_DIR / "results" / "metadata" / "period_based" / "POSTWEAN" / "seq-nms"
+SEQ_MODEL_OUTPUT_DIR_PERIOD_WEAN  = ROOT_DIR / "results" / "metadata" / "period_based" / "WEAN"     / "seq-nms"
+YOLO_MODEL_OUTPUT_DIR_RANDOM      = ROOT_DIR / "results" / "metadata" / "random"       / "yolo"
+SEQ_MODEL_OUTPUT_DIR_RANDOM       = ROOT_DIR / "results" / "metadata" / "random"       / "seq-nms"
+
+SPLITS = {
+    "POSTWEAN": {"YOLO": YOLO_MODEL_OUTPUT_DIR_PERIOD_POST, "Seq-NMS": SEQ_MODEL_OUTPUT_DIR_PERIOD_POST},
+    "WEAN":     {"YOLO": YOLO_MODEL_OUTPUT_DIR_PERIOD_WEAN, "Seq-NMS": SEQ_MODEL_OUTPUT_DIR_PERIOD_WEAN},
+    "Random":   {"YOLO": YOLO_MODEL_OUTPUT_DIR_RANDOM,      "Seq-NMS": SEQ_MODEL_OUTPUT_DIR_RANDOM},
+}
+SPLIT_ORDER = ["POSTWEAN", "WEAN", "Random"]
+MODEL_ORDER = [f"{m} — {s}" for s in SPLIT_ORDER for m in ["YOLO", "Seq-NMS"]]
+
+def _extract_pen(video_path):
+    m = re.search(r"Pen\s*(\d+)", video_path, re.IGNORECASE)
+    return f"Pen {m.group(1)}" if m else "Unknown"
+
+def _extract_stage(video_path):
+    for stage in ("PREWEANING", "WEANING", "POSTWEANING"):
+        if stage.lower() in video_path.lower():
+            return stage
+    return "Unknown"
+
+def load_predictions(input_dir, model_label):
+    video_rows, event_rows = [], []
+    for path in sorted(Path(input_dir).glob("*.json")):
+        with open(path) as f:
+            data = json.load(f)
+        vid   = data["identifier"]
+        pen   = _extract_pen(data.get("video_path", ""))
+        stage = _extract_stage(data.get("video_path", ""))
+        video_rows.append({
+            "model": model_label, "video": vid, "pen": pen,
+            "weaning_stage": stage,
+            "total_duration_sec": data.get("total_duration_sec"),
+            "cross_sucking_detected": data.get("cross_sucking_detected", False),
+            "num_events": data.get("num_events", 0),
+        })
+        for i, ev in enumerate(data.get("events", [])):
+            event_rows.append({
+                "model": model_label, "video": vid, "pen": pen,
+                "weaning_stage": stage, "event_idx": i,
+                "start_sec": ev["start_sec"], "end_sec": ev["end_sec"],
+                "duration_sec": ev["duration_sec"], "avg_confidence": ev["avg_confidence"],
+            })
+    video_df = pd.DataFrame(video_rows)
+    event_df = pd.DataFrame(event_rows) if event_rows else pd.DataFrame(
+        columns=["model","video","pen","weaning_stage","event_idx",
+                 "start_sec","end_sec","duration_sec","avg_confidence"])
+    return video_df, event_df
+
+video_dfs, event_dfs = [], []
+for split_name, models in SPLITS.items():
+    for model_label, path in models.items():
+        if not path or not Path(path).exists():
+            continue
+        vdf, edf = load_predictions(path, model_label)
+        vdf["split"] = split_name
+        edf["split"] = split_name
+        video_dfs.append(vdf)
+        event_dfs.append(edf)
+
+all_video_df = pd.concat(video_dfs, ignore_index=True)
+all_event_df = pd.concat(event_dfs, ignore_index=True)
+all_event_df["model_split"] = all_event_df["model"] + " — " + all_event_df["split"]
+all_video_df["model_split"] = all_video_df["model"] + " — " + all_video_df["split"]
+all_event_df["short_name"]  = all_event_df["video"].str.replace(r"\.mp4$", "", regex=True)
+all_video_df["short_name"]  = all_video_df["video"].str.replace(r"\.mp4$", "", regex=True)
+
+# ── Evaluation data ────────────────────────────────────────────────────────
+def _parse_filename(filename):
+    stem = Path(filename).stem
+    m = re.match(r"evaluation_report_(.+?)_(yolo|seq_nms)$", stem)
+    if not m:
+        return {"split": stem, "model": "unknown"}
+    return {"split": m.group(1), "model": m.group(2)}
+
+def load_evaluation_folder(folder):
+    rows = []
+    for jf in sorted(Path(folder).glob("*.json")):
+        with open(jf) as f:
+            data = json.load(f)
+        meta  = _parse_filename(jf.name)
+        ev    = data.get("event_level", {})
+        seq   = data.get("sequence_level", {})
+        frame = data.get("frame_level", {})
+        rows.append({
+            "split":            meta["split"],
+            "model":            meta["model"],
+            "TP":               ev.get("true_positives",  0),
+            "FP":               ev.get("false_positives", 0),
+            "FN":               ev.get("false_negatives", 0),
+            "precision":        ev.get("precision",  0.0),
+            "recall":           ev.get("recall",     0.0),
+            "f2":               ev.get("f2",         0.0),
+            "avg_temporal_iou": seq.get("avg_temporal_iou", 0.0),
+            "frame_bbox_iou":   frame.get("avg_bbox_iou",   0.0),
+        })
+    return pd.DataFrame(rows).sort_values(["split", "model"]).reset_index(drop=True)
+
+eval_df = load_evaluation_folder(EVAL_PATH)
+
+# ── Summary table from all_event_df ───────────────────────────────────────
+summary = (
+    all_event_df
+    .groupby(["split", "model"])
+    .agg(
+        Events=("event_idx", "count"),
+        Conf_Mean=("avg_confidence", "mean"),
+        Conf_Std=("avg_confidence", "std"),
+        Dur_Mean=("duration_sec", "mean"),
+        Dur_Std=("duration_sec", "std"),
+    )
+    .round(3)
+    .reset_index()
+    .rename(columns={
+        "split": "Split", "model": "Model",
+        "Conf_Mean": "Conf. Mean", "Conf_Std": "Conf. Std",
+        "Dur_Mean": "Dur. Mean (s)", "Dur_Std": "Dur. Std (s)",
+    })
+)
+
+summary.style.hide(axis="index").format({
+    "Conf. Mean": "{:.3f}", "Conf. Std": "{:.3f}",
+    "Dur. Mean (s)": "{:.3f}", "Dur. Std (s)": "{:.3f}",
+})
+```
+
+@tbl-summary summarises predicted event counts, mean confidence, and mean duration across splits and models. Three patterns are consistent across all splits. First, Seq-NMS predicts substantially more events than YOLO in every split: 820 vs 238 in POSTWEAN, 434 vs 162 in Random, and 6,842 vs 554 in WEAN. Second, Seq-NMS events are much shorter on average than YOLO events; in POSTWEAN for example, mean duration is 11.4s for Seq-NMS compared to 49.2s for YOLO. Third, both effects are most pronounced in the WEAN split, where Seq-NMS generates over 12 times more events than YOLO at the shortest mean duration (7.0s), while YOLO produces its longest mean events (131.3s). This is consistent with the Seq-NMS sequence-linking step breaking up what YOLO treats as one long sustained detection into many shorter linked segments, and suggests the WEAN period, where calves are in closer and more frequent proximity, is particularly prone to this behaviour.
+
+## Confusion Matrix
+
+```{python}
+#| label: fig-confusion
+#| fig-cap: "Event-level confusion matrix by model and split. True negatives are excluded as they are not well-defined at the event level for continuous video."
+
+rows = []
+for _, meta in eval_df.iterrows():
+    split_label = meta["split"].upper()
+    model_label = "YOLO" if meta["model"] == "yolo" else "Seq-NMS"
+    ms = f"{model_label} — {split_label}"
+    rows.extend([
+        {"model_split": ms, "Actual": "CS",    "Predicted": "CS",    "n": int(meta["TP"]), "cell": "TP"},
+        {"model_split": ms, "Actual": "No CS", "Predicted": "CS",    "n": int(meta["FP"]), "cell": "FP"},
+        {"model_split": ms, "Actual": "CS",    "Predicted": "No CS", "n": int(meta["FN"]), "cell": "FN"},
+    ])
+cm_df = pd.DataFrame(rows)
+
+alt.data_transformers.enable("default")
+alt.data_transformers.disable_max_rows()
+
+_base = alt.Chart(cm_df).encode(
+    alt.X("Predicted:N", sort=["CS", "No CS"],
+          axis=alt.Axis(labelAngle=0), title="Predicted"),
+    alt.Y("Actual:N", sort=["CS", "No CS"], title="Actual"),
+)
+_rect = _base.mark_rect().encode(
+    alt.Color("n:Q", scale=alt.Scale(scheme="blues"), title="Count"),
+    tooltip=["model_split:N", "cell:N", "n:Q"],
+)
+_text = _base.mark_text(fontSize=18, fontWeight="bold").encode(
+    alt.Text("n:Q"),
+    color=alt.condition("datum.n > 30", alt.value("white"), alt.value("black")),
+)
+fig_confusion = (
+    (_rect + _text)
+    .properties(width=130, height=130)
+    .facet(facet=alt.Facet("model_split:N", sort=MODEL_ORDER), columns=3)
+)
+alt.data_transformers.enable("vegafusion")
+fig_confusion
+```
+
+@fig-confusion reveals the dominant failure mode: across every split and model, the vast majority of confirmed cross-sucking events are predicted as No CS, with true positive counts ranging from 0 to 9 out of 1,100 ground truth events. This confirms that both models are missing nearly all genuine cross-sucking occurrences rather than mislabelling other behaviours as cross-sucking.
+
+Seq-NMS consistently recovered more true positives than YOLO in splits with confirmed signal, 9 vs 3 in POSTWEAN and 5 vs 1 in WEAN, confirming that temporal linking adds genuine recall value, but at a precision cost that is currently too high for unsupervised deployment (POSTWEAN: 193 vs 27 false positives; WEAN: 569 vs 18). Across all split types, neither model demonstrated reliable generalisation, whether to unseen days, new pen environments, or different developmental periods, suggesting that the limiting factor is not the experimental condition but the amount of labelled training data available.
+
+That said, the project successfully delivered a functional end-to-end pipeline capable of processing raw barn video, applying frame-level detection, implementing temporal event linking, and producing structured JSON outputs with timestamps, confidence scores, and bounding box coordinates, directly addressing the AWP's need for a scalable and interpretable annotation tool.
+
+## Temporal Analysis
+
+```{python}
+#| label: fig-temporal-postwean
+#| fig-cap: "Temporal density of predicted events within videos — POSTWEAN split. Dot size encodes event duration; colour encodes confidence."
+
+alt.data_transformers.enable("vegafusion")
+
+def _temporal_chart(ms, width=500):
+    df = all_event_df[all_event_df["model_split"] == ms].copy()
+    n  = df["video"].nunique()
+    return (
+        alt.Chart(df, title=ms)
+        .mark_point(filled=True, opacity=0.75)
+        .encode(
+            alt.X("start_sec:Q", title="Start Time (s)"),
+            alt.Y("short_name:N", title="Video", sort="-x"),
+            alt.Size("duration_sec:Q", title="Duration (s)",
+                     scale=alt.Scale(range=[10, 220])),
+            alt.Color("avg_confidence:Q",
+                      scale=alt.Scale(scheme="viridis"),
+                      title="Confidence"),
+            tooltip=["short_name:N", "start_sec:Q", "end_sec:Q",
+                     "duration_sec:Q", "avg_confidence:Q",
+                     "pen:N", "weaning_stage:N"],
+        )
+        .properties(width=width, height=max(240, n * 20))
+    )
+
+alt.vconcat(
+    _temporal_chart("YOLO — POSTWEAN"),
+    _temporal_chart("Seq-NMS — POSTWEAN"),
+)
+```
+
+```{python}
+#| label: fig-temporal-wean
+#| fig-cap: "Temporal density of predicted events within videos — WEAN split."
+
+alt.vconcat(
+    _temporal_chart("YOLO — WEAN"),
+    _temporal_chart("Seq-NMS — WEAN"),
+)
+```
+
+```{python}
+#| label: fig-temporal-random
+#| fig-cap: "Temporal density of predicted events within videos — Random split."
+
+alt.vconcat(
+    _temporal_chart("YOLO — Random"),
+    _temporal_chart("Seq-NMS — Random"),
+)
+```
+
+@fig-temporal-postwean, @fig-temporal-wean, and @fig-temporal-random show that across all splits, both models fire detections broadly across video timelines with no clear clustering around genuine behavioural bouts. The WEAN split is the most severely affected, with Seq-NMS generating 6,842 events, roughly 8 times the POSTWEAN count, at the lowest mean confidence (0.32) and shortest mean duration (7.0s), consistent with the linking step connecting many short detections during a period when calves are in closer and more frequent physical contact. The random split reinforces this interpretation, with zero confirmed true positives for either model and confidence distributions closely matching those of splits with genuine cross-sucking signal. Taken together, these results suggest the model has learned to detect generic calf proximity rather than cross-sucking behaviour specifically, firing with similar confidence whether or not a genuine event is present and failing to concentrate detections around the moments when cross-sucking actually occurs.
 
 ## Limitation
 
