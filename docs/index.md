@@ -6,8 +6,9 @@ MooVision is a computer-vision pipeline for detecting cross-sucking behaviour in
 
 ## Project Overview
 
-Cross-sucking (here: sucking directed at various body parts of other calves) is a welfare concern in group-housed calves and is currently studied via manual labeling of long video recordings. This project builds a scalable workflow that:
-* Takes raw pen video as input
+Cross-sucking (a calf sucking directed at various body parts of another calf) is a welfare concern in group-housed calves and is currently studied via manual labeling of long video recordings. This project builds a scalable workflow that:
+
+* Takes raw pen videos as input
 * Runs a baseline detector (pretrained YOLOv8) with simple logic on top (e.g., proximity/overlap + temporal persistence)
 * Outputs predicted event windows and metadata (start/end time, confidence, pen, weaning stage, day)
 * Optionally generates clipped videos for review and evaluation
