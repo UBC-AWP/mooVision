@@ -109,7 +109,7 @@ UBC offers OneDrive accounts for researchers and research groups. If your data i
 We use `config.py` to configure paths to video and label directories. By default, the config file is setup for source videos, cross-sucking clips, and annotation labels existing in the following data structure:
 
 ```plaintext
-mooVision/
+Animal Welfare - mooVision - Documents (One Drive)/
 └── data/
     ├── raw_cross_sucking_datalog/
     │   └── videos/                          <- Raw field footages from cameras.
