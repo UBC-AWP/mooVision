@@ -3,7 +3,7 @@
 # 1. Submit the setup job and capture its SLURM Job ID number
 #    (sbatch outputs text like "Submitted batch job 123456")
 echo "Configuring Sockeye Repository"
-cd /scratch/st-nina-1/mooVision
+cd /scratch/st-nina-1/mooVision/scripts_sockeye
 bash 01_setup.sh
 
 # 2. Submit the read and split data job and capture its SLURM Job ID number
@@ -25,10 +25,10 @@ TRAIN_JOB_ID=$(echo "$TRAIN_MSG" | awk '{print $4}')
 echo "Dispatched Parallel GPU Training Array: Job ID is $TRAIN_JOB_ID (Waiting on $PREPROCESS_JOB_ID)"
 
 # 5. Baseline inference (8 tasks, waits for preprocessing — does not need training)
-BASELINE_INFER_MSG=$(sbatch --dependency=afterok:$PREPROCESS_JOB_ID 05_baseline_testing.sh)
+BASELINE_INFER_MSG=$(sbatch --dependency=afterok:$TRAIN_JOB_ID 05_baseline_testing.sh)
 BASELINE_INFER_JOB_ID=$(echo "$BASELINE_INFER_MSG" | awk '{print $4}')
  
-echo "Dispatched Baseline Inference Array: Job ID is $BASELINE_INFER_JOB_ID (Waiting on $PREPROCESS_JOB_ID)"
+echo "Dispatched Baseline Inference Array: Job ID is $BASELINE_INFER_JOB_ID (Waiting on $TRAIN_JOB_ID)"
  
 # 6. YOLO model inference on test sets (80 tasks, waits for training)
 YOLO_INFER_MSG=$(sbatch --dependency=afterok:$TRAIN_JOB_ID 06_yolo_testing.sh)
