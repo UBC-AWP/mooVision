@@ -9,7 +9,7 @@ cd /scratch/st-nina-1/mooVision
 echo "=== Running One-Time Global Setup ==="
 
 # PULL LATEST CHANGES
-git pull origin arc-setup-dev
+git pull origin main
 
 # ENVIRONMENT VALIDATION & LOAD
 if [ ! -f .env_sockeye ]; then
