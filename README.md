@@ -253,7 +253,7 @@ For a summary of findings, see the [final report](placeholder_path).
 ## Rendering the Report
 
 The final report has two versions — a PDF for submission and an HTML version
-for interactive review. Both live in the `report/` folder. Quarto must be
+for interactive review. Both live in the `reports/final` folder. Quarto must be
 installed separately from `uv` — see [quarto.org](https://quarto.org) for
 installation instructions.
 
