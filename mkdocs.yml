@@ -46,7 +46,6 @@ nav:
     - Reading In Data: 
       - Reading In Data: Pipeline/01_read_data/read_all_clips_index.md
       - Matching: Pipeline/01_read_data/matching.md
-      - Schema: Pipeline/01_read_data/schema.md
     - Splitting Data: Pipeline/02_split_data/split_data.md
     - Preprocessing: 
       - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
