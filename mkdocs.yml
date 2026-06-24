@@ -62,7 +62,7 @@ nav:
     - Analysis: Pipeline/08_analysis/analysis.md
   - Testing: testing/testing.md
   - Utils:
-    - Utils: utils/get_video.md
+    - Utils: utils/utils.md
     - Sockeye: utils/sockeye.md
   - About:
     - About: about/about.md
