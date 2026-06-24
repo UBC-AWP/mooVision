@@ -222,7 +222,7 @@ uv run python scripts/predict_bboxes.py \
 
 ## Function Reference
 
-::: scripts.predict_bboxes
+::: scripts.evaluation.predict_bboxes
     options:
         show_source: false
         show_root_heading: true
