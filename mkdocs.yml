@@ -42,17 +42,20 @@ plugins:
 nav:
   - Home: index.md
   - Model Pipeline:
-    - Reading In Data: Pipeline/reading_in_data/read_all_clips_index.md
-    - Splitting Data: Pipeline/data_splitting/data_splitting.md
-    - Baseline: Pipeline/models/baseline.md
-    - Preprocessing: Pipeline/preprocessing/preprocessing.md
+    - Reading In Data: 
+      - Reading In Data: Pipeline/01_read_data/read_all_clips_index.md
+      - Matching: Pipeline/01_read_data/matching.md
+      - Schema: Pipeline/01_read_data/schema.md
+    - Splitting Data: Pipeline/02_split_data/split_data.md
+    - Baseline: Pipeline/05_run_models/baseline.md
+    - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
     - Training:
-      - YOLO: Pipeline/Training/training_yolo.md
+      - YOLO: Pipeline/04_training/training_yolo.md
     - Evaluation:
-      - Model Evaluation: Pipeline/evaluation/evaluation.md
-      - CS Detection Evaluation: Pipeline/evaluation/predict_bboxes.md
-    - Clipping: Pipeline/generating_clips/clipping.md
-    - Analysis: Pipeline/analysis/analysis.md
+      - Model Evaluation: Pipeline/06_evaluation/evaluation.md
+      - CS Detection Evaluation: Pipeline/06_evaluation/predict_bboxes.md
+    - Clipping: Pipeline/07_generating_clips/clipping.md
+    - Analysis: Pipeline/08_analysis/analysis.md
   - Testing: testing/testing.md
   - Utils:
     - Utils: utils/get_video.md
