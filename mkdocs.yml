@@ -49,6 +49,7 @@ nav:
     - Training:
       - YOLO: Pipeline/Training/training_yolo.md
     - Model Evaluation: Pipeline/evaluation/evaluation.md
+    - CS Detection Evaluation: Pipeline/evaluation/predict_bboxes.md
     - Clipping: Pipeline/generating_clips/clipping.md
     - Analysis: Pipeline/analysis/analysis.md
   - Testing: testing/testing.md
