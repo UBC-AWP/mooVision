@@ -48,7 +48,13 @@ nav:
       - Schema: Pipeline/01_read_data/schema.md
     - Splitting Data: Pipeline/02_split_data/split_data.md
     - Baseline: Pipeline/05_run_models/baseline.md
-    - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
+    - YOLO: Pipeline/05_run_models/yolo.md
+    - Seq-NMS: Pipeline/05_run_models/seq_nms.md
+    - Preprocessing: 
+      - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
+      - Extract Frames: Pipeline/03_preprocessing/extract_frames.md
+      - Extract Labels: Pipeline/03_preprocessing/extract_labels.md
+      - Utils: Pipeline/03_preprocessing/utils.md
     - Training:
       - YOLO: Pipeline/04_training/training_yolo.md
     - Evaluation:
