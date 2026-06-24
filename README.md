@@ -281,8 +281,8 @@ make report
 
 | File | Purpose |
 |---|---|
-| `reports/final_report.pdf.qmd` | PDF submission — static images, plain tables |
-| `reports/final_report.html.qmd` | HTML review — interactive Altair charts |
+| `reports/final/final_report.pdf.qmd` | PDF submission — static images, plain tables |
+| `reports/final/final_report.html.qmd` | HTML review — interactive Altair charts |
 
 ## How to run MkDocs
 For detailed documentation, please refer to our MkDocs site. To view it locally, run:
