@@ -1,0 +1,2303 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../utils/utils/">
+      
+      
+        <link rel="next" href="../about/about/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Sockeye - MooVision</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sockeye-hpc" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="MooVision" class="md-header__button md-logo" aria-label="MooVision" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            MooVision
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sockeye
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="MooVision" class="md-nav__button md-logo" aria-label="MooVision" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    MooVision
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/01_read_data/data_requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Pipeline
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Model Pipeline
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reading In Data
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reading In Data
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/01_read_data/read_all_clips_index/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reading In Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/01_read_data/matching/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/01_read_data/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/02_split_data/split_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splitting Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run Models
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Run Models
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/05_run_models/baseline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Baseline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/05_run_models/yolo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YOLO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/05_run_models/seq_nms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Seq-NMS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preprocessing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Preprocessing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/03_preprocessing/preprocessing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preprocessing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/03_preprocessing/extract_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract Frames
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/03_preprocessing/extract_labels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract Labels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/03_preprocessing/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Training
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/04_training/training_yolo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    YOLO
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_6" id="__nav_3_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Evaluation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/06_evaluation/evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/06_evaluation/predict_bboxes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CS Detection Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/07_generating_clips/clipping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clipping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Pipeline/08_analysis/analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utils
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Utils
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utils/utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utils
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sockeye
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sockeye
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-sockeye-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting to Sockeye (SSH)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting to Sockeye (SSH)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic login
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#first-time-login-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-time login notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-whole-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the Whole Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#01-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        01 — Setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#02-read-and-split-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        02 — Read and Split Data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#03-preprocessing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        03 — Preprocessing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#04-train-yolo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        04 — Train YOLO
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#05-baseline-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        05 — Baseline Testing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#06-yolo-testing-yolo-seq-nms-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        06 — YOLO Testing (YOLO &amp; Seq-NMS Inference)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#07-baseline-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        07 — Baseline Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#08-yolo-evaluation-yolo-seq-nms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        08 — YOLO Evaluation (YOLO &amp; Seq-NMS)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Jobs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Jobs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#monitoring-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#viewing-logs-very-important-for-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing logs (very important for debugging)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-runtime-approximate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected runtime (approximate)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging-failed-jobs-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging failed jobs checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interactive-gpu-session-for-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive GPU session (for testing)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syncing-results-to-onedrive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syncing Results to OneDrive
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#useful-file-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Useful File Operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    About
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/release_notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting-to-sockeye-ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting to Sockeye (SSH)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connecting to Sockeye (SSH)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic login
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#first-time-login-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        First-time login notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connecting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connecting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-whole-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the Whole Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#01-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        01 — Setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#02-read-and-split-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        02 — Read and Split Data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#03-preprocessing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        03 — Preprocessing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#04-train-yolo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        04 — Train YOLO
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#05-baseline-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        05 — Baseline Testing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#06-yolo-testing-yolo-seq-nms-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        06 — YOLO Testing (YOLO &amp; Seq-NMS Inference)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#07-baseline-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        07 — Baseline Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#08-yolo-evaluation-yolo-seq-nms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        08 — YOLO Evaluation (YOLO &amp; Seq-NMS)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Jobs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Jobs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#monitoring-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#viewing-logs-very-important-for-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing logs (very important for debugging)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-runtime-approximate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected runtime (approximate)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging-failed-jobs-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging failed jobs checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interactive-gpu-session-for-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive GPU session (for testing)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syncing-results-to-onedrive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syncing Results to OneDrive
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#useful-file-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Useful File Operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="sockeye-hpc">Sockeye HPC</h1>
+<p>This page documents how to run the full mooVision pipeline on the <a href="https://arc.ubc.ca/compute-storage/ubc-arc-sockeye">Sockeye HPC cluster</a> at UBC ARC. The pipeline takes raw video footage, preprocess the videos, trains a YOLO model to detect cross-sucking behaviour, runs inference, and evaluates predictions against ground-truth labels.</p>
+<div class="admonition warning">
+<p class="admonition-title">Case-sensitive paths</p>
+<p>The repo is <code>mooVision</code> (capital V) but the scratch data directory is <code>moovision</code> (all lowercase). Double-check which one you need before running any command.</p>
+</div>
+<h2 id="pipeline-overview">Pipeline Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Purpose</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01_setup.sh</code></td>
+<td>Install dependencies and configure environment (run once)</td>
+<td><code>.venv/</code> environment ready</td>
+</tr>
+<tr>
+<td><code>02_read_and_split_data.sh</code></td>
+<td>Create train/val/test splits (per pen, no leakage)</td>
+<td><code>data/processed/processed_clips_index.csv</code></td>
+</tr>
+<tr>
+<td><code>03_preprocessing.sh</code></td>
+<td>Convert videos into YOLO format (frames + labels, train/val split, filtering orphan frames)</td>
+<td><code>dataset/images/{train,val}/</code>, <code>dataset/labels/{train,val}/</code>, <code>dataset.yaml</code> (or <code>dataset.tar</code> on Sockeye)</td>
+</tr>
+<tr>
+<td><code>04_train_yolo.sh</code></td>
+<td>Fine-tune YOLO model on training split</td>
+<td><code>data/yolo_training_runs/split_X_model/weights/best.pt</code></td>
+</tr>
+<tr>
+<td><code>05_baseline_testing.sh</code></td>
+<td>Run IoU-threshold baseline inference</td>
+<td><code>results/metadata/&lt;split_strategy&gt;/baseline/</code></td>
+</tr>
+<tr>
+<td><code>06_yolo_testing.sh</code></td>
+<td>Run YOLO + Seq-NMS inference (array jobs across splits/chunks)</td>
+<td><code>results/metadata/&lt;split_strategy&gt;/yolo/</code>, <code>seq-nms/</code></td>
+</tr>
+<tr>
+<td><code>07_baseline_evaluation.sh</code></td>
+<td>Evaluate baseline predictions vs ground truth</td>
+<td><code>results/evaluation/evaluation_report_&lt;split_strategy&gt;_baseline.json</code></td>
+</tr>
+<tr>
+<td><code>08_yolo_evaluation.sh</code></td>
+<td>Evaluate YOLO + Seq-NMS predictions vs ground truth</td>
+<td><code>results/evaluation/evaluation_report_&lt;split_strategy&gt;_yolo.json</code>, <code>evaluation_report_&lt;split_strategy&gt;_seq-nms.json</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>All data outputs (except .venv which in in the repo mooVision/ folder) are stored on Sockeye under: <code>/scratch/st-nina-1/moovision/</code> (case-sensitive: lowercase "moovision")</p>
+</div>
+<hr />
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before running the pipeline, ensure:</p>
+<ul>
+<li>You have a Sockeye account.</li>
+<li>You have access to the <code>st-nina-1</code> project.</li>
+<li>The raw dataset has been copied to <code>/scratch/st-nina-1/moovision/</code>.</li>
+<li>You can SSH into Sockeye.</li>
+</ul>
+<hr />
+<h2 id="connecting-to-sockeye-ssh">Connecting to Sockeye (SSH)</h2>
+<p>You can connect to the Sockeye HPC cluster using SSH from your local machine.</p>
+<h3 id="basic-login">Basic login</h3>
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>&lt;your_cwl&gt;@sockeye.arc.ubc.ca
+</code></pre></div>
+<p>Example:</p>
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>jsmith@sockeye.arc.ubc.ca
+</code></pre></div>
+<hr />
+<h3 id="first-time-login-notes">First-time login notes</h3>
+<ul>
+<li>You may be prompted for your CWL password.</li>
+<li>You may need to complete UBC ARC two-factor authentication (2FA).</li>
+<li>The first connection may ask you to confirm the host fingerprint — type <code>yes</code>.</li>
+</ul>
+<hr />
+<h2 id="connecting">Connecting</h2>
+<div class="highlight"><pre><span></span><code><span class="nv">SSH_AUTH_SOCK</span><span class="o">=</span><span class="w"> </span>ssh<span class="w"> </span>-o<span class="w"> </span><span class="nv">IdentitiesOnly</span><span class="o">=</span>yes<span class="w"> </span>&lt;your_cwl&gt;@sockeye.arc.ubc.ca
+</code></pre></div>
+<p>Once connected, navigate to the repo and set up your environment:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/scratch/st-nina-1/mooVision
+<span class="nb">source</span><span class="w"> </span>.env_sockeye
+uv<span class="w"> </span>sync
+</code></pre></div>
+<hr />
+<h2 id="running-the-whole-pipeline">Running the Whole Pipeline</h2>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>run_training_pipeline.sh
+</code></pre></div>
+<hr />
+<h2 id="01-setup">01 — Setup</h2>
+<p><strong>Script:</strong> <code>01_setup.sh</code></p>
+<p>Installs Python dependencies into the shared virtual environment using <code>uv</code>. This only needs to be run once when first setting up the project on Sockeye, or after adding new dependencies to <code>pyproject.toml</code>.</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/01_setup.sh
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>uv sync</code> must be run on a <strong>login node</strong>, not a compute node, because compute nodes have no internet access. The SLURM scripts handle this correctly — do not run <code>uv sync</code> inside a job that is already on a compute node.</p>
+</div>
+<hr />
+<h2 id="02-read-and-split-data">02 — Read and Split Data</h2>
+<p><strong>Script:</strong> <code>02_read_and_split_data.sh</code></p>
+<p>Reads the raw clip index and partitions it into train, validation, and test sets. Splits are done <strong>per pen</strong> to prevent data leakage — clips from the same pen never appear in both training and test sets.</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/02_read_and_split_data.sh
+</code></pre></div>
+<p>Output is written to <code>data/processed/</code>, including <code>processed_clips_index.csv</code>. The generated processed_clips_index.csv serves as the canonical ground-truth file used by both inference and evaluation steps.</p>
+<hr />
+<h2 id="03-preprocessing">03 — Preprocessing</h2>
+<p><strong>Script:</strong> <code>03_preprocessing.sh</code></p>
+<p>Converts raw video clips into the frame-level format expected by YOLO. This includes extracting frames, resizing, and generating YOLO-format label files.</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/03_preprocessing.sh
+</code></pre></div>
+<p>This is typically the most time-consuming step. Check job progress with:</p>
+<div class="highlight"><pre><span></span><code>watch<span class="w"> </span>squeue<span class="w"> </span>-u<span class="w"> </span><span class="nv">$USER</span>
+</code></pre></div>
+<hr />
+<h2 id="04-train-yolo">04 — Train YOLO</h2>
+<p><strong>Script:</strong> <code>04_train_yolo.sh</code></p>
+<p>Fine-tunes a pretrained YOLO model on the mooVision training data. One model is trained per data split. Trained weights are saved to:</p>
+<div class="highlight"><pre><span></span><code>data/yolo_training_runs/split_N_model/weights/best.pt
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/04_train_yolo.sh
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Training requires a GPU node and will queue until one is available. Expect longer wait times during peak hours.</p>
+</div>
+<hr />
+<h2 id="05-baseline-testing">05 — Baseline Testing</h2>
+<p><strong>Script:</strong> <code>05_baseline_testing.sh</code></p>
+<p>Runs the <strong>baseline</strong> inference pipeline, which detects cross-sucking using IoU overlap thresholds and minimum duration filtering — no fine-tuned model is involved. This serves as a performance lower bound to compare against the trained YOLO model.</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/05_baseline_testing.sh
+</code></pre></div>
+<p>Output is written to <code>results/metadata/&lt;split_strategy&gt;/baseline/</code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The baseline script does not overwrite existing results. To rerun the script and generate new results, delete the existing output files first.</p>
+</div>
+<h2 id="06-yolo-testing-yolo-seq-nms-inference">06 — YOLO Testing (YOLO &amp; Seq-NMS Inference)</h2>
+<p><strong>Script:</strong> <code>06_yolo_testing.sh</code></p>
+<p>Runs the fine-tuned YOLO model across all splits as a SLURM array job (8 splits × 10 chunks = 80 tasks). Each task processes a subset (10% chunk) of the test clips for one split.</p>
+<p>Submit all model/split combinations as a SLURM array job:</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/06_yolo_testing.sh
+</code></pre></div>
+<p>To overwrite existing results:</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>--export<span class="o">=</span>ALL,OVERWRITE<span class="o">=</span><span class="nb">true</span><span class="w"> </span>scripts_sockeye/06_yolo_testing.sh
+</code></pre></div>
+<p>To test on just the first two array tasks before a full run:</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>--export<span class="o">=</span>ALL,OVERWRITE<span class="o">=</span><span class="nb">true</span><span class="w"> </span>--array<span class="o">=</span><span class="m">0</span>-1<span class="w"> </span>scripts_sockeye/06_yolo_testing.sh
+</code></pre></div>
+<p>You can also run inference manually for a single split:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scripts/run_models/run_testing.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model_path<span class="w"> </span><span class="s2">&quot;data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data_path<span class="w"> </span><span class="s2">&quot;data/processed/pipeline_demo/test.csv&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--chunk<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--chunk_pct<span class="w"> </span><span class="m">1</span>.0
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You can try running manually using Interactive GPU session (see below) for faster result.</p>
+</div>
+<p>Output is written to <code>results/metadata/&lt;split_strategy&gt;/yolo/</code>.</p>
+<hr />
+<h2 id="07-baseline-evaluation">07 — Baseline Evaluation</h2>
+<p><strong>Script:</strong> <code>07_baseline_evaluation.sh</code></p>
+<p>Evaluates the baseline predictions from step 05 against the ground-truth labels. Computes frame-level metrics (precision, recall, F1) by matching predicted and labelled cross-sucking events using IoU.</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/07_baseline_evaluation.sh
+</code></pre></div>
+<p>Or run manually:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/evaluation/evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--predictions<span class="w"> </span><span class="s2">&quot;results/metadata/pipeline_demo/baseline/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--ground_truth<span class="w"> </span>data/processed/processed_clips_index.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>results/evaluation_report_baseline.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--labelled_clips_dir<span class="w"> </span><span class="s2">&quot;cross_sucking_labelled&quot;</span>
+</code></pre></div>
+<p>Output reports are written to <code>results/evaluation/</code>.</p>
+<hr />
+<h2 id="08-yolo-evaluation-yolo-seq-nms">08 — YOLO Evaluation (YOLO &amp; Seq-NMS)</h2>
+<p><strong>Script:</strong> <code>08_yolo_evaluation.sh</code></p>
+<p>Evaluates the fine-tuned YOLO predictions from step 06 against ground truth. Runs across all 8 splits and both pipeline variants (yolo, seq-nms).</p>
+<p>Once inference is done, submit the evaluation job:</p>
+<div class="highlight"><pre><span></span><code>sbatch<span class="w"> </span>scripts_sockeye/08_yolo_evaluation.sh
+</code></pre></div>
+<p>Or run manually:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/evaluation/evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--predictions<span class="w"> </span><span class="s2">&quot;results/metadata/pipeline_demo/yolo/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--ground_truth<span class="w"> </span>data/processed/processed_clips_index.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>results/evaluation_report_yolo.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--labelled_clips_dir<span class="w"> </span><span class="s2">&quot;cross_sucking_labelled&quot;</span>
+
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/evaluation/evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--predictions<span class="w"> </span><span class="s2">&quot;results/metadata/pipeline_demo/seq-nms/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--ground_truth<span class="w"> </span>data/processed/processed_clips_index.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>results/evaluation_report_seq_nms.json<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--labelled_clips_dir<span class="w"> </span><span class="s2">&quot;cross_sucking_labelled&quot;</span>
+</code></pre></div>
+<p>Predictions live under <code>results/metadata/&lt;split_strategy&gt;/yolo/</code> and <code>results/metadata/&lt;split_strategy&gt;/seq-nms/</code>, e.g.:</p>
+<div class="highlight"><pre><span></span><code>results/metadata/random/yolo
+results/metadata/random/seq-nms
+results/metadata/period_based/pen_2/yolo
+results/metadata/period_based/pen_2/seq-nms
+</code></pre></div>
+<hr />
+<h2 id="managing-jobs">Managing Jobs</h2>
+<h3 id="monitoring-jobs">Monitoring jobs</h3>
+<div class="highlight"><pre><span></span><code>squeue<span class="w"> </span>-u<span class="w"> </span><span class="nv">$USER</span><span class="w">          </span><span class="c1"># view active jobs</span>
+watch<span class="w"> </span>squeue<span class="w"> </span>-u<span class="w"> </span><span class="nv">$USER</span><span class="w">    </span><span class="c1"># auto-refresh every 2 seconds</span>
+scancel<span class="w"> </span>&lt;jobid&gt;<span class="w">          </span><span class="c1"># cancel a specific job</span>
+scancel<span class="w"> </span>-u<span class="w"> </span><span class="nv">$USER</span><span class="w">         </span><span class="c1"># cancel all your jobs</span>
+</code></pre></div>
+<p>For more detailed job accounting:</p>
+<div class="highlight"><pre><span></span><code>sacct<span class="w"> </span>-j<span class="w"> </span>&lt;jobid&gt;<span class="w">         </span><span class="c1"># job history and exit status</span>
+seff<span class="w"> </span>&lt;jobid&gt;<span class="w">             </span><span class="c1"># efficiency report (CPU / memory usage)</span>
+</code></pre></div>
+<hr />
+<h3 id="viewing-logs-very-important-for-debugging">Viewing logs (very important for debugging)</h3>
+<p>Each SLURM job writes output logs by default.</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>/scratch/st-nina-1/mooVision/logs/&lt;jobid&gt;.out
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>/scratch/st-nina-1/mooVision/logs/&lt;jobid&gt;.err
+</code></pre></div>
+<p>If a job fails or behaves unexpectedly, always check:</p>
+<ul>
+<li>error messages in the <code>.out</code> and <code>.err</code> file</li>
+<li>whether the job ran out of memory or time</li>
+<li>whether paths or environment setup failed</li>
+</ul>
+<hr />
+<h3 id="expected-runtime-approximate">Expected runtime (approximate)</h3>
+<p>Pipeline steps vary in runtime depending on dataset size and GPU availability:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Expected runtime</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data splitting (<code>02</code>)</td>
+<td>~1–5 minutes</td>
+</tr>
+<tr>
+<td>Preprocessing (<code>03</code>)</td>
+<td>~1–3 hours (CPU-heavy)</td>
+</tr>
+<tr>
+<td>YOLO training (<code>04</code>)</td>
+<td>~2–10+ hours per split (GPU)</td>
+</tr>
+<tr>
+<td>Baseline inference (<code>05</code>)</td>
+<td>~30 min – 2 hours (GPU)</td>
+</tr>
+<tr>
+<td>Model inference (<code>06</code>)</td>
+<td>~1–6 hours (depends on array size, GPU)</td>
+</tr>
+<tr>
+<td>Evaluation (<code>07–08</code>)</td>
+<td>~5–20 minutes</td>
+</tr>
+</tbody>
+</table>
+<p>If a job runs significantly longer than expected, it may be stuck or misconfigured.</p>
+<hr />
+<h3 id="debugging-failed-jobs-checklist">Debugging failed jobs checklist</h3>
+<p>If something fails, check:</p>
+<ul>
+<li><code>squeue</code> → is it still running?</li>
+<li><code>sacct</code> → did it fail or timeout?</li>
+<li><code>.out</code> logs → error messages</li>
+<li>file paths → correct <code>mooVision</code> vs <code>moovision</code></li>
+<li>resources → memory or GPU availability</li>
+</ul>
+<h3 id="interactive-gpu-session-for-testing">Interactive GPU session (for testing)</h3>
+<p>This interactive session is useful for rapid testing and debugging, as it allows you to run scripts manually and iterate on changes without waiting for batch jobs to start.</p>
+<div class="highlight"><pre><span></span><code>salloc<span class="w"> </span>--account<span class="o">=</span>st-nina-1<span class="w"> </span>--job-name<span class="o">=</span>inference_testing<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--time<span class="o">=</span><span class="m">01</span>:00:00<span class="w"> </span>--nodes<span class="o">=</span><span class="m">1</span><span class="w"> </span>--ntasks<span class="o">=</span><span class="m">1</span><span class="w"> </span>--cpus-per-task<span class="o">=</span><span class="m">4</span><span class="w"> </span>--mem<span class="o">=</span>32G<span class="w"> </span>--gpus<span class="o">=</span><span class="m">1</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Omit <code>--gpu=1</code> unless you specifically need a GPU — GPU nodes have longer queue times.</p>
+</div>
+<hr />
+<h2 id="syncing-results-to-onedrive">Syncing Results to OneDrive</h2>
+<p>Run these from your <strong>local Mac</strong>, not from Sockeye.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Evaluation reports</span>
+rsync<span class="w"> </span>-avz<span class="w"> </span>c&lt;your_cwl&gt;ea@sockeye.arc.ubc.ca:/scratch/st-nina-1/moovision/results/evaluation/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;/Users/&lt;username&gt;/Library/CloudStorage/OneDrive-SharedLibraries-UBC/Animal Welfare-mooVision - Documents/results/evaluation&#39;</span>
+
+<span class="c1"># Prediction metadata</span>
+rsync<span class="w"> </span>-avz<span class="w"> </span>&lt;your_cwl&gt;@sockeye.arc.ubc.ca:/scratch/st-nina-1/moovision/results/metadata/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s1">&#39;/Users/&lt;username&gt;/Library/CloudStorage/OneDrive-SharedLibraries-UBC/Animal Welfare-mooVision - Documents/results/metadata&#39;</span>
+
+<span class="c1"># Training weights (splits 2–9)</span>
+<span class="k">for</span><span class="w"> </span>split<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="m">6</span><span class="w"> </span><span class="m">7</span><span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="m">9</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>rsync<span class="w"> </span>-avz<span class="w"> </span>&lt;your_cwl&gt;@sockeye.arc.ubc.ca:/scratch/st-nina-1/moovision/data/yolo_training_runs/split_<span class="si">${</span><span class="nv">split</span><span class="si">}</span>_model<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s1">&#39;/Users/&lt;username&gt;/Library/CloudStorage/OneDrive-SharedLibraries-UBC/Animal Welfare-mooVision - Documents/data/yolo_training_runs/&#39;</span>
+<span class="k">done</span>
+</code></pre></div>
+<hr />
+<h2 id="useful-file-operations">Useful File Operations</h2>
+<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>/scratch/st-nina-1/moovision/results/metadata<span class="w">        </span><span class="c1"># check inference output</span>
+ls<span class="w"> </span>/scratch/st-nina-1/moovision/results/evaluation<span class="w">      </span><span class="c1"># check evaluation output</span>
+
+<span class="c1"># Delete a results folder to force a clean re-run (destructive!)</span>
+rm<span class="w"> </span>-rf<span class="w"> </span>/scratch/st-nina-1/moovision/results/metadata/random<span class="w"> </span><span class="c1"># delete the whole random/ folder</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/@mermaid-js/layout-elk@0.1.7/dist/mermaid-layout-elk.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+      
+        <script src="../javascripts/mermaid-init.js"></script>
+      
+    
+  </body>
+</html>

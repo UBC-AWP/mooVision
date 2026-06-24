@@ -9,21 +9,25 @@
       
       
       
+        <link rel="prev" href="../matching/">
+      
+      
+        <link rel="next" href="../../02_split_data/split_data/">
       
       
         
       
       
-      <link rel="icon" href="/assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>MooVision</title>
+        <title>Schema - MooVision</title>
       
     
     
-      <link rel="stylesheet" href="/assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -42,11 +46,11 @@
       
     
     
-      <link rel="stylesheet" href="/assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="/stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("/",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -63,6 +67,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#schema-functions-reference" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -75,7 +84,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="/." title="MooVision" class="md-header__button md-logo" aria-label="MooVision" data-md-component="logo">
+    <a href="../../.." title="MooVision" class="md-header__button md-logo" aria-label="MooVision" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -95,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              
+              Schema
             
           </span>
         </div>
@@ -173,7 +182,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="/." title="MooVision" class="md-nav__button md-logo" aria-label="MooVision" data-md-component="logo">
+    <a href="../../.." title="MooVision" class="md-nav__button md-logo" aria-label="MooVision" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -191,7 +200,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -218,7 +227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/01_read_data/data_requirements/" class="md-nav__link">
+      <a href="../data_requirements/" class="md-nav__link">
         
   
   
@@ -242,18 +251,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -274,7 +285,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -289,18 +300,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
         
           
           <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
@@ -321,7 +334,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -339,7 +352,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/01_read_data/read_all_clips_index/" class="md-nav__link">
+      <a href="../read_all_clips_index/" class="md-nav__link">
         
   
   
@@ -367,7 +380,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/01_read_data/matching/" class="md-nav__link">
+      <a href="../matching/" class="md-nav__link">
         
   
   
@@ -392,10 +405,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="/Pipeline/01_read_data/schema/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -411,6 +451,48 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.read_data.schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -431,7 +513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/02_split_data/split_data/" class="md-nav__link">
+      <a href="../../02_split_data/split_data/" class="md-nav__link">
         
   
   
@@ -506,7 +588,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/05_run_models/baseline/" class="md-nav__link">
+      <a href="../../05_run_models/baseline/" class="md-nav__link">
         
   
   
@@ -534,7 +616,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/05_run_models/yolo/" class="md-nav__link">
+      <a href="../../05_run_models/yolo/" class="md-nav__link">
         
   
   
@@ -562,7 +644,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/05_run_models/seq_nms/" class="md-nav__link">
+      <a href="../../05_run_models/seq_nms/" class="md-nav__link">
         
   
   
@@ -645,7 +727,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/03_preprocessing/preprocessing/" class="md-nav__link">
+      <a href="../../03_preprocessing/preprocessing/" class="md-nav__link">
         
   
   
@@ -673,7 +755,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/03_preprocessing/extract_frames/" class="md-nav__link">
+      <a href="../../03_preprocessing/extract_frames/" class="md-nav__link">
         
   
   
@@ -701,7 +783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/03_preprocessing/extract_labels/" class="md-nav__link">
+      <a href="../../03_preprocessing/extract_labels/" class="md-nav__link">
         
   
   
@@ -729,7 +811,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/03_preprocessing/utils/" class="md-nav__link">
+      <a href="../../03_preprocessing/utils/" class="md-nav__link">
         
   
   
@@ -812,7 +894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/04_training/training_yolo/" class="md-nav__link">
+      <a href="../../04_training/training_yolo/" class="md-nav__link">
         
   
   
@@ -895,7 +977,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/06_evaluation/evaluation/" class="md-nav__link">
+      <a href="../../06_evaluation/evaluation/" class="md-nav__link">
         
   
   
@@ -923,7 +1005,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/06_evaluation/predict_bboxes/" class="md-nav__link">
+      <a href="../../06_evaluation/predict_bboxes/" class="md-nav__link">
         
   
   
@@ -959,7 +1041,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/07_generating_clips/clipping/" class="md-nav__link">
+      <a href="../../07_generating_clips/clipping/" class="md-nav__link">
         
   
   
@@ -987,7 +1069,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/Pipeline/08_analysis/analysis/" class="md-nav__link">
+      <a href="../../08_analysis/analysis/" class="md-nav__link">
         
   
   
@@ -1022,7 +1104,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/testing/testing/" class="md-nav__link">
+      <a href="../../../testing/testing/" class="md-nav__link">
         
   
   
@@ -1096,7 +1178,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/utils/utils/" class="md-nav__link">
+      <a href="../../../utils/utils/" class="md-nav__link">
         
   
   
@@ -1131,7 +1213,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/sockeye/" class="md-nav__link">
+      <a href="../../../sockeye/" class="md-nav__link">
         
   
   
@@ -1205,7 +1287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/about/about/" class="md-nav__link">
+      <a href="../../../about/about/" class="md-nav__link">
         
   
   
@@ -1233,7 +1315,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/about/license/" class="md-nav__link">
+      <a href="../../../about/license/" class="md-nav__link">
         
   
   
@@ -1261,7 +1343,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/about/release_notes/" class="md-nav__link">
+      <a href="../../../about/release_notes/" class="md-nav__link">
         
   
   
@@ -1306,6 +1388,38 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#function-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts.read_data.schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1318,8 +1432,66 @@
               
               <article class="md-content__inner md-typeset">
                 
-  <h1>404 - Not found</h1>
+                  
 
+
+
+<h1 id="schema-functions-reference">Schema Functions Reference</h1>
+<p>This module serves as the reference for documentation for the data index validation schema.</p>
+<h2 id="function-reference">Function Reference</h2>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="scripts.read_data.schema"></a>
+    <div class="doc doc-contents first">
+
+        <p>Data Schema for MooVision Data Files</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><p>options:
+show_source: false
+show_root_heading: true</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
               </article>
             </div>
           
@@ -1356,16 +1528,16 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "/", "features": [], "search": "/assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="/assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
         <script src="https://unpkg.com/@mermaid-js/layout-elk@0.1.7/dist/mermaid-layout-elk.js"></script>
       
         <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
       
-        <script src="/javascripts/mermaid-init.js"></script>
+        <script src="../../../javascripts/mermaid-init.js"></script>
       
     
   </body>
