@@ -11,43 +11,6 @@ format:
     fig-pos: "H"
     tbl-pos: "H"
     fontsize: 11pt
-    geometry:
-      - top=28mm
-      - bottom=28mm
-      - left=28mm
-      - right=28mm
-    linestretch: 1.2
-    colorlinks: true
-    linkcolor: NavyBlue
-    include-in-header:
-      text: |
-        \usepackage{booktabs}
-        \usepackage{caption}
-        \usepackage{parskip}
-        \usepackage{titlesec}
-        \usepackage{xcolor}
-        \definecolor{sectioncolor}{RGB}{30, 60, 90}
-
-        \titleformat{\section}
-          {\normalfont\large\bfseries\color{sectioncolor}}
-          {\thesection}{1em}{}[\vspace{-4pt}\rule{\linewidth}{0.4pt}]
-
-        \titleformat{\subsection}
-          {\normalfont\normalsize\bfseries}
-          {\thesubsection}{1em}{}
-
-        \titleformat{\subsubsection}
-          {\normalfont\normalsize\itshape}
-          {\thesubsubsection}{1em}{}
-
-        \titlespacing{\section}{0pt}{14pt}{6pt}
-        \titlespacing{\subsection}{0pt}{10pt}{4pt}
-        \titlespacing{\subsubsection}{0pt}{8pt}{2pt}
-
-        \captionsetup{font=small, labelfont=bf, labelsep=period}
-
-        \setlength{\parskip}{5pt}
-        \setlength{\parindent}{0pt}
 bibliography: references.bib
 execute:
   echo: false
