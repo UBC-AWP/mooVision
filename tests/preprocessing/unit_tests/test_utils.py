@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 import pytest
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from scripts.preprocessing.utils import (
     validate_file_paths,

@@ -8,9 +8,9 @@ from pathlib import Path
 from unittest.mock import patch
 import pandas as pd
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from scripts.data_splitting.split_data import (
+from scripts.split_data.split_data import (
     train_test_to_csv,
     random_shuffle_split,
     time_based_split,
