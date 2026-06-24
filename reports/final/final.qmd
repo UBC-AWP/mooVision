@@ -1,6 +1,7 @@
 ---
-title: "MooVision: Final Project Report"
-author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond Wang"
+title: "MooVision: Automated Detection of Cross-Sucking Behaviour in Dairy Calves"
+author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond(Wenrui) Wang"
+date: "June 24 2026"
 editor: source
 format: 
     html:
@@ -9,6 +10,13 @@ format:
     pdf:
         toc: true
         toc-depth: 3
+        fig-pos: "H"
+        tbl-pos: "H"
+        fontsize: 11pt
+        linestretch: 1.2
+        colorlinks: true
+        linkcolor: NavyBlue
+
 bibliography: references.bib
 execute:
     echo: false
@@ -44,7 +52,6 @@ Together, these objectives address the partner’s core need: a scalable, automa
 
 
 # Data 
-
 
 ## Experimental Data Splits
 
