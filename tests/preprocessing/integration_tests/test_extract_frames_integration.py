@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import pytest
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from scripts.preprocessing.extract_frames import process_single_video, extract_frames
 

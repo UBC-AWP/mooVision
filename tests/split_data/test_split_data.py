@@ -1,5 +1,5 @@
 """
-Tests for scripts/data_splitting/split_data
+Tests for scripts/split_data/split_data
 """
 
 import sys
@@ -93,7 +93,7 @@ class TestTrainTestToCsv:
     def test_skips_overwriting_existing_files_when_force_is_false(
         self, valid_dfs, tmp_path, capsys
     ):
-        """Verifies that if pre-existing files exist, they remain intact if FORCE=False."""
+        """Verifies that if pre-existing files exist, they remain intact if force=False."""
         train_file = tmp_path / "train.csv"
         val_file = tmp_path / "val.csv"
         test_file = tmp_path / "test.csv"
