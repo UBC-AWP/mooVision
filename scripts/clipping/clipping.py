@@ -1,5 +1,5 @@
 """
-scripts.clipping
+scripts.clipping.clpipping
 ================
 
 Reproduce short annotated video clips from longer source videos.
@@ -53,7 +53,7 @@ import json
 import re
 import pandas as pd
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent)) 
+sys.path.append(str(Path(__file__).parent.parent.parent)) 
 from config import RESULT_CLIPS_DIR,ROOT_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
@@ -387,15 +387,15 @@ def main():
     --------
     Clip all events from a directory of JSONs::
 
-        uv run scripts/07_clipping/clipping.py --input results/metadata/<split_name>/<model_name>
+        uv run scripts/clipping/clipping.py --input results/metadata/<split_name>/<model_name>
 
     Clip events from a single JSON file::
 
-        uv run scripts/07_clipping/clipping.py --input results/metadata/pen_based/pen_3/yolo
+        uv run scripts/clipping/clipping.py --input results/metadata/pen_based/pen_3/yolo
 
     Clip to a custom output directory::
 
-        uv run scripts/07_clipping/clipping.py  --input results/metadata/<split_name>/<model_name>/ --output /tmp/clips/
+        uv run scripts/clipping/clipping.py  --input results/metadata/<split_name>/<model_name>/ --output /tmp/clips/
     """
     parser = argparse.ArgumentParser(description="Clip events from prediction JSONs.")
     parser.add_argument("--input", type=Path, required=True,
