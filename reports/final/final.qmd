@@ -20,11 +20,27 @@ jupyter: python3
 
 # Executive Summary
 
+Dairy calves are typically separated from their mothers shortly after birth, and efforts to improve welfare through social housing are often limited by farmers' concerns about cross-sucking; a behaviour in which one calf sucks on the body parts of another, leading to injury, disease transmission, and reduced future milk production. With Canada’s update Code of Practice for Dairy Cattle requiring all indoor-housed calves to be socially housed by 4 weeks of age beginning April 1. 2031(@weary2025social), addressing cross-sucking has become increasingly urgent. Research on cross-sucking is constrained by reliance on manual behavioural annotation, a process that is labour-intensive and difficult to scale. This project develops a computer-vision pipeline that automatically detects cross-sucking events in continuous barn camera footage, producing structured outputs: event timestamps, confidence scores, and bounding box coordinates, that directly reduce the manual annotation burden. Three approaches were evaluated: a pretrained YOLO26 baseline, a fine-tuned YOLO26 detector, and the fine-tuned detector extended with Sequential Non-Maximum Suppression (Seq-NMS). Seq-NMS detected more candidate cross-sucking events than YOLO26 alone in both test periods (Postwean: 820 vs. 238; Wean: 6,842 vs 554), though overall recall remained very low, with data volume identified as the primary bottleneck to further improvement.
 
 
 # Introduction
 
+In modern dairy farms, calves are often separated from their mothers within hours of birth (@mahmoud2016impacts; @wegner2025suckling) and housed individually (@gaillard2014). Although individual housing may be easier to manage, social housing has been shown to improve calf welfare, including enhanced social cognition, cognitive development, learning ability, and reduced weaning distress (@plaugher2025). Despite these benefits, many farmers remain reluctant to adopt social housing due to concerns surrounding cross-sucking (@plaugher2025).
 
+Cross-sucking occurs when calves suck on the body parts of another calf, and in this project is defined specifically as sucking directed at the udder area. This behaviour emerges because calves are unable to satisfy their natural suckling instinct following mother–calf separation and therefore redirect this behaviour toward one another (@wegner2025suckling). Cross-sucking can lead to physical injuries, disease transmission, and long-term reductions in future milk production (@mahmoud2016impacts), reinforcing concerns around social housing systems.
+
+Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive calf video recordings to study cross-sucking behaviour. This process is time-consuming, labour-intensive, and subject to inconsistencies between annotators, making it difficult to scale to larger datasets in commercial farming environments. This project aims to develop an affordable, automated system capable of detecting cross-sucking from continuous pen video, enabling more efficient, consistent, and scalable analysis of dairy calf behaviour in social housing systems.
+
+Over the course of the project, the original objective was refined into four clear and measurable components:
+
+- Develop a detection model that identifies cross-sucking behaviour in raw video through spatial localization using bounding boxes.
+- Implement a temporal linking method that groups frame-level detections into coherent behavioural events with defined start and end times.
+- Design an evaluation framework that assesses both the spatial accuracy of bounding box predictions and the temporal accuracy of event detection.
+- Build an end-to-end pipeline that processes raw video and outputs structured metadata, including event timestamps, confidence scores, and bounding box coordinates, enabling use by non-technical users in research and farm environments.
+
+The pipeline evaluates model performance at two levels. Frame-level evaluation looks at individual frames and asks whether the model's predicted bounding boxes line up spatially with the real, annotated cross-sucking regions. Event-level evaluation looks at entire cross-sucking events and asks whether the model detected them at roughly the right time, producing precision, recall, and F1/F2 scores. 
+
+Together, these objectives address the partner’s core need: a scalable, automated tool that reduces the manual annotation burden while producing outputs that directly support behavioural research questions about when and how frequently cross-sucking occurs across different housing conditions and developmental stages. 
 
 
 # Data 
