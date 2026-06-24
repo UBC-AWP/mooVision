@@ -21,14 +21,14 @@ Evaluation (optional):
     predicted a bbox AND ground truth has a bbox with IoU >= iou_threshold.
 
 How to run (inference only):
-    python scripts/predict_bboxes.py \
+    uv run python scripts/evaluation/predict_bboxes.py \
         --input_path data/processed/pipeline_demo/test.csv \
         --model_path data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt \
         --output_path results/predicted_bboxes/pipeline_demo/ \
         --skip 1
 
 How to run (inference + evaluation):
-    python scripts/predict_bboxes.py \
+    uv run python scripts/evaluation/predict_bboxes.py \
         --input_path data/processed/<split_name>/test.csv \
         --model_path data/yolo_training_runs/<split_name>/<run_name>/weights/best.pt \
         --output_path results/predicted_bboxes/<split_name>/<run_name>/ \
@@ -45,7 +45,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from ultralytics import YOLO
 from scripts.data_reading.matching import parse_unlabelled_name
