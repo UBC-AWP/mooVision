@@ -1,6 +1,7 @@
 ---
-title: "MooVision: Final Project Report"
-author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond Wang"
+title: "MooVision: Automated Detection of Cross-Sucking Behaviour in Dairy Calves"
+author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond(Wenrui) Wang"
+date: "June 24 2026"
 editor: source
 format: 
     html:
@@ -20,14 +21,14 @@ jupyter: python3
 
 # Executive Summary
 
-Dairy calves are typically separated from their mothers shortly after birth, and efforts to improve welfare through social housing are often limited by farmers' concerns about cross-sucking; a behaviour in which one calf sucks on the body parts of another, leading to injury, disease transmission, and reduced future milk production. With Canada’s update Code of Practice for Dairy Cattle requiring all indoor-housed calves to be socially housed by 4 weeks of age beginning April 1. 2031(@weary2025social), addressing cross-sucking has become increasingly urgent. Research on cross-sucking is constrained by reliance on manual behavioural annotation, a process that is labour-intensive and difficult to scale. This project develops a computer-vision pipeline that automatically detects cross-sucking events in continuous barn camera footage, producing structured outputs: event timestamps, confidence scores, and bounding box coordinates, that directly reduce the manual annotation burden. Three approaches were evaluated: a pretrained YOLO26 baseline, a fine-tuned YOLO26 detector, and the fine-tuned detector extended with Sequential Non-Maximum Suppression (Seq-NMS). Seq-NMS detected more candidate cross-sucking events than YOLO26 alone in both test periods (Postwean: 820 vs. 238; Wean: 6,842 vs 554), though overall recall remained very low, with data volume identified as the primary bottleneck to further improvement.
+Dairy calves are typically separated from their mothers shortly after birth, and efforts to improve welfare through social housing are often limited by farmers' concerns about cross-sucking; a behaviour in which one calf sucks on the body parts of another, leading to injury, disease transmission, and reduced future milk production. With Canada’s update Code of Practice for Dairy Cattle requiring all indoor-housed calves to be socially housed by 4 weeks of age beginning April 1. 2031 [@weary2025social], addressing cross-sucking has become increasingly urgent. Research on cross-sucking is constrained by reliance on manual behavioural annotation, a process that is labour-intensive and difficult to scale. This project develops a computer-vision pipeline that automatically detects cross-sucking events in continuous barn camera footage, producing structured outputs: event timestamps, confidence scores, and bounding box coordinates, that directly reduce the manual annotation burden. Three approaches were evaluated: a pretrained YOLO26 baseline, a fine-tuned YOLO26 detector, and the fine-tuned detector extended with Sequential Non-Maximum Suppression (Seq-NMS). Seq-NMS detected more candidate cross-sucking events than YOLO26 alone in both test periods (Postwean: 820 vs. 238; Wean: 6,842 vs 554), though overall recall remained very low, with data volume identified as the primary bottleneck to further improvement.
 
 
 # Introduction
 
-In modern dairy farms, calves are often separated from their mothers within hours of birth (@mahmoud2016impacts; @wegner2025suckling) and housed individually (@gaillard2014). Although individual housing may be easier to manage, social housing has been shown to improve calf welfare, including enhanced social cognition, cognitive development, learning ability, and reduced weaning distress (@plaugher2025). Despite these benefits, many farmers remain reluctant to adopt social housing due to concerns surrounding cross-sucking (@plaugher2025).
+In modern dairy farms, calves are often separated from their mothers within hours of birth [@mahmoud2016impacts; @wegner2025suckling] and housed individually [@gaillard2014]. Although individual housing may be easier to manage, social housing has been shown to improve calf welfare, including enhanced social cognition, cognitive development, learning ability, and reduced weaning distress [@plaugher2025]. Despite these benefits, many farmers remain reluctant to adopt social housing due to concerns surrounding cross-sucking [@plaugher2025].
 
-Cross-sucking occurs when calves suck on the body parts of another calf, and in this project is defined specifically as sucking directed at the udder area. This behaviour emerges because calves are unable to satisfy their natural suckling instinct following mother–calf separation and therefore redirect this behaviour toward one another (@wegner2025suckling). Cross-sucking can lead to physical injuries, disease transmission, and long-term reductions in future milk production (@mahmoud2016impacts), reinforcing concerns around social housing systems.
+Cross-sucking occurs when calves suck on the body parts of another calf, and in this project is defined specifically as sucking directed at the udder area. This behaviour emerges because calves are unable to satisfy their natural suckling instinct following mother–calf separation and therefore redirect this behaviour toward one another [@wegner2025suckling]. Cross-sucking can lead to physical injuries, disease transmission, and long-term reductions in future milk production [@mahmoud2016impacts], reinforcing concerns around social housing systems.
 
 Currently, the UBC Animal Welfare Program (AWP) relies on manual labelling of extensive calf video recordings to study cross-sucking behaviour. This process is time-consuming, labour-intensive, and subject to inconsistencies between annotators, making it difficult to scale to larger datasets in commercial farming environments. This project aims to develop an affordable, automated system capable of detecting cross-sucking from continuous pen video, enabling more efficient, consistent, and scalable analysis of dairy calf behaviour in social housing systems.
 
@@ -44,7 +45,6 @@ Together, these objectives address the partner’s core need: a scalable, automa
 
 
 # Data 
-
 
 ## Experimental Data Splits
 
@@ -73,26 +73,37 @@ display(splits.style.hide(axis="index"))
 
 # High-Performance Computing (HPC) Workflow & Preprocessing Challenges
 
+Due to the size of our dataset, and the running of multiple experiments, we used UBC ARC Sockeye - UBC’s High-Performance Computing Cluster (HPC) - to gain significant computing power and parallelization for our training pipelines. However, training YOLO26 models requires videos and annotation folders to be unpacked into sets of many individual frames and labels. This posed a unique challenge as HPC systems struggled severely when forced to transfer large numbers of small files. To solve this issue, our pipeline splits into two workflows. This influenced our preprocessing workflows to include two segments: one for handling files on sockeye, and one for handling preprocessing locally. On sockeye, we ran our pipeline in parallel, allowing us to significantly reduce computing time and train models for each of our experiments simultaneously. This reduces the timeframe for running all experiments from multiple weeks to ~2 days. Full operational details are provided in @sec-appendix-sockeye.
 
 
 # Data Science Methods
 
-
-
 ## A. Baseline
 
+The first priority was establishing a functioning baseline pipeline. The baseline uses [YOLO26](https://docs.ultralytics.com/models/yolo26) pre-trained on the [COCO dataset](https://docs.ultralytics.com/datasets/detect/coco) to detect calves and draw bounding boxes in each frame. For each frame, we compute the Intersection over Union (IoU) between every detected pair, as illustrated in @fig-baseline-iou. If any pair exceeds the minimum IoU threshold for at least a minimum duration, it is saved as a cross-sucking event; shorter sequences are discarded as noise.
 
+![Illustration of Intersection over Union (IoU) between two detected calf bounding boxes. The red highlighted region indicates the intersection area, while the union area encompasses both boxes combined.](img/baseline_iou.png){#fig-baseline-iou width=80%}
 
-## B. Fine-tuned YOLO Model
+This approach is deliberately naive, using proximity as a proxy for cross-sucking with no understanding of what the behaviour actually looks like. Its value lies not in accuracy but in providing a reference point against which fine-tuned model improvements can be measured.
 
+## B. Fine-tuned YOLO26 Model
 
-## C. YOLO and Seq-NMS
+To move beyond proximity detection, we fine-tuned the pre-trained YOLO26 model on our labelled cross-sucking data. Rather than detecting any close contact between calves, the model is trained to recognize the specific visual patterns that characterize cross-sucking, the particular postures and spatial configurations that distinguish it from other interactions. This significantly improves detection precision over the baseline. 
 
+However, YOLO26 is an object detector, not an action/behaviour recognizer. It processes each frame independently and has no memory of what came before, which creates a distinct challenge: spatial detection without temporal context. YOLO26 learns what cross-sucking looks like in a single frame, but cross-sucking is a behaviour that unfolds over time. A model with no temporal awareness may miss events that are only recognizable across multiple frames or produce inconsistent detections across a sequence (i.e. fragmented event tracking). 
+
+## C. YOLO26 and Seq-NMS
+
+YOLO26 with Sequential Non-Maximum Suppression (Seq-NMS) extends the fine-tuned YOLO26 approach by adding a temporal linking component. While the fine-tuned YOLO26 model detects cross-sucking behaviour at the frame level, it has no memory of what happened in previous frames. This means a single cross-sucking event is represented as hundreds of disconnected single-frame detections. Seq-NMS addresses this by linking spatially overlapping detections across consecutive frames into coherent event tubes with defined start and end times, and filtering out tubes shorter than a minimum duration to reduce noise. This approach was preferred over more complex tracking algorithms because it is simpler, computationally lightweight, and produces outputs that map directly onto our ground truth annotation format.
+
+A key limitation is that Seq-NMS performance depends heavily on the quality of per-frame detections. With limited training data and few epochs, noisy detections can cause missed events, which is reflected in the low recall that was observed in preliminary results. Another limitation is that Seq-NMS links detections based purely on spatial overlap between consecutive frames. If two calves shift position during a cross-sucking interaction, the bounding box location changes significantly enough that Seq-NMS may break the tube and treat this as two separate events. This could inflate event counts and reduce measured event durations.
 
 ## D. Preliminary experiment with LLM Gemini
 
+As a parallel experiment, Google Gemini 2.5 Flash was evaluated as a zero-shot multimodal detector to assess whether a large vision-language model could bypass the annotation bottleneck constraining supervised approaches. Two input modalities were tested: direct video input and frame-by-frame image input. Video input was identified as operationally superior, as each API call consumes the same quota unit regardless of clip length, making frame-by-frame processing unviable at barn surveillance scale. The prompt enforced a narrow behavioural definition requiring visible oral-to-hindquarter contact, explicitly excluding ear-sucking, social licking, and proximity without contact (full prompt in @sec-appendix-gemini).
 
 # Data Product
+
 ![Example Data Piepeline.](img/pipeline.png){#fig-pipeline width=100%}
 
 When deployed by a researcher or farm operator, the pipeline takes raw barn camera footage as input and requires no manual annotation or model training. The footage is passed directly through the detection model, which produces per-frame bounding box predictions. These are then aggregated into discrete cross-sucking events with defined start and end times using the temporal linking step. The resulting detections are written to structured JSON metadata files, one per source video, containing event timestamps, confidence scores, and bounding box coordinates. An automated clip extraction tool then uses these outputs to pull and organise flagged video segments by pen, weaning stage, and recording day, giving researchers a condensed set of candidate clips for human review rather than hours of continuous footage.
@@ -364,20 +375,20 @@ alt.vconcat(
 @fig-temporal-postwean, @fig-temporal-wean, and @fig-temporal-random show that across all splits, both models fire detections broadly across video timelines with no clear clustering around genuine behavioural bouts. The WEAN split is the most severely affected, with Seq-NMS generating 6,842 events, roughly 8 times the POSTWEAN count, at the lowest mean confidence (0.32) and shortest mean duration (7.0s), consistent with the linking step connecting many short detections during a period when calves are in closer and more frequent physical contact. The random split reinforces this interpretation, with zero confirmed true positives for either model and confidence distributions closely matching those of splits with genuine cross-sucking signal. Taken together, these results suggest the model has learned to detect generic calf proximity rather than cross-sucking behaviour specifically, firing with similar confidence whether or not a genuine event is present and failing to concentrate detections around the moments when cross-sucking actually occurs.
 
 ## Limitation
+Firstly, a different confidence threshold was applied across the baseline and subsequent fine-tuned YOLO26 approaches. Given the fine-tuned model's observed confidence distribution (mean 0.30–0.40), current thresholds likely suppress valid detections. Ground truth event counts (~1,100 false negatives per split) far exceed detected events, indicating the models miss the vast majority of cross-sucking occurrences rather than mislabelling them. The primary bottleneck is data differentiation; with fewer than 1,100 labelled positive clips and no hard negative examples, the model has insufficient signal to learn a reliable cross-sucking detector.
+Secondly, as mentioned previously, we use a YOLO26 model to classify behavioural patterns. This approach is limited as YOLO26,  an object detection model,  holds independent knowledge of singular frames. With a dataset heavily impacted by occlusions and vague cross-sucking interactions, it is possible our results are fundamentally poor and unable to be improved upon within the current modelling framework. Moreover, we did not perform hyperparameter optimization within our model training. It is possible further testing, in this regard, may improve results.
+
+Lastly, due to time constraints, deep analysis into model results was not able to be completed. Additional analysis into model performance may yield further insights into the struggles faced by a YOLO26 modelling framework. For instance, EDA determined several expected problems including occlusions, pattern blendings, camera angles, etc., that may have inhibited cross-sucking detection. A deeper understanding of the causes of our results may provide a clearer picture of the underlying limitations.
 
 
 # Conclusions and Recommendations
+A core outcome of this project is the development of a reproducible end-to-end pipeline for cross-sucking detection research, transforming raw barn video into structured event predictions through a standardized workflow for data processing, model training, inference, and evaluation. The pipeline’s capability is demonstrated through multiple split-based experiments using both baseline IoU-based methods and preliminary YOLO-based models. Although current detection performance is not yet sufficient for practical deployment, the underlying infrastructure is robust, reusable, and designed to support future model development. Importantly, the modeling component is modular; researchers can replace the current detection models with more advanced architectures without rebuilding the surrounding data ingestion, preprocessing, evaluation, and reporting pipeline. This positions the project as a practical research foundation for future cross-sucking detection studies and larger-scale behavioural analysis.
 
+Current detection performance is not yet suitable for deployment. Neither model achieved useful recall, with detected events falling well short of ground-truth counts (~1,100 events per split), indicating that missed detections remain the primary challenge.
+For the AWP's goal of reducing annotation burden, the next priority should be improving model performance through expanded training data, particularly hard negative examples (e.g. non-cross-sucking footage of calves in close proximity), and hyperparameter tuning (e.g. confidence threshold). 
 
+Looking ahead, future work could include training with advanced detection models (e.g. YOWO, Swin Transformer), prediction smoothing for stable annotation across frames, and conducting more comprehensive model evaluation analysis. Once detection performance reaches a practical level, additional engineering investments such as workflow monitoring, fault tolerance, HPC optimization (i.e. Globus file transfer setup), and edge-device deployment (e.g. Raspberry Pi) can be considered. 
 
-{{< pagebreak >}}
-
-# Timeline
-
-
-{{< pagebreak >}}
-
-# References
 
 {{< pagebreak >}}
 

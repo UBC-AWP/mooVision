@@ -95,7 +95,7 @@ bash run_training_pipeline.sh
 Installs Python dependencies into the shared virtual environment using `uv`. This only needs to be run once when first setting up the project on Sockeye, or after adding new dependencies to `pyproject.toml`.
 
 ```bash
-sbatch 01_setup.sh
+sbatch scripts_sockeye/01_setup.sh
 ```
 
 !!! note
@@ -110,7 +110,7 @@ sbatch 01_setup.sh
 Reads the raw clip index and partitions it into train, validation, and test sets. Splits are done **per pen** to prevent data leakage — clips from the same pen never appear in both training and test sets.
 
 ```bash
-sbatch 02_read_and_split_data.sh
+sbatch scripts_sockeye/02_read_and_split_data.sh
 ```
 
 Output is written to `data/processed/`, including `processed_clips_index.csv`. The generated processed_clips_index.csv serves as the canonical ground-truth file used by both inference and evaluation steps.
@@ -124,7 +124,7 @@ Output is written to `data/processed/`, including `processed_clips_index.csv`. T
 Converts raw video clips into the frame-level format expected by YOLO. This includes extracting frames, resizing, and generating YOLO-format label files.
 
 ```bash
-sbatch 03_preprocessing.sh
+sbatch scripts_sockeye/03_preprocessing.sh
 ```
  
 This is typically the most time-consuming step. Check job progress with:
@@ -146,7 +146,7 @@ data/yolo_training_runs/split_N_model/weights/best.pt
 ```
 
 ```bash
-sbatch 04_train_yolo.sh
+sbatch scripts_sockeye/04_train_yolo.sh
 ```
 
 !!! note
@@ -161,7 +161,7 @@ sbatch 04_train_yolo.sh
 Runs the **baseline** inference pipeline, which detects cross-sucking using IoU overlap thresholds and minimum duration filtering — no fine-tuned model is involved. This serves as a performance lower bound to compare against the trained YOLO model.
 
 ```bash
-sbatch 05_baseline_testing.sh
+sbatch scripts_sockeye/05_baseline_testing.sh
 ```
 
 Output is written to `results/metadata/<split_strategy>/baseline/`.
@@ -178,25 +178,25 @@ Runs the fine-tuned YOLO model across all splits as a SLURM array job (8 splits 
 Submit all model/split combinations as a SLURM array job:
 
 ```bash
-sbatch 06_yolo_testing.sh
+sbatch scripts_sockeye/06_yolo_testing.sh
 ```
 
 To overwrite existing results:
 
 ```bash
-sbatch --export=ALL,OVERWRITE=true 06_yolo_testing.sh
+sbatch --export=ALL,OVERWRITE=true scripts_sockeye/06_yolo_testing.sh
 ```
 
 To test on just the first two array tasks before a full run:
 
 ```bash
-OVERWRITE=true sbatch --array=0-1 06_yolo_testing.sh
+sbatch --export=ALL,OVERWRITE=true --array=0-1 scripts_sockeye/06_yolo_testing.sh
 ```
 
 You can also run inference manually for a single split:
 
 ```bash
-uv run scripts/run_testing_2.py \
+uv run scripts/run_models/run_testing.py \
   --model_path "data/yolo_training_runs/pipeline_demo/demo_01/weights/best.pt" \
   --data_path "data/processed/pipeline_demo/test.csv" \
   --chunk 0 \
@@ -217,13 +217,13 @@ Output is written to `results/metadata/<split_strategy>/yolo/`.
 Evaluates the baseline predictions from step 05 against the ground-truth labels. Computes frame-level metrics (precision, recall, F1) by matching predicted and labelled cross-sucking events using IoU.
 
 ```bash
-sbatch 07_baseline_evaluation.sh
+sbatch scripts_sockeye/07_baseline_evaluation.sh
 ```
 
 Or run manually:
 
 ```bash
-uv run python scripts/evaluation.py \
+uv run python scripts/evaluation/evaluation.py \
   --predictions "results/metadata/pipeline_demo/baseline/" \
   --ground_truth data/processed/processed_clips_index.csv \
   --output results/evaluation_report_baseline.json \
@@ -243,19 +243,19 @@ Evaluates the fine-tuned YOLO predictions from step 06 against ground truth. Run
 Once inference is done, submit the evaluation job:
 
 ```bash
-sbatch 08_yolo_evaluation.sh
+sbatch scripts_sockeye/08_yolo_evaluation.sh
 ```
 
 Or run manually:
 
 ```bash
-uv run python scripts/evaluation.py \
+uv run python scripts/evaluation/evaluation.py \
   --predictions "results/metadata/pipeline_demo/yolo/" \
   --ground_truth data/processed/processed_clips_index.csv \
   --output results/evaluation_report_yolo.json \
   --labelled_clips_dir "cross_sucking_labelled"
 
-uv run python scripts/evaluation.py \
+uv run python scripts/evaluation/evaluation.py \
     --predictions "results/metadata/pipeline_demo/seq-nms/" \
     --ground_truth data/processed/processed_clips_index.csv \
     --output results/evaluation_report_seq_nms.json \

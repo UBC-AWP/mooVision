@@ -169,6 +169,7 @@ def process_single_video(
                         video_ended_early = True
                         break
                 if video_ended_early:
+                    semaphore.release()
                     break
                 frame_pointer += skip
             else:
