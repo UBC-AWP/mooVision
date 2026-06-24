@@ -1,4 +1,4 @@
-# # Data Preprocessing Pipeline
+# Data Preprocessing Pipeline
 
 This page documents how to utilize `scripts/training/preprocessing_yolo.py` to compile video data and bounding box annotations into structured training configurations optimized for fine-tuning **YOLO object detection models**.
 
