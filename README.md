@@ -248,6 +248,28 @@ For a summary of findings, see the [final report](placeholder_path).
 
 > **Note for Sockeye users:** See the Sockeye documentation in the MkDocs for more information.
 
+## Rendering the Report
+
+The final report is written in Quarto and lives in `report/final_report.qmd`.
+It reads directly from pipeline outputs in `results/` so it must be run after
+the pipeline has completed. Quarto must be installed separately from `uv` —
+see [quarto.org](https://quarto.org) for installation instructions.
+
+To render the PDF:
+
+```bash
+make report
+```
+
+To render HTML for review during writing:
+
+```bash
+make report-html
+```
+
+The rendered files are saved to `report/final_report.pdf` and
+`report/final_report.html` respectively.
+
 ## How to run MkDocs
 For detailed documentation, please refer to our MkDocs site. To view it locally, run:
    ```bash

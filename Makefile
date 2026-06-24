@@ -11,6 +11,10 @@ RUN_YOLO     := scripts/run_models/run_testing.py
 EVAL         := scripts/evaluation/evaluation.py
 CLIP         := scripts/clipping/clipping.py
 
+# ── Report paths ─────────────────────────────────────────────────────────────
+REPORT_DIR   ?= reports
+REPORT_QMD   ?= $(REPORT_DIR)/final/final.qmd
+
 # ── Configurable parameters (override from CLI if needed) ───────────────────
 DATASET          ?= data/training/pipeline_demo/dataset/dataset.yaml
 PROJECT          ?= pipeline_demo
@@ -110,3 +114,12 @@ eval: eval_yolo eval_seqnms
 # 8. Clip events from prediction JSONs
 clip:
 	$(PY) $(CLIP) --input $(CLIP_INPUT)
+
+# 9. Render report (run manually after pipeline is complete)
+report: report-pdf
+ 
+report-html:
+	uv run quarto render $(REPORT_QMD) --to html
+ 
+report-pdf:
+	uv run quarto render $(REPORT_QMD) --to pdf
