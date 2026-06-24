@@ -1,5 +1,5 @@
 """
-Tests for scripts/data_splitting/split_data
+Tests for scripts/split_data/split_data
 """
 
 import sys
@@ -93,7 +93,7 @@ class TestTrainTestToCsv:
     def test_skips_overwriting_existing_files_when_force_is_false(
         self, valid_dfs, tmp_path, capsys
     ):
-        """Verifies that if pre-existing files exist, they remain intact if FORCE=False."""
+        """Verifies that if pre-existing files exist, they remain intact if force=False."""
         train_file = tmp_path / "train.csv"
         val_file = tmp_path / "val.csv"
         test_file = tmp_path / "test.csv"
@@ -187,7 +187,7 @@ class TestRandomShuffleSplit:
         )
         assert not (tmp_path / "random").exists()
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_exits_early_if_random_dir_exists_and_force_is_false(
         self, mock_save, mock_csv_data, tmp_path, capsys
     ):
@@ -218,7 +218,7 @@ class TestRandomShuffleSplit:
 
     # --- FUNCTIONAL SPLITTING & DATA SEPARATION LOGIC TESTS ---
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_splits_data_correctly_without_mixing_source_videos(
         self, mock_save, mock_csv_data, tmp_path
     ):
@@ -285,7 +285,7 @@ class TestTimeBasedSplit:
         )
         assert not (tmp_path / "day_based").exists()
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_exits_early_if_day_based_dir_exists_and_force_is_false(
         self, mock_save, mock_time_csv, tmp_path, capsys
     ):
@@ -327,7 +327,7 @@ class TestTimeBasedSplit:
 
     # --- TEMPORAL CHRONOLOGICAL SPLITTING TESTS ---
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_allocates_subsets_correctly_based_on_time_windows(
         self, mock_save, mock_time_csv, tmp_path
     ):
@@ -389,7 +389,7 @@ class TestPenBasedSplit:
         )
         assert not (tmp_path / "pen_based").exists()
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_exits_early_if_pen_based_dir_exists_and_force_is_false(
         self, mock_save, mock_pen_csv, tmp_path, capsys
     ):
@@ -449,7 +449,7 @@ class TestPenBasedSplit:
 
     # --- ROTATIONAL ROUND-ROBIN LEAVE-ONE-OUT TESTS ---
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_executes_sliding_cross_validation_rotations_correctly(
         self, mock_save, mock_pen_csv, tmp_path
     ):
@@ -522,7 +522,7 @@ class TestPeriodBasedSplit:
         )
         assert not (tmp_path / "period_based").exists()
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_exits_early_if_period_based_dir_exists_and_force_is_false(
         self, mock_save, mock_period_csv, tmp_path, capsys
     ):
@@ -565,7 +565,7 @@ class TestPeriodBasedSplit:
 
     # --- CHRONOLOGICAL ROUND-ROBIN LEAVE-ONE-OUT PHASE TESTS ---
 
-    @patch("scripts.data_splitting.split_data.train_test_to_csv")
+    @patch("scripts.split_data.split_data.train_test_to_csv")
     def test_executes_sliding_cross_validation_rotations_correctly(
         self, mock_save, mock_period_csv, tmp_path
     ):

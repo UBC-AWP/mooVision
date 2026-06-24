@@ -12,7 +12,7 @@ import cv2
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from scripts.data_reading.matching import parse_unlabelled_name
+from scripts.read_data.matching import parse_unlabelled_name
 from scripts.preprocessing.utils import validate_file_paths
 from typing import Callable
 

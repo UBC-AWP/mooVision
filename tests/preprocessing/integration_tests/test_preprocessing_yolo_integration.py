@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from scripts.preprocessing.preprocessing_yolo import (
     process_single_split,

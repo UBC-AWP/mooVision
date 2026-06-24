@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import pandas as pd
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from scripts.preprocessing.preprocessing_yolo import (
     resolve_working_directory,
