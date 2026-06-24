@@ -48,6 +48,8 @@ nav:
       - Schema: Pipeline/01_read_data/schema.md
     - Splitting Data: Pipeline/02_split_data/split_data.md
     - Baseline: Pipeline/05_run_models/baseline.md
+    - YOLO: Pipeline/05_run_models/yolo.md
+    - Seq-NMS: Pipeline/05_run_models/seq_nms.md
     - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
     - Training:
       - YOLO: Pipeline/04_training/training_yolo.md
