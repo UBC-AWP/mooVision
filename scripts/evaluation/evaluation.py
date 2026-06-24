@@ -15,29 +15,6 @@ Compares model predictions (JSON) against ground truth annotations
 
 Works with predictions from any model (baseline, fine-tuned YOLO, or
 YOLO + Seq-NMS) as long as the JSON output format is consistent.
-
-How to run:
-    python scripts/evaluation.py \
-        --predictions results/metadata/<model_name>/ \
-        --ground_truth data/processed/processed_clips_index.csv \
-        --output results/evaluation_report.json \
-        --labelled_clips_dir /path/to/cross_sucking_labelled \
-        --fps 30.0
-
-Note: --predictions should point to the output directory of whichever
-model you are evaluating (e.g. results/metadata/baseline/ or
-results/metadata/seq_nms/).
-
-Note: --ground_truth must point to processed_clips_index.csv, not
-all_clips_index_raw.csv. Only the processed index contains the
-labelled_clip_relative_path column required for bounding box IoU
-evaluation against CVAT annotations.
-
-Note: if a model produces zero detections across all evaluated videos
-(e.g. an undertrained model), the predictions DataFrame returned by
-load_predictions() will be empty and will not have any columns. The
-functions below guard against this case explicitly and return
-zero-valued metrics rather than raising a KeyError.
 """
 
 import json
