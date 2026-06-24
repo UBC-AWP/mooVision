@@ -7,7 +7,7 @@ A light-coverage suite: 2-3 tests per function, focused on the
 core behavior of each one rather than exhaustive edge cases.
 
 Run with:
-    pytest tests/test_evaluation.py -v
+    pytest tests/evaluation/test_evaluation.py -v
 """
 
 import json
@@ -19,7 +19,7 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
-from scripts.evaluation import (
+from scripts.evaluation.evaluation import (
     compute_temporal_iou,
     compute_bbox_iou,
     compute_avg_bbox_iou_for_event,
