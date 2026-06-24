@@ -48,10 +48,6 @@ nav:
       - Matching: Pipeline/01_read_data/matching.md
       - Schema: Pipeline/01_read_data/schema.md
     - Splitting Data: Pipeline/02_split_data/split_data.md
-    - Run Models:
-      - Baseline: Pipeline/05_run_models/baseline.md
-      - YOLO: Pipeline/05_run_models/yolo.md
-      - Seq-NMS: Pipeline/05_run_models/seq_nms.md
     - Preprocessing: 
       - Preprocessing: Pipeline/03_preprocessing/preprocessing.md
       - Extract Frames: Pipeline/03_preprocessing/extract_frames.md
@@ -59,6 +55,10 @@ nav:
       - Utils: Pipeline/03_preprocessing/utils.md
     - Training:
       - YOLO: Pipeline/04_training/training_yolo.md
+    - Run Models:
+      - Baseline: Pipeline/05_run_models/baseline.md
+      - YOLO: Pipeline/05_run_models/yolo.md
+      - Seq-NMS: Pipeline/05_run_models/seq_nms.md
     - Evaluation:
       - Model Evaluation: Pipeline/06_evaluation/evaluation.md
       - CS Detection Evaluation: Pipeline/06_evaluation/predict_bboxes.md
