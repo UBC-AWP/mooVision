@@ -182,7 +182,7 @@ After configuring you `.env` and config files, run the following commands from y
     Cross-sucking examples (~2-3 minutes):
 
     ```bash
-    uv run scripts/models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
+    uv run scripts/run_models/baseline/baseline.py --csv "data/processed/pipeline_demo/test.csv" --frame_skip 100
     ```
 
 6. Load and Run fine-tuned YOLO model on demo video (2s buffer):
@@ -222,7 +222,7 @@ After configuring you `.env` and config files, run the following commands from y
 8. Clip frames from results:
 
    ```bash
-   uv run scripts/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
+   uv run scripts/clipping/clipping.py --input "results/metadata/pipeline_demo/yolo/ch02_20250913094601_results.json"
    ```
    
 The distribution analysis notebook is not part of the `make run` pipeline and
