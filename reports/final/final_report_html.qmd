@@ -1,6 +1,6 @@
 ---
 title: "MooVision: Automated Detection of Cross-Sucking Behaviour in Dairy Calves"
-author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond(Wenrui) Wang"
+author: "Ashifa Hassam, Cynthia Limantono, Devon Vorster, Raymond (Wenrui) Wang"
 date: "June 24, 2026"
 editor: source
 format: 
