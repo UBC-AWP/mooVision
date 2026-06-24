@@ -68,17 +68,25 @@ uv run scripts/clipping/clipping.py \
   --output /tmp/clips/
 ```
 
+### Specifying a different model output
+
+The output path mirrors the input path relative to `metadata/`. To clip
+results from a different model, pass the corresponding metadata directory:
+
+```bash
+uv run scripts/clipping/clipping.py \
+  --input results/metadata/pipeline_demo/seq-nms/
+```
+
 ---
 
 ## Function Reference
 
 ::: scripts.clipping.clipping
     options:
-      show_source: false
-      show_root_heading: false
-      heading_level: 2
-      show_signature_annotations: true
-      members:
-        - reproduce_clip
-        - split_by_json_events
-        - annotate_clip_with_boxes
+        show_source: false
+        show_root_heading: true
+        members:
+            - reproduce_clip
+            - split_by_json_events
+            - annotate_clip_with_boxes
