@@ -10,13 +10,6 @@ format:
     pdf:
         toc: true
         toc-depth: 3
-        fig-pos: "H"
-        tbl-pos: "H"
-        fontsize: 11pt
-        linestretch: 1.2
-        colorlinks: true
-        linkcolor: NavyBlue
-
 bibliography: references.bib
 execute:
     echo: false
