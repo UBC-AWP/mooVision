@@ -175,11 +175,11 @@ When multiple annotation archives match a single clip index record, the engine c
 ### Command Line Execution
 
 ```bash
-uv run scripts/data_reading/read_data_from_index_file.py \
+uv run scripts/read_data/read_all_clips_index.py \
   --index_path "data/cross_sucking_clips/all_clips_index.csv" \
   --clips_dir "data/unlabelled_clips" \
   --labels_dir "data/labelled_clips" \
-  --FORCE
+  --force
 
 ```
 
@@ -187,7 +187,7 @@ uv run scripts/data_reading/read_data_from_index_file.py \
 
 ## Function Reference
 
-::: scripts.data_reading.read_all_clips_index
+::: scripts.read_data.read_all_clips_index
 options:
 show_source: false
 show_root_heading: true
