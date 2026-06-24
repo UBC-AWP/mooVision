@@ -772,7 +772,7 @@ def parse_args():
         help="Output path for processed index file.",
     )
     parser.add_argument(
-        "--FORCE",
+        "--force",
         default=False,
         action="store_true",
         help="Force overwrite of existing data.",
@@ -789,5 +789,5 @@ if __name__ == "__main__":
         source_dir=args.source_dir,
         raw_output=args.raw_output,
         processed_output=args.processed_output,
-        force=args.FORCE,
+        force=args.force,
     )

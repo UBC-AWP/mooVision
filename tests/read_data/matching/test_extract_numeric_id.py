@@ -6,14 +6,9 @@ import pytest
 import sys
 from pathlib import Path
 
-# Load in root directory
-current_file_path = Path(__file__).resolve()
-current_dir = current_file_path.parent
-root_dir = current_file_path.parent.parent.parent
-if str(root_dir) not in sys.path:
-    sys.path.insert(0, str(root_dir))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
-from scripts.data_reading.matching import (
+from scripts.read_data.matching import (
     extract_numeric_id,
 )
 

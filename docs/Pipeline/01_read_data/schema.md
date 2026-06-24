@@ -4,7 +4,7 @@ This module serves as the reference for documentation for the data index validat
 
 ## Function Reference
 
-::: scripts.data_reading.schema
+::: scripts.read_data.schema
 options:
 show_source: false
 show_root_heading: true
