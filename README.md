@@ -258,7 +258,7 @@ installed separately from `uv` — see [quarto.org](https://quarto.org) for
 installation instructions.
 
 **Before rendering the PDF**, run the distribution analysis notebook and
-execute the export cell to generate static figures in `report/img/results/`.
+execute the export cell to generate static figures in `reports/final/img/results/`.
 The HTML version uses interactive Altair charts and does not need this step.
 
 Render the PDF (also runs the notebook automatically):
