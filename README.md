@@ -267,8 +267,8 @@ To render HTML for review during writing:
 make report-html
 ```
 
-The rendered files are saved to `report/final_report.pdf` and
-`report/final_report.html` respectively.
+The rendered files are saved to `reports/final/final.pdf` and
+`reports/final/final.html` respectively.
 
 ## How to run MkDocs
 For detailed documentation, please refer to our MkDocs site. To view it locally, run:

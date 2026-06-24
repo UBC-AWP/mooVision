@@ -67,7 +67,7 @@ nav:
   - Testing: testing/testing.md
   - Utils:
     - Utils: utils/utils.md
-  - Sockeye: utils/sockeye.md
+  - Sockeye: sockeye.md
   - About:
     - About: about/about.md
     - License: about/license.md
