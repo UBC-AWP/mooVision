@@ -42,7 +42,10 @@ plugins:
 nav:
   - Home: index.md
   - Model Pipeline:
-    - Reading In Data: Pipeline/reading_in_data/read_all_clips_index.md
+    - Reading In Data: 
+      - Reading Data: Pipeline/reading_in_data/read_all_clips_index.md
+      - matching.py: Pipeline/reading_in_data/matching.md
+      - schema.py: Pipeline/reading_in_data/schema.md
     - Splitting Data: Pipeline/data_splitting/data_splitting.md
     - Baseline: Pipeline/models/baseline.md
     - Preprocessing: Pipeline/preprocessing/preprocessing.md
