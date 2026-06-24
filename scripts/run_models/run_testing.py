@@ -11,16 +11,18 @@ import pandas as pd
 from ultralytics import YOLO
 import importlib
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
-from config import ROOT_DIR, SOURCE_VIDEOS_DIR, LOCAL_DIR
-from scripts.run_models.yolo.yolo import run_models
-from scripts.run_models.seq_NMS.seq_NMS import (
+sys.path.append(str(Path(__file__).parent))
+from yolo.yolo import run_models
+from seq_NMS.seq_NMS import (
     run_seq_nms_detection,
     DEFAULT_CONF_THRESHOLD,
     DEFAULT_IOU_THRESHOLD,
     DEFAULT_MIN_DURATION,
     TARGET_CLASS_NAME,
 )
+
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from config import ROOT_DIR, SOURCE_VIDEOS_DIR, LOCAL_DIR
 
 DEFAULT_FRAME_SKIP = 10
 
