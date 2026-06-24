@@ -383,8 +383,10 @@ Lastly, due to time constraints, deep analysis into model results was not able t
 
 # Conclusions and Recommendations
 A core outcome of this project is the development of a reproducible end-to-end pipeline for cross-sucking detection research, transforming raw barn video into structured event predictions through a standardized workflow for data processing, model training, inference, and evaluation. The pipeline’s capability is demonstrated through multiple split-based experiments using both baseline IoU-based methods and preliminary YOLO-based models. Although current detection performance is not yet sufficient for practical deployment, the underlying infrastructure is robust, reusable, and designed to support future model development. Importantly, the modeling component is modular; researchers can replace the current detection models with more advanced architectures without rebuilding the surrounding data ingestion, preprocessing, evaluation, and reporting pipeline. This positions the project as a practical research foundation for future cross-sucking detection studies and larger-scale behavioural analysis.
+
 Current detection performance is not yet suitable for deployment. Neither model achieved useful recall, with detected events falling well short of ground-truth counts (~1,100 events per split), indicating that missed detections remain the primary challenge.
 For the AWP's goal of reducing annotation burden, the next priority should be improving model performance through expanded training data, particularly hard negative examples (e.g. non-cross-sucking footage of calves in close proximity), and hyperparameter tuning (e.g. confidence threshold). 
+
 Looking ahead, future work could include training with advanced detection models (e.g. YOWO, Swin Transformer), prediction smoothing for stable annotation across frames, and conducting more comprehensive model evaluation analysis. Once detection performance reaches a practical level, additional engineering investments such as workflow monitoring, fault tolerance, HPC optimization (i.e. Globus file transfer setup), and edge-device deployment (e.g. Raspberry Pi) can be considered. 
 
 
