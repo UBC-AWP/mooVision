@@ -55,7 +55,7 @@ uv run scripts/splitting.py
 ## Output
 
 Local: Outputs the file structure layed out below.
-UBC ARC Sockeye: Outputs a tar file containing the dataset structure below. This is setup to avoid 
+UBC ARC Sockeye: Outputs a tar file containing the dataset structure below to avoid transfer of many small files.
 
 By default results are saved to `ROOT_DIR/data/training/yolo/split_name`.
 
@@ -102,7 +102,7 @@ data.yaml
 
 Local Workflow: Working directory is the root directory
 
-1) Read in `train.csv` and `val.csv` from the root directory.
+1) Read in `train.csv` and `val.csv` from the root directory.  
 2) Extract a list of relative paths to cross-sucking videos, and pass this to `extract_frames`. Extract a list of relative paths to zipped annotation folder, and pass this to `extract_labels`. Note, relative paths of cross-sucking videos are stored in the `clips_relative_path` column, and relative paths of annotations are stored in the `labelled_clips_relative_path` column.  
 3) `extract_frames` reads in each video in the passed list, extracts frames as jpg images using MultiThreadPooling and Semaphore attributes, and saves frames to either an `images/train/` or an `images/val/` subfolder within the working directory depending on the split source.  
 4) `extract_labels` opens each .zip file in the list, extracts bounding box annotations as .txt files from 'obj_train_data', removes the prefix 'obj_train_data', and saves these to either a `labels/train/` or a `labels/val/` subfolder within the output directory depending on the split source.  
@@ -125,7 +125,7 @@ note: This is specified to be transferred back to the compute node as a .tar fil
     When extracting frames, video corruption may result in a premature exit of a video extraction loops. If not dealt with, this will result in unaligned annotation where extracted labels do not have matching video frames. Moreover, CVAT removes non-event labels (.txt files) leading to the end of a video clip. This leads to scenarios where videos extend past annotaion labels and some frames do not have matching labels. To account for this, preprocessing_yolo.py has functionality to compare and remove both labels and frames which are missing the other part. This ensures all frames and labels exist as matching pairs, and training sets will not break or cause downstream disruptions when training YOLO models.
 
 **"Missing Videos, or Missing Annotation"**
-    This is handled when reading in data, as 
+    This is handled when reading in data, if not if is handled during data validation where frames or labels without matching counterparts will be removed to training sets.
 
 ---
 

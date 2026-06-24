@@ -4,6 +4,7 @@ Data Schema for MooVision Data Files
 
 import pandera.pandas as pa
 
+#: Raw Data Schema for all_clips_index.csv
 schema = pa.DataFrameSchema(
     columns={
         # --- Identity / path columns ---
@@ -73,6 +74,7 @@ schema = pa.DataFrameSchema(
     coerce=False,  # fail on unexpected types
 )
 
+#: Processed Data Schema to ensure downstream data integrity.
 processed_schema = pa.DataFrameSchema(
     columns={
         # --- Identity / path columns ---
