@@ -8,8 +8,7 @@ format:
     toc: true
     toc-depth: 3
     number-sections: true
-    fig-pos: "H"
-    tbl-pos: "H"
+    embed-resources: true
     fontsize: 11pt
 bibliography: references.bib
 execute:
