@@ -55,7 +55,7 @@ mooVision/
 ├── pyproject.toml            # Project dependency definitions managed via uv
 ├── reports/                  # Project proposal and final report
 ├── Makefile                  # Makefile to run the whole pipeline locally
-└── run_training_pipeline.py  # For running the whole pipeline in Sockeye
+└── run_training_pipeline.sh  # For running the whole pipeline in Sockeye
 ```
 
 ## Pipeline Diagram
