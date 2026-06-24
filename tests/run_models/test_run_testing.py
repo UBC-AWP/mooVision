@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 import sys
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 from config import LOCAL_DIR, ROOT_DIR, UNLABELLED_CLIPS_DIR
 
 PROCESSED_DIR = Path(LOCAL_DIR) / "data" / "processed"
@@ -19,7 +19,7 @@ MODELS_DIR    = Path(__file__).parent / "models"
 RESULTS_DIR   = Path(ROOT_DIR) / "results" / "metadata"
 RUN_SCRIPT    = Path(__file__).parent / "run-testing.py"
 
-import scripts.run_testing_2 as rt
+import scripts.run_models.run_testing as rt
 
 
 # ---------------------------------------------------------------------------

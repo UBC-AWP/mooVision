@@ -1,5 +1,5 @@
 """
-scripts.clipping
+scripts.clipping.clpipping
 ================
 
 Reproduce short annotated video clips from longer source videos.
@@ -53,7 +53,7 @@ import json
 import re
 import pandas as pd
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent)) 
+sys.path.append(str(Path(__file__).parent.parent.parent)) 
 from config import RESULT_CLIPS_DIR,ROOT_DIR
 
 def reproduce_clip(raw_video_path: Path, start_sec: float, end_sec: float, output_path: Path) -> bool:
@@ -351,59 +351,14 @@ def annotate_clip_with_boxes(input_clip: Path,output_clip: Path,boxes: list[dict
     writer.release()
     return True
     
-def main():
-    """
-    Run the clipping pipeline from the command line.
-
-    Overview
-    --------
-    Accepts a JSON file or directory of JSON files as input and reproduces
-    annotated clips for all detected events, written under the output directory
-    mirroring the source video hierarchy.
-
-    Input/Output
-    ------------
-    Input
-      - ``--input``  : A single JSON file or a directory searched recursively
-                       for ``*.json`` files produced by the detection pipeline.
-
-    Output
-      - Annotated clips written under:
-            <output>/<split_name>/<model_name>/<stem>/<stem>_event###_<start>-<end>_boxed.mp4
-      - ``--output`` defaults to ``RESULT_CLIPS_DIR`` (``results/result_clips``).
-
-    Parameters
-    ----------
-    None
-        Arguments are parsed from the command line:
-          --input   Path  Required. JSON file or directory of JSON files.
-          --output  Path  Optional. Output root. Default: RESULT_CLIPS_DIR.
-
-    Returns
-    -------
-    None
-
-    Examples
-    --------
-    Clip all events from a directory of JSONs::
-
-        uv run scripts/07_clipping/clipping.py --input results/metadata/<split_name>/<model_name>
-
-    Clip events from a single JSON file::
-
-        uv run scripts/07_clipping/clipping.py --input results/metadata/pen_based/pen_3/yolo
-
-    Clip to a custom output directory::
-
-        uv run scripts/07_clipping/clipping.py  --input results/metadata/<split_name>/<model_name>/ --output /tmp/clips/
-    """
+def parse_args():
     parser = argparse.ArgumentParser(description="Clip events from prediction JSONs.")
     parser.add_argument("--input", type=Path, required=True,
                         help="JSON file or directory of JSON files.")
     parser.add_argument("--output", type=Path, default=RESULT_CLIPS_DIR,
                         help="Output root directory. Default: results/result_clips")
-    args = parser.parse_args()
-    split_by_json_events(ROOT_DIR / args.input, args.output)
+    return parser.parse_args()
     
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    split_by_json_events(ROOT_DIR / args.input, args.output)

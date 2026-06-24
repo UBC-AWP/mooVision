@@ -1,55 +1,42 @@
 """
-baseline.py — Cross-sucking detection baseline (YOLO bounding-box overlap method)
+scripts.run_models.baseline.baseline
+=====================================
 
-USAGE
------
-    uv run scripts/models/baseline/baseline.py --csv <path/to/test.csv> [OPTIONS]
+Baseline cross-sucking detector using YOLO bounding box overlap.
 
-INPUTS
-------
-    Reads a test split CSV specified via --csv, e.g.:
-
-        data/processed/pipeline_demo/test.csv
-        data/processed/day_based/test.csv
-        data/processed/pen_based/test.csv
-
-    The CSV must contain a `source_video_path` column with paths to source
-    videos. Duplicate video paths within the CSV are dropped before processing.
-    The split name is inferred from the parent folder of the CSV (e.g. `day_based`).
-
-OUTPUTS
--------
-    Writes one JSON metadata file per video under:
-
-        results/metadata/split_name/
-        ├── baseline/
-        │   <video_stem>_results.json
-
-    Each JSON contains detection parameters, per-event timestamps, confidence
-    scores, and frame-level intersection box coordinates.
-
-    Videos whose JSON already exists are skipped (safe to re-run).
-
-ARGUMENTS
----------
-    --csv             str    Required. Path to a split test CSV.
-    --model           str    YOLO model weights filename. Default: yolo26x.pt
-    --iou_threshold   float  Minimum IoU to flag a frame. Default: 0.1
-    --conf_threshold  float  Minimum YOLO confidence to keep a box. Default: 0.5
-    --min_duration    float  Minimum event duration in seconds. Default: 1.0
-    --frame_skip      int    Process every Nth frame. Default: 1
-
-EXAMPLES
+Overview
 --------
-    # Run with defaults on the pipeline demo split
-    uv run scripts/models/baseline/baseline.py --csv data/processed/pipeline_demo/test.csv
+This module provides a baseline detection pipeline for identifying
+cross-sucking behaviour in dairy calf videos. For each input video,
+the script computes pairwise IoU between all detected calf bounding
+boxes per frame, groups consecutive overlapping frames into events,
+and writes a JSON metadata file containing event timestamps, confidence
+scores, and per-frame intersection box coordinates.
 
-    # Run with frame skipping for faster processing
-    uv run scripts/models/baseline/baseline.py --csv data/processed/day_based/test.csv --frame_skip 30
+Input/Output
+------------
+Inputs
+  - A test split CSV (e.g. ``data/processed/day_based/test.csv``)
+    containing a ``source_video_path`` column, passed via ``--csv``.
 
-    # Run with custom thresholds
-    uv run scripts/models/baseline/baseline.py --csv data/processed/day_based/test.csv \
-        --iou_threshold 0.05 --conf_threshold 0.4 --min_duration 2.0
+Outputs
+  - One JSON metadata file per video written under
+    ``results/metadata/<split_name>/baseline/``::
+
+        results/metadata/
+        └── day_based/
+            └── baseline/
+                └── ch02_20250913094601_results.json
+
+Notes
+-----
+  - Uses the COCO-pretrained YOLO26 model by default. The ``cow`` class
+    is used as a proxy for calves. Detection accuracy improves after
+    fine-tuning on labelled calf footage.
+  - Videos whose JSON output already exists are skipped automatically,
+    making the script safe to re-run after interruptions.
+  - Configuration is centralised in ``config.py``, driven by environment
+    variables in a ``.env`` file at the repo root.
 """
 import argparse
 import json
@@ -62,7 +49,7 @@ from pathlib import Path
 import sys
 sys.path.append(str(Path(__file__).parent.parent.parent.parent)) 
 from config import ROOT_DIR,SOURCE_VIDEOS_DIR,METADATA_DIR_CLOUD
-from scripts.run_testing_2 import get_split_label
+from scripts.run_models.run_testing import get_split_label
 
 # Defaults
 DEFAULT_MODEL = "yolo26x.pt"    

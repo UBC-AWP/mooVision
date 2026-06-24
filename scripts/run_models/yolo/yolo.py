@@ -22,14 +22,16 @@ import numpy as np
 import cv2
 import torch
 
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-
-from config import ROOT_DIR
-from scripts.models.seq_NMS.seq_NMS import (
+sys.path.append(str(Path(__file__).parent.parent))
+from seq_NMS.seq_NMS import (
     build_tubes,
     suppress_weak_detections,
     tubes_to_events,
 )
+
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+
+from config import ROOT_DIR
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
