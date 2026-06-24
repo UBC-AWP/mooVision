@@ -82,7 +82,7 @@ Due to the size of our dataset, and the running of multiple experiments, we used
 
 The first priority was establishing a functioning baseline pipeline. The baseline uses [YOLO26](https://docs.ultralytics.com/models/yolo26) pre-trained on the [COCO dataset](https://docs.ultralytics.com/datasets/detect/coco) to detect calves and draw bounding boxes in each frame. For each frame, we compute the Intersection over Union (IoU) between every detected pair, as illustrated in @fig-baseline-iou. If any pair exceeds the minimum IoU threshold for at least a minimum duration, it is saved as a cross-sucking event; shorter sequences are discarded as noise.
 
-![Illustration of Intersection over Union (IoU) between two detected calf bounding boxes. The red highlighted region indicates the intersection area, while the union area encompasses both boxes combined.](img/baseline_iou.png){#fig-baseline-iou width=60%}
+![Illustration of Intersection over Union (IoU) between two detected calf bounding boxes. The red highlighted region indicates the intersection area, while the union area encompasses both boxes combined.](img/baseline_iou.png){#fig-baseline-iou width=80%}
 
 This approach is deliberately naive, using proximity as a proxy for cross-sucking with no understanding of what the behaviour actually looks like. Its value lies not in accuracy but in providing a reference point against which fine-tuned model improvements can be measured.
 
