@@ -248,7 +248,7 @@ The demo workflow above is intended for local testing on a small subset of data.
 
 3. **Metadata Results — saved to both Sockeye and OneDrive.** Pipeline outputs (metadata) are saved to Sockeye scratch and synced back to the shared OneDrive library so the full team can access results in the future.
 
-For a summary of findings, see the [final report](placeholder_path).
+For a summary of findings, see the [final report](https://github.com/UBC-AWP/mooVision/tree/main/reports/final).
 
 > **Note for Sockeye users:** See the Sockeye documentation in the MkDocs for more information.
 
